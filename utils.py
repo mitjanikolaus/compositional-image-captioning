@@ -1,5 +1,8 @@
 import torch
 
+import skimage.io as io
+import matplotlib.pyplot as plt
+
 TOKEN_UNKNOWN = '<unk>'
 TOKEN_START = '<start>'
 TOKEN_END = '<end>'
@@ -12,14 +15,24 @@ SPLIT_TEST = 'TEST'
 def getWordMapFilename():
   return 'word_map.json'
 
-def getImagesFilename(split):
-  return split + '_images.hdf5'
+def getImagesFilename():
+  return 'images.hdf5'
 
-def getCaptionsFilename(split):
-  return split + '_captions.json'
+def getImageCocoIdsFilename():
+  return 'coco_ids.json'
 
-def getCaptionLengthsFilename(split):
-  return split + '_caption_lengths.json'
+def getCaptionsFilename():
+  return 'captions.json'
+
+def getCaptionLengthsFilename():
+  return 'caption_lengths.json'
+
+
+def showImg(img):
+  I = io.imread(img['coco_url'])
+  plt.axis('off')
+  plt.imshow(I)
+  plt.show()
 
 
 def clip_gradient(optimizer, grad_clip):
