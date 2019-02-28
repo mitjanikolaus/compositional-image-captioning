@@ -8,16 +8,13 @@ from imageio import imread
 from tqdm import tqdm
 from skimage.transform import resize
 
-from utils import getWordMapFilename, getImagesFilename, getCaptionsFilename, getCaptionLengthsFilename
+from utils import getWordMapFilename, getImagesFilename, getCaptionsFilename, getCaptionLengthsFilename, TOKEN_UNKNOWN, \
+  TOKEN_START, TOKEN_END, TOKEN_PADDING, SPLIT_TRAIN, SPLIT_VAL, SPLIT_TEST
 
-TOKEN_UNKNOWN = '<unk>'
-TOKEN_START = '<start>'
-TOKEN_END = '<end>'
-TOKEN_PADDING = '<pad>'
 
 def createWordMap(words):
   word_map = {w: i + 1 for i, w in enumerate(words)}
-  # Define mapping for special characters
+  # Mapping for special characters
   word_map[TOKEN_UNKNOWN] = len(word_map) + 1
   word_map[TOKEN_START] = len(word_map) + 1
   word_map[TOKEN_END] = len(word_map) + 1
@@ -87,19 +84,21 @@ def preprocessImagesAndCaptions(train_val_test_splits, images_folder, captions_p
   word_map = createWordMap(words)
 
   # Save the word mapping to JSON
-  word_map_filename = getWordMapFilename(train_val_test_splits, captions_per_image, vocabulary_size, max_caption_len)
+  word_map_filename = getWordMapFilename()
 
   with open(os.path.join(output_folder,word_map_filename), 'w') as file:
     json.dump(word_map, file)
 
   # Save images to HDF5 file, captions and their lengths to JSON files
-  for image_paths, image_captions, split in [(train_image_paths, train_image_captions, 'TRAIN'),
-                                 (val_image_paths, val_image_captions, 'VAL'),
-                                 (test_image_paths, test_image_captions, 'TEST')]:
+  for image_paths, image_captions, split in [(train_image_paths, train_image_captions, SPLIT_TRAIN),
+                                 (val_image_paths, val_image_captions, SPLIT_VAL),
+                                 (test_image_paths, test_image_captions, SPLIT_TEST)]:
 
     # Create hdf5 file and dataset
-    images_filename = getImagesFilename(split, train_val_test_splits, captions_per_image, vocabulary_size, max_caption_len)
+    images_filename = getImagesFilename(split)
     with h5py.File(os.path.join(output_folder, images_filename), 'a') as h5py_file:
+      h5py_file.attrs['captions_per_image'] = captions_per_image
+
       image_dataset = h5py_file.create_dataset('images', (len(image_paths), 3, 256, 256), dtype='uint8')
 
       encoded_captions = []
@@ -131,11 +130,11 @@ def preprocessImagesAndCaptions(train_val_test_splits, images_folder, captions_p
       assert image_dataset.shape[0] * captions_per_image == len(encoded_captions) == len(caption_lengths)
 
       # Save encoded captions and their lengths to JSON files
-      captions_filename = getCaptionsFilename(split, train_val_test_splits, captions_per_image, vocabulary_size, max_caption_len)
+      captions_filename = getCaptionsFilename(split)
       with open(os.path.join(output_folder, captions_filename), 'w') as json_file:
         json.dump(encoded_captions, json_file)
 
-      caption_lengths_filename = getCaptionLengthsFilename(split, train_val_test_splits, captions_per_image, vocabulary_size, max_caption_len)
+      caption_lengths_filename = getCaptionLengthsFilename(split)
       with open(os.path.join(output_folder, caption_lengths_filename), 'w') as json_file:
         json.dump(caption_lengths, json_file)
 
