@@ -8,10 +8,9 @@ import numpy as np
 from collections import Counter
 
 import h5py
-from imageio import imread
 from nltk import word_tokenize
 from pycocotools.coco import COCO
-from scipy.misc import imresize
+from scipy.misc import imread, imresize
 from tqdm import tqdm
 
 from utils import getWordMapFilename, getImagesFilename, getCaptionsFilename, getCaptionLengthsFilename, TOKEN_UNKNOWN, \
