@@ -1,7 +1,6 @@
 import json
 import os
 import time
-import numpy as np
 import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
@@ -12,11 +11,8 @@ from models import Encoder, DecoderWithAttention
 from datasets import CaptionDataset
 from nltk.translate.bleu_score import corpus_bleu
 
-from utils import getWordMapFilename, getImagesFilename, SPLIT_TRAIN, SPLIT_VAL, adjust_learning_rate, save_checkpoint, \
-  AverageMeter, clip_gradient, accuracy, getImageCocoIdsFilename
-
-IMAGENET_IMAGES_MEAN = [0.485, 0.456, 0.406]
-IMAGENET_IMAGES_STD = [0.229, 0.224, 0.225]
+from utils import getWordMapFilename, SPLIT_TRAIN, SPLIT_VAL, adjust_learning_rate, save_checkpoint, \
+  AverageMeter, clip_gradient, accuracy, getImageIndicesSplitsFromFile, IMAGENET_IMAGES_MEAN, IMAGENET_IMAGES_STD
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True  # set to true only if inputs to model are fixed size; otherwise lot of computational overhead
@@ -80,20 +76,9 @@ def main(data_folder, test_set_image_coco_ids_file, emb_dim=512, attention_dim=5
   loss_function = nn.CrossEntropyLoss().to(device)
 
   # Generate dataset splits
-  image_coco_ids_file = os.path.join(data_folder, getImageCocoIdsFilename())
-  with open(image_coco_ids_file, 'r') as json_file:
-    image_coco_ids = json.load(json_file)
-
-  with open(test_set_image_coco_ids_file, 'r') as json_file:
-    test_set_image_coco_ids = json.load(json_file)
-
-  test_images_split = [image_coco_ids.index(coco_id) for coco_id in test_set_image_coco_ids]
-
-  indices_without_test = list(set(range(len(image_coco_ids))) - set(test_images_split))
-
-  train_val_split = int((1 - val_set_size) * len(indices_without_test))
-  train_images_split = indices_without_test[:train_val_split]
-  val_images_split = indices_without_test[train_val_split:]
+  train_images_split, val_images_split, test_images_split = getImageIndicesSplitsFromFile(
+    data_folder, test_set_image_coco_ids_file, val_set_size
+  )
 
   normalize = transforms.Normalize(mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD)
   train_images_loader = torch.utils.data.DataLoader(

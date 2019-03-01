@@ -1,3 +1,6 @@
+import json
+import os
+
 import torch
 
 import skimage.io as io
@@ -11,6 +14,9 @@ TOKEN_PADDING = '<pad>'
 SPLIT_TRAIN = 'TRAIN'
 SPLIT_VAL = 'VAL'
 SPLIT_TEST = 'TEST'
+
+IMAGENET_IMAGES_MEAN = [0.485, 0.456, 0.406]
+IMAGENET_IMAGES_STD = [0.229, 0.224, 0.225]
 
 def getWordMapFilename():
   return 'word_map.json'
@@ -26,6 +32,24 @@ def getCaptionsFilename():
 
 def getCaptionLengthsFilename():
   return 'caption_lengths.json'
+
+def getImageIndicesSplitsFromFile(data_folder, test_set_image_coco_ids_file, val_set_size=0):
+  image_coco_ids_file = os.path.join(data_folder, getImageCocoIdsFilename())
+  with open(image_coco_ids_file, 'r') as json_file:
+    image_coco_ids = json.load(json_file)
+
+  with open(test_set_image_coco_ids_file, 'r') as json_file:
+    test_set_image_coco_ids = json.load(json_file)
+
+  test_images_split = [image_coco_ids.index(coco_id) for coco_id in test_set_image_coco_ids]
+
+  indices_without_test = list(set(range(len(image_coco_ids))) - set(test_images_split))
+
+  train_val_split = int((1 - val_set_size) * len(indices_without_test))
+  train_images_split = indices_without_test[:train_val_split]
+  val_images_split = indices_without_test[train_val_split:]
+
+  return train_images_split, val_images_split, test_images_split
 
 
 def showImg(img):
