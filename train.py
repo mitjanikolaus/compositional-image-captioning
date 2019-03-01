@@ -1,5 +1,7 @@
+import argparse
 import json
 import os
+import sys
 import time
 import torch.backends.cudnn as cudnn
 import torch.optim
@@ -324,12 +326,44 @@ def validate(val_loader, encoder, decoder, criterion, word_map, alpha_c, print_f
   return bleu4
 
 
+def check_args(args):
+  parser = argparse.ArgumentParser()
+  parser.add_argument('-D', '--data-folder',
+                      help='Folder where the preprocessed data is located',
+                      default=os.path.expanduser('~/datasets/coco2014_preprocessed/'))
+  parser.add_argument('-T', '--test-set_image-coco-ids-file',
+                      help='File containing JSON-serialized list of image IDs for the test set',
+                      default=os.path.expanduser('white_cars.json'))
+  parser.add_argument('-E', '--encoder-learning-rate',
+                      help='Initial learning rate for the encoder (used only if fine-tuning is enabled)',
+                      type=float, default=1e-4)
+  parser.add_argument('-L', '--decoder-learning-rate',
+                      help='Initial learning rate for the decoder',
+                      type=float, default=4e-4)
+  parser.add_argument('-F', '--fine-tune-encoder',
+                      help='Fine tune the encoder',
+                      action='store_true')
+  parser.add_argument('-A', '--alpha-c',
+                      help='regularization parameter for doubly stochastic attention',
+                      type=float, default=1.)
+  parser.add_argument('-C', '--checkpoint',
+                      help='Path to checkpoint of previously trained model',
+                      default=None)
+
+  parsed_args = parser.parse_args(args)
+  print(parsed_args)
+  return parsed_args
+
+
 if __name__ == '__main__':
-  main(data_folder='/home/mitja/datasets/coco2014_preprocessed',
-       test_set_image_coco_ids_file='white_cars.json',
-       encoder_lr=1e-4,  # learning rate for the encoder, if fine-tuning is enabled
-       decoder_lr=4e-4,  # learning rate for the decoder
-       alpha_c=1.,  # regularization parameter for 'doubly stochastic attention'
-       fine_tune_encoder=False,
-       checkpoint=None,  # path to checkpoint of previously trained model
-       )
+  parsed_args = check_args(sys.argv[1:])
+  main(
+    data_folder=parsed_args.data_folder,
+    test_set_image_coco_ids_file=parsed_args.test_set_image_coco_ids_file,
+    encoder_lr=parsed_args.encoder_learning_rate,
+    decoder_lr=parsed_args.decoder_learning_rate,
+    alpha_c=parsed_args.alpha_c,
+    fine_tune_encoder=parsed_args.fine_tune_encoder,
+    checkpoint=parsed_args.checkpoint,
+  )
+
