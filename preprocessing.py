@@ -11,8 +11,8 @@ import h5py
 from imageio import imread
 from nltk import word_tokenize
 from pycocotools.coco import COCO
+from scipy.misc import imresize
 from tqdm import tqdm
-from skimage.transform import resize
 
 from utils import getWordMapFilename, getImagesFilename, getCaptionsFilename, getCaptionLengthsFilename, TOKEN_UNKNOWN, \
   TOKEN_START, TOKEN_END, TOKEN_PADDING, getImageCocoIdsFilename
@@ -33,7 +33,7 @@ def readImage(path):
   if len(img.shape) == 2:  # b/w image
     img = img[:, :, np.newaxis]
     img = np.concatenate([img, img, img], axis=2)
-  img = resize(img, (256, 256), mode='constant', anti_aliasing=False)
+  img = imresize(img, (256, 256))
   img = img.transpose(2, 0, 1)
   assert img.shape == (3, 256, 256)
   assert np.max(img) <= 255
