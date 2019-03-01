@@ -29,11 +29,8 @@ def getCaptionLengthsFilename():
 
 
 def showImg(img):
-  I = io.imread(img['coco_url'])
-  plt.axis('off')
-  plt.imshow(I)
+  plt.imshow(img.transpose(1, 2, 0))
   plt.show()
-
 
 def clip_gradient(optimizer, grad_clip):
     """
