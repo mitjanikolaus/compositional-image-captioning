@@ -160,10 +160,10 @@ def check_args(args):
                       default=os.path.expanduser('~/datasets/coco2014_preprocessed/'))
   parser.add_argument('-V', '--vocabulary-size',
                       help='Number of words that should be saved in the vocabulary',
-                      default=10000)
+                      type=int, default=10000)
   parser.add_argument('-C', '--captions-per-image',
                       help='Number of captions per image. Additional captions are discarded.',
-                      default=5)
+                      type=int, default=5)
 
   parsed_args = parser.parse_args(args)
   print(parsed_args)
