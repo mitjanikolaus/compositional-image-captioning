@@ -334,7 +334,7 @@ def check_args(args):
                       default=os.path.expanduser('~/datasets/coco2014_preprocessed/'))
   parser.add_argument('-T', '--test-set_image-coco-ids-file',
                       help='File containing JSON-serialized list of image IDs for the test set',
-                      default='white_cars.json')
+                      default='data/white_cars.json')
   parser.add_argument('-E', '--encoder-learning-rate',
                       help='Initial learning rate for the encoder (used only if fine-tuning is enabled)',
                       type=float, default=1e-4)
