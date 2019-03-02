@@ -122,7 +122,8 @@ def main(data_folder, test_set_image_coco_ids_file, emb_dim=512, attention_dim=5
                              print_freq)
 
     # Check if there was an improvement
-    if current_bleu4 > best_bleu4:
+    current_checkpoint_is_best = current_bleu4 > best_bleu4
+    if current_checkpoint_is_best:
       best_bleu4 = current_bleu4
       epochs_since_last_improvement = 0
     else:
@@ -131,7 +132,7 @@ def main(data_folder, test_set_image_coco_ids_file, emb_dim=512, attention_dim=5
 
     # Save checkpoint
     save_checkpoint(epoch, epochs_since_last_improvement, encoder, decoder, encoder_optimizer,
-                    decoder_optimizer, current_bleu4, current_bleu4 > best_bleu4)
+                    decoder_optimizer, current_bleu4, current_checkpoint_is_best)
 
   print("\n\nFinished training.")
 
