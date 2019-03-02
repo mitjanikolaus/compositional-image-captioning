@@ -10,44 +10,46 @@ class Encoder(nn.Module):
     super(Encoder, self).__init__()
     self.enc_image_size = encoded_image_size
 
-    resnet = torchvision.models.resnet101(pretrained=True)  # pretrained ImageNet ResNet-101
+    resnet = torchvision.models.resnet101(pretrained=True)
 
-    # Remove linear and pool layers (since we're not doing classification)
+    # Remove linear and pool layers, these are only used for classification
     modules = list(resnet.children())[:-2]
-    self.resnet = nn.Sequential(*modules)
+    self.model = nn.Sequential(*modules)
 
-    # Resize image to fixed size to allow input images of variable size
+    # Resize input image to fixed size
     self.adaptive_pool = nn.AdaptiveAvgPool2d((encoded_image_size, encoded_image_size))
 
-    self.fine_tune()
+    # Disable calculation of gradients
+    for p in self.model.parameters():
+      p.requires_grad = False
+
+    self.set_fine_tuning_enabled()
 
   def forward(self, images):
     """
     Forward propagation.
 
-    :param images: images, a tensor of dimensions (batch_size, 3, image_size, image_size)
+    :param images: input images, shape: (batch_size, 3, image_size, image_size)
     :return: encoded images
     """
-    out = self.resnet(images)  # (batch_size, 2048, image_size/32, image_size/32)
-    out = self.adaptive_pool(out)  # (batch_size, 2048, encoded_image_size, encoded_image_size)
-    out = out.permute(0, 2, 3, 1)  # (batch_size, encoded_image_size, encoded_image_size, 2048)
+    out = self.model(images)  # output shape: (batch_size, 2048, image_size/32, image_size/32)
+    out = self.adaptive_pool(out)  # output shape: (batch_size, 2048, encoded_image_size, encoded_image_size)
+    out = out.permute(0, 2, 3, 1)  # output shape: (batch_size, encoded_image_size, encoded_image_size, 2048)
     return out
 
-  def fine_tune(self, fine_tune=True):
+  def set_fine_tuning_enabled(self, enable_fine_tuning=True):
     """
-    Allow or prevent the computation of gradients for convolutional blocks 2 through 4 of the encoder.
+    Enable or disable the computation of gradients for the convolutional blocks 2-4 of the encoder.
 
-    :param fine_tune: Allow?
+    :param enable_fine_tuning: Set to True to enable fine tuning
     """
-    for p in self.resnet.parameters():
-      p.requires_grad = False
-    # If fine-tuning, only fine-tune convolutional blocks 2 through 4
-    for c in list(self.resnet.children())[5:]:
+    # The convolutional blocks 2-4 are found at position 5-7 in the model
+    for c in list(self.model.children())[5:]:
       for p in c.parameters():
-        p.requires_grad = fine_tune
+        p.requires_grad = enable_fine_tuning
 
 
-class Attention(nn.Module):
+class AttentionModule(nn.Module):
 
   def __init__(self, encoder_dim, decoder_dim, attention_dim):
     """
@@ -55,7 +57,7 @@ class Attention(nn.Module):
     :param decoder_dim: size of decoder's RNN
     :param attention_dim: size of the attention network
     """
-    super(Attention, self).__init__()
+    super(AttentionModule, self).__init__()
     self.encoder_att = nn.Linear(encoder_dim, attention_dim)  # linear layer to transform encoded image
     self.decoder_att = nn.Linear(decoder_dim, attention_dim)  # linear layer to transform decoder's output
     self.full_att = nn.Linear(attention_dim, 1)  # linear layer to calculate values to be softmax-ed
@@ -66,15 +68,15 @@ class Attention(nn.Module):
     """
     Forward propagation.
 
-    :param encoder_out: encoded images, a tensor of dimension (batch_size, num_pixels, encoder_dim)
-    :param decoder_hidden: previous decoder output, a tensor of dimension (batch_size, decoder_dim)
+    :param encoder_out: encoded images, shape: (batch_size, num_pixels, encoder_dim)
+    :param decoder_hidden: previous decoder output, shape: (batch_size, decoder_dim)
     :return: attention weighted encoding, weights
     """
-    att1 = self.encoder_att(encoder_out)  # (batch_size, num_pixels, attention_dim)
-    att2 = self.decoder_att(decoder_hidden)  # (batch_size, attention_dim)
-    att = self.full_att(self.relu(att1 + att2.unsqueeze(1))).squeeze(2)  # (batch_size, num_pixels)
-    alpha = self.softmax(att)  # (batch_size, num_pixels)
-    attention_weighted_encoding = (encoder_out * alpha.unsqueeze(2)).sum(dim=1)  # (batch_size, encoder_dim)
+    att1 = self.encoder_att(encoder_out)  # output shape: (batch_size, num_pixels, attention_dim)
+    att2 = self.decoder_att(decoder_hidden)  # output shape: (batch_size, attention_dim)
+    att = self.full_att(self.relu(att1 + att2.unsqueeze(1))).squeeze(2)  # output shape: (batch_size, num_pixels)
+    alpha = self.softmax(att)  # output shape: (batch_size, num_pixels)
+    attention_weighted_encoding = (encoder_out * alpha.unsqueeze(2)).sum(dim=1)  # output shape: (batch_size, encoder_dim)
 
     return attention_weighted_encoding, alpha
 
@@ -88,7 +90,7 @@ class DecoderWithAttention(nn.Module):
     :param decoder_dim: size of decoder's RNN
     :param vocab_size: size of vocabulary
     :param encoder_dim: feature size of encoded images
-    :param dropout: dropout
+    :param dropout: dropout rate
     """
     super(DecoderWithAttention, self).__init__()
 
@@ -99,7 +101,7 @@ class DecoderWithAttention(nn.Module):
     self.vocab_size = vocab_size
     self.dropout = dropout
 
-    self.attention = Attention(encoder_dim, decoder_dim, attention_dim)  # attention network
+    self.attention = AttentionModule(encoder_dim, decoder_dim, attention_dim)  # attention network
 
     self.embedding = nn.Embedding(vocab_size, embed_dim)  # embedding layer
     self.dropout = nn.Dropout(p=self.dropout)
@@ -152,9 +154,9 @@ class DecoderWithAttention(nn.Module):
     """
     Forward propagation.
 
-    :param encoder_out: encoded images, a tensor of dimension (batch_size, enc_image_size, enc_image_size, encoder_dim)
-    :param encoded_captions: encoded captions, a tensor of dimension (batch_size, max_caption_length)
-    :param caption_lengths: caption lengths, a tensor of dimension (batch_size, 1)
+    :param encoder_out: encoded images, shape: (batch_size, enc_image_size, enc_image_size, encoder_dim)
+    :param encoded_captions: encoded captions, shape: (batch_size, max_caption_length)
+    :param caption_lengths: caption lengths, shape: (batch_size, 1)
     :return: scores for vocabulary, sorted encoded captions, decode lengths, weights, sort indices
     """
 
@@ -190,8 +192,7 @@ class DecoderWithAttention(nn.Module):
     # then generate a new word in the decoder with the previous word and the attention weighted encoding
     for t in range(max(decode_lengths)):
       batch_size_t = sum([l > t for l in decode_lengths])
-      attention_weighted_encoding, alpha = self.attention(encoder_out[:batch_size_t],
-                                                          h[:batch_size_t])
+      attention_weighted_encoding, alpha = self.attention(encoder_out[:batch_size_t], h[:batch_size_t])
       gate = self.sigmoid(self.f_beta(h[:batch_size_t]))  # gating scalar, (batch_size_t, encoder_dim)
       attention_weighted_encoding = gate * attention_weighted_encoding
       h, c = self.decode_step(

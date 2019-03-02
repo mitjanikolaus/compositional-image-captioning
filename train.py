@@ -52,7 +52,7 @@ def main(data_folder, test_set_image_coco_ids_file, emb_dim=512, attention_dim=5
     encoder = checkpoint['encoder']
     encoder_optimizer = checkpoint['encoder_optimizer']
     if fine_tune_encoder and encoder_optimizer is None:
-      encoder.fine_tune(fine_tune_encoder)
+      encoder.set_fine_tuning_enabled(fine_tune_encoder)
       encoder_optimizer = torch.optim.Adam(params=filter(lambda p: p.requires_grad, encoder.parameters()),
                                            lr=encoder_lr)
 
@@ -66,7 +66,7 @@ def main(data_folder, test_set_image_coco_ids_file, emb_dim=512, attention_dim=5
     decoder_optimizer = torch.optim.Adam(params=filter(lambda p: p.requires_grad, decoder.parameters()),
                                          lr=decoder_lr)
     encoder = Encoder()
-    encoder.fine_tune(fine_tune_encoder)
+    encoder.set_fine_tuning_enabled(fine_tune_encoder)
     encoder_optimizer = torch.optim.Adam(params=filter(lambda p: p.requires_grad, encoder.parameters()),
                                            lr=encoder_lr) if fine_tune_encoder else None
 
