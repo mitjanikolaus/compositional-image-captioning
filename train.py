@@ -14,7 +14,8 @@ from datasets import CaptionDataset
 from nltk.translate.bleu_score import corpus_bleu
 
 from utils import getWordMapFilename, SPLIT_TRAIN, SPLIT_VAL, adjust_learning_rate, save_checkpoint, \
-  AverageMeter, clip_gradient, accuracy, getImageIndicesSplitsFromFile, IMAGENET_IMAGES_MEAN, IMAGENET_IMAGES_STD
+  AverageMeter, clip_gradient, accuracy, getImageIndicesSplitsFromFile, IMAGENET_IMAGES_MEAN, IMAGENET_IMAGES_STD, \
+  getCaptionWithoutSpecialTokens
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True  # set to true only if inputs to model are fixed size; otherwise lot of computational overhead
@@ -236,7 +237,7 @@ def validate(val_loader, encoder, decoder, criterion, word_map, alpha_c, print_f
   :return: BLEU-4 score
   """
   decoder.eval()  # eval mode (no dropout or batchnorm)
-  if encoder is not None:
+  if encoder:
     encoder.eval()
 
   batch_time = AverageMeter()
@@ -245,8 +246,8 @@ def validate(val_loader, encoder, decoder, criterion, word_map, alpha_c, print_f
 
   start = time.time()
 
-  references = list()  # references (true captions) for calculating BLEU-4 score
-  hypotheses = list()  # hypotheses (predictions)
+  target_captions = []
+  generated_captions = []
 
   # Batches
   for i, (imgs, caps, caplens, allcaps) in enumerate(val_loader):
@@ -298,11 +299,8 @@ def validate(val_loader, encoder, decoder, criterion, word_map, alpha_c, print_f
     # References
     allcaps = allcaps[sort_ind]  # because images were sorted in the decoder
     for j in range(allcaps.shape[0]):
-      img_caps = allcaps[j].tolist()
-      img_captions = list(
-        map(lambda c: [w for w in c if w not in {word_map['<start>'], word_map['<pad>']}],
-            img_caps))  # remove <start> and pads
-      references.append(img_captions)
+      img_captions = [getCaptionWithoutSpecialTokens(caption, word_map) for caption in allcaps[j].tolist()]
+      target_captions.append(img_captions)
 
     # Hypotheses
     _, preds = torch.max(scores_copy, dim=2)
@@ -311,12 +309,12 @@ def validate(val_loader, encoder, decoder, criterion, word_map, alpha_c, print_f
     for j, p in enumerate(preds):
       temp_preds.append(preds[j][:decode_lengths[j]])  # remove pads
     preds = temp_preds
-    hypotheses.extend(preds)
+    generated_captions.extend(preds)
 
-    assert len(references) == len(hypotheses)
+    assert len(target_captions) == len(generated_captions)
 
   # Calculate BLEU-4 scores
-  bleu4 = corpus_bleu(references, hypotheses)
+  bleu4 = corpus_bleu(target_captions, generated_captions)
 
   print(
     '\n * LOSS - {loss.avg:.3f}, TOP-5 ACCURACY - {top5.avg:.3f}, BLEU-4 - {bleu}\n'.format(
