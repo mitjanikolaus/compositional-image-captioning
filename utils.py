@@ -3,8 +3,9 @@ import os
 
 import torch
 
-import skimage.io as io
+from scipy.misc import imread, imresize
 import matplotlib.pyplot as plt
+import numpy as np
 
 TOKEN_UNKNOWN = '<unk>'
 TOKEN_START = '<start>'
@@ -38,6 +39,17 @@ def getCaptionsFilename():
 
 def getCaptionLengthsFilename():
   return 'caption_lengths.json'
+
+def readImage(path):
+  img = imread(path)
+  if len(img.shape) == 2:  # b/w image
+    img = img[:, :, np.newaxis]
+    img = np.concatenate([img, img, img], axis=2)
+  img = imresize(img, (256, 256))
+  img = img.transpose(2, 0, 1)
+  assert img.shape == (3, 256, 256)
+  assert np.max(img) <= 255
+  return img
 
 
 def getImageIndicesSplitsFromFile(data_folder, test_set_image_coco_ids_file, val_set_size=0):

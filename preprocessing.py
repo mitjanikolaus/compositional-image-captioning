@@ -10,11 +10,10 @@ from collections import Counter
 import h5py
 from nltk import word_tokenize
 from pycocotools.coco import COCO
-from scipy.misc import imread, imresize
 from tqdm import tqdm
 
 from utils import getWordMapFilename, getImagesFilename, getCaptionsFilename, getCaptionLengthsFilename, TOKEN_UNKNOWN, \
-  TOKEN_START, TOKEN_END, TOKEN_PADDING, getImageCocoIdsFilename
+  TOKEN_START, TOKEN_END, TOKEN_PADDING, getImageCocoIdsFilename, readImage
 
 
 def createWordMap(words):
@@ -26,17 +25,6 @@ def createWordMap(words):
   word_map[TOKEN_PADDING] = 0
 
   return word_map
-
-def readImage(path):
-  img = imread(path)
-  if len(img.shape) == 2:  # b/w image
-    img = img[:, :, np.newaxis]
-    img = np.concatenate([img, img, img], axis=2)
-  img = imresize(img, (256, 256))
-  img = img.transpose(2, 0, 1)
-  assert img.shape == (3, 256, 256)
-  assert np.max(img) <= 255
-  return img
 
 def encodeCaption(caption, word_map, max_caption_len):
   return ([word_map[TOKEN_START]]
