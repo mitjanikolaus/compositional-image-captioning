@@ -64,6 +64,17 @@ def showImg(img):
   plt.show()
 
 
+def decodeCaption(encoded_caption, word_map):
+  rev_word_map = {v: k for k, v in word_map.items()}
+  return [rev_word_map[ind] for ind in encoded_caption]
+
+def getCaptionWithoutSpecialTokens(caption, word_map):
+  """Remove start, end and padding tokens from and encoded caption."""
+
+  return [token for token in caption
+          if token not in {word_map[TOKEN_START], word_map[TOKEN_END], word_map[TOKEN_PADDING]}]
+
+
 def clip_gradient(optimizer, grad_clip):
   """
   Clips gradients computed during backpropagation to avoid explosion of gradients.
@@ -99,7 +110,7 @@ def save_checkpoint(epoch, epochs_since_improvement, encoder, decoder, encoder_o
            'decoder': decoder,
            'encoder_optimizer': encoder_optimizer,
            'decoder_optimizer': decoder_optimizer}
-  filename = 'checkpoint.pth.tar'
+  filename = 'checkpoint-white-cars-epoch-22.pth.tar'
   torch.save(state, filename)
   # If this checkpoint is the best so far, store a copy so it doesn't get overwritten by a worse checkpoint
   if is_best:

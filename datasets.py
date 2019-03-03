@@ -72,8 +72,8 @@ class CaptionDataset(Dataset):
       # For validation and testing, return all captions for the image to calculate the metrics
       first_caption_index = (converted_index // self.captions_per_image) * self.captions_per_image
       last_caption_index = first_caption_index + self.captions_per_image
-      all_captions = torch.LongTensor(self.captions[first_caption_index:last_caption_index])
-      return img, caption, caption_length, all_captions
+      all_captions_for_image = torch.LongTensor(self.captions[first_caption_index:last_caption_index])
+      return img, caption, caption_length, all_captions_for_image
 
   def __len__(self):
     return self.dataset_size

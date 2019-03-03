@@ -332,7 +332,7 @@ def check_args(args):
   parser.add_argument('-D', '--data-folder',
                       help='Folder where the preprocessed data is located',
                       default=os.path.expanduser('~/datasets/coco2014_preprocessed/'))
-  parser.add_argument('-T', '--test-set_image-coco-ids-file',
+  parser.add_argument('-T', '--test-set-image-coco-ids-file',
                       help='File containing JSON-serialized list of image IDs for the test set',
                       default='data/white_cars.json')
   parser.add_argument('-E', '--encoder-learning-rate',
