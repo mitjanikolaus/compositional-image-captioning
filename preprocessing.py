@@ -4,7 +4,6 @@ import os
 import string
 import sys
 
-import numpy as np
 from collections import Counter
 
 import h5py
@@ -12,11 +11,11 @@ from nltk import word_tokenize
 from pycocotools.coco import COCO
 from tqdm import tqdm
 
-from utils import getWordMapFilename, getImagesFilename, getCaptionsFilename, getCaptionLengthsFilename, TOKEN_UNKNOWN, \
-  TOKEN_START, TOKEN_END, TOKEN_PADDING, getImageCocoIdsFilename, readImage
+from utils import TOKEN_UNKNOWN, TOKEN_START, TOKEN_END, TOKEN_PADDING, read_image, IMAGES_COCO_IDS_FILENAME, \
+  WORD_MAP_FILENAME, IMAGES_FILENAME, CAPTIONS_FILENAME, CAPTION_LENGTHS_FILENAME
 
 
-def createWordMap(words):
+def create_word_map(words):
   word_map = {w: i + 1 for i, w in enumerate(words)}
   # Mapping for special characters
   word_map[TOKEN_UNKNOWN] = len(word_map) + 1
@@ -26,14 +25,14 @@ def createWordMap(words):
 
   return word_map
 
-def encodeCaption(caption, word_map, max_caption_len):
+def encode_caption(caption, word_map, max_caption_len):
   return ([word_map[TOKEN_START]]
           + [word_map.get(word, word_map[TOKEN_UNKNOWN]) for word in caption]
           + [word_map[TOKEN_END]]
           + [word_map[TOKEN_PADDING]] * (max_caption_len - len(caption)))
 
 
-def preprocessImagesAndCaptions(dataset_folder, output_folder, vocabulary_size, captions_per_image):
+def preprocess_images_and_captions(dataset_folder, output_folder, vocabulary_size, captions_per_image):
   data_type = 'train2014'
 
   annFile = '{}/annotations/captions_{}.json'.format(dataset_folder, data_type)
@@ -77,7 +76,7 @@ def preprocessImagesAndCaptions(dataset_folder, output_folder, vocabulary_size, 
     image_coco_ids.append(img['id'])
 
   # Save image coco ids to JSON file
-  image_coco_ids_path = os.path.join(output_folder, getImageCocoIdsFilename())
+  image_coco_ids_path = os.path.join(output_folder, IMAGES_COCO_IDS_FILENAME)
   print("Saving image COCO IDs to {}".format(image_coco_ids_path))
   with open(image_coco_ids_path, 'w') as json_file:
     json.dump(image_coco_ids, json_file)
@@ -86,15 +85,15 @@ def preprocessImagesAndCaptions(dataset_folder, output_folder, vocabulary_size, 
   words = [w for w,c in word_freq.most_common(vocabulary_size)]
 
   # Create word map
-  word_map = createWordMap(words)
-  word_map_path = os.path.join(output_folder, getWordMapFilename())
+  word_map = create_word_map(words)
+  word_map_path = os.path.join(output_folder, WORD_MAP_FILENAME)
 
   print("Saving word mapping to {}".format(word_map_path))
   with open(word_map_path, 'w') as file:
     json.dump(word_map, file)
 
   # Create hdf5 file and dataset for the images
-  images_dataset_path = os.path.join(output_folder, getImagesFilename())
+  images_dataset_path = os.path.join(output_folder, IMAGES_FILENAME)
   print("Creating image dataset at {}".format(images_dataset_path))
   with h5py.File(images_dataset_path, 'a') as h5py_file:
     h5py_file.attrs['captions_per_image'] = captions_per_image
@@ -113,12 +112,12 @@ def preprocessImagesAndCaptions(dataset_folder, output_folder, vocabulary_size, 
       assert len(captions) == captions_per_image
 
       # Read image and save it to hdf5 file
-      img = readImage(path)
+      img = read_image(path)
       image_dataset[i] = img
 
       for j, caption in enumerate(captions):
         # Encode caption
-        encoded_caption = encodeCaption(caption, word_map, max_caption_len)
+        encoded_caption = encode_caption(caption, word_map, max_caption_len)
         encoded_captions.append(encoded_caption)
 
         # extend caption length by 2 for start and end of sentence tokens
@@ -129,11 +128,11 @@ def preprocessImagesAndCaptions(dataset_folder, output_folder, vocabulary_size, 
     assert image_dataset.shape[0] * captions_per_image == len(encoded_captions) == len(caption_lengths)
 
     # Save encoded captions and their lengths to JSON files
-    captions_path = os.path.join(output_folder, getCaptionsFilename())
+    captions_path = os.path.join(output_folder, CAPTIONS_FILENAME)
     print("Saving encoded captions to {}".format(captions_path))
     with open(captions_path, 'w') as json_file:
       json.dump(encoded_captions, json_file)
-    caption_lengths_path = os.path.join(output_folder, getCaptionLengthsFilename())
+    caption_lengths_path = os.path.join(output_folder, CAPTION_LENGTHS_FILENAME)
     print("Saving caption lengths to {}".format(caption_lengths_path))
     with open(caption_lengths_path, 'w') as json_file:
       json.dump(caption_lengths, json_file)
@@ -163,4 +162,4 @@ def check_args(args):
 
 if __name__ == '__main__':
   dataset_folder, output_folder, vocabulary_size, captions_per_image = check_args(sys.argv[1:])
-  preprocessImagesAndCaptions(dataset_folder, output_folder, vocabulary_size, captions_per_image)
+  preprocess_images_and_captions(dataset_folder, output_folder, vocabulary_size, captions_per_image)

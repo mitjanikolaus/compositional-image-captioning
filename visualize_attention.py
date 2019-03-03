@@ -11,13 +11,13 @@ import skimage.transform
 import argparse
 from PIL import Image
 
-from inference import generateCaption
-from utils import getWordMapFilename, decodeCaption, readImage, IMAGENET_IMAGES_MEAN, IMAGENET_IMAGES_STD
+from inference import generate_caption
+from utils import decode_caption, read_image, IMAGENET_IMAGES_MEAN, IMAGENET_IMAGES_STD, WORD_MAP_FILENAME
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def visualizeAttention(image_path, encoded_caption, alphas, word_map, smooth=True):
+def visualize_attention(image_path, encoded_caption, alphas, word_map, smooth=True):
   """
   Visualizes caption with weights at every word.
 
@@ -27,7 +27,7 @@ def visualizeAttention(image_path, encoded_caption, alphas, word_map, smooth=Tru
   image = Image.open(image_path)
   image = image.resize([14 * 24, 14 * 24], Image.LANCZOS)
 
-  decoded_caption = decodeCaption(encoded_caption, word_map)
+  decoded_caption = decode_caption(encoded_caption, word_map)
 
   for t in range(len(decoded_caption)):
     if t > 50:
@@ -50,7 +50,7 @@ def visualizeAttention(image_path, encoded_caption, alphas, word_map, smooth=Tru
   plt.show()
 
 
-def generateAndVisualize(checkpoint, data_folder, img_path, beam_size, smoothen):
+def generate_and_visualize(checkpoint, data_folder, img_path, beam_size, smoothen):
   # Load model
   checkpoint = torch.load(checkpoint, map_location=device)
   decoder = checkpoint['decoder']
@@ -61,12 +61,12 @@ def generateAndVisualize(checkpoint, data_folder, img_path, beam_size, smoothen)
   encoder.eval()
 
   # Load word map
-  word_map_path = os.path.join(data_folder, getWordMapFilename())
+  word_map_path = os.path.join(data_folder, WORD_MAP_FILENAME)
   with open(word_map_path, 'r') as json_file:
     word_map = json.load(json_file)
 
   # Read image and process
-  image = readImage(img_path)
+  image = read_image(img_path)
   image = image / 255.
   image = torch.FloatTensor(image)
   normalize = transforms.Normalize(mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD)
@@ -75,11 +75,11 @@ def generateAndVisualize(checkpoint, data_folder, img_path, beam_size, smoothen)
   image = image.unsqueeze(0)  # (1, 3, 256, 256)
 
   # Encode, decode with attention and beam search
-  seq, alphas = generateCaption(encoder, decoder, image, word_map, beam_size, store_alphas=True)
+  seq, alphas = generate_caption(encoder, decoder, image, word_map, beam_size, store_alphas=True)
   alphas = torch.FloatTensor(alphas)
 
   # Visualize caption and attention of best sequence
-  visualizeAttention(img_path, seq, alphas, word_map, smoothen)
+  visualize_attention(img_path, seq, alphas, word_map, smoothen)
 
 
 def check_args(args):
@@ -103,5 +103,5 @@ def check_args(args):
 
 if __name__ == '__main__':
   parsed_args = check_args(sys.argv[1:])
-  generateAndVisualize(parsed_args.checkpoint, parsed_args.data_folder, parsed_args.image, parsed_args.beam_size,
-                       parsed_args.smoothen)
+  generate_and_visualize(parsed_args.checkpoint, parsed_args.data_folder, parsed_args.image, parsed_args.beam_size,
+                         parsed_args.smoothen)

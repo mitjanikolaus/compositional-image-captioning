@@ -6,7 +6,7 @@ import torch.optim
 import torch.utils.data
 import torchvision.transforms as transforms
 from datasets import *
-from inference import generateCaption
+from inference import generate_caption
 from utils import *
 from nltk.translate.bleu_score import corpus_bleu
 from tqdm import tqdm
@@ -34,7 +34,7 @@ def evaluate(data_folder, test_set_image_coco_ids_file, checkpoint, beam_size=1,
   normalize = transforms.Normalize(mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD)
 
   # DataLoader
-  _, _, test_images_split = getImageIndicesSplitsFromFile(data_folder, test_set_image_coco_ids_file)
+  _, _, test_images_split = get_image_indices_splits_from_file(data_folder, test_set_image_coco_ids_file)
   loader = torch.utils.data.DataLoader(
     CaptionDataset(data_folder, test_images_split, SPLIT_TEST, transform=transforms.Compose([normalize])),
     batch_size=1, shuffle=True, num_workers=1, pin_memory=True
@@ -49,12 +49,12 @@ def evaluate(data_folder, test_set_image_coco_ids_file, checkpoint, beam_size=1,
 
     # Target captions
     target_captions.append(
-      [getCaptionWithoutSpecialTokens(caption, word_map) for caption in all_captions_for_image[0].tolist()]
+      [get_caption_without_special_tokens(caption, word_map) for caption in all_captions_for_image[0].tolist()]
     )
 
     # Generated caption
-    generated_caption = generateCaption(encoder, decoder, image, word_map, beam_size, max_caption_len, store_alphas=False)
-    generated_captions.append(getCaptionWithoutSpecialTokens(generated_caption, word_map))
+    generated_caption = generate_caption(encoder, decoder, image, word_map, beam_size, max_caption_len, store_alphas=False)
+    generated_captions.append(get_caption_without_special_tokens(generated_caption, word_map))
 
     # print(decodeCaption(generated_caption, word_map))
     # showImg(image.squeeze(0).numpy())

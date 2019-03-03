@@ -13,9 +13,9 @@ from models import Encoder, DecoderWithAttention
 from datasets import CaptionDataset
 from nltk.translate.bleu_score import corpus_bleu
 
-from utils import getWordMapFilename, SPLIT_TRAIN, SPLIT_VAL, adjust_learning_rate, save_checkpoint, \
-  AverageMeter, clip_gradient, accuracy, getImageIndicesSplitsFromFile, IMAGENET_IMAGES_MEAN, IMAGENET_IMAGES_STD, \
-  getCaptionWithoutSpecialTokens
+from utils import SPLIT_TRAIN, SPLIT_VAL, adjust_learning_rate, save_checkpoint, \
+  AverageMeter, clip_gradients, accuracy, get_image_indices_splits_from_file, IMAGENET_IMAGES_MEAN, IMAGENET_IMAGES_STD, \
+  get_caption_without_special_tokens, WORD_MAP_FILENAME
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True  # set to true only if inputs to model are fixed size; otherwise lot of computational overhead
@@ -38,7 +38,7 @@ def main(data_folder, test_set_image_coco_ids_file, emb_dim=512, attention_dim=5
   print("Starting training on device: ", device)
 
   # Read word map
-  word_map_file = os.path.join(data_folder, getWordMapFilename())
+  word_map_file = os.path.join(data_folder, WORD_MAP_FILENAME)
   with open(word_map_file, 'r') as json_file:
     word_map = json.load(json_file)
 
@@ -79,7 +79,7 @@ def main(data_folder, test_set_image_coco_ids_file, emb_dim=512, attention_dim=5
   loss_function = nn.CrossEntropyLoss().to(device)
 
   # Generate dataset splits
-  train_images_split, val_images_split, test_images_split = getImageIndicesSplitsFromFile(
+  train_images_split, val_images_split, test_images_split = get_image_indices_splits_from_file(
     data_folder, test_set_image_coco_ids_file, val_set_size
   )
 
@@ -197,9 +197,9 @@ def train(train_loader, encoder, decoder, loss_function, encoder_optimizer, deco
 
     # Clip gradients
     if grad_clip:
-      clip_gradient(decoder_optimizer, grad_clip)
+      clip_gradients(decoder_optimizer, grad_clip)
       if encoder_optimizer:
-        clip_gradient(encoder_optimizer, grad_clip)
+        clip_gradients(encoder_optimizer, grad_clip)
 
     # Update weights
     decoder_optimizer.step()
@@ -299,7 +299,7 @@ def validate(val_loader, encoder, decoder, criterion, word_map, alpha_c, print_f
     # References
     allcaps = allcaps[sort_ind]  # because images were sorted in the decoder
     for j in range(allcaps.shape[0]):
-      img_captions = [getCaptionWithoutSpecialTokens(caption, word_map) for caption in allcaps[j].tolist()]
+      img_captions = [get_caption_without_special_tokens(caption, word_map) for caption in allcaps[j].tolist()]
       target_captions.append(img_captions)
 
     # Hypotheses

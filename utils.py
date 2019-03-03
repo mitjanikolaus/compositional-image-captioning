@@ -21,26 +21,13 @@ IMAGENET_IMAGES_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_IMAGES_STD = [0.229, 0.224, 0.225]
 
 
-def getWordMapFilename():
-  return 'word_map.json'
+WORD_MAP_FILENAME = 'word_map.json'
+IMAGES_FILENAME = 'images.hdf5'
+IMAGES_COCO_IDS_FILENAME = 'coco_ids.json'
+CAPTIONS_FILENAME = 'captions.json'
+CAPTION_LENGTHS_FILENAME = 'caption_lengths.json'
 
-
-def getImagesFilename():
-  return 'images.hdf5'
-
-
-def getImageCocoIdsFilename():
-  return 'coco_ids.json'
-
-
-def getCaptionsFilename():
-  return 'captions.json'
-
-
-def getCaptionLengthsFilename():
-  return 'caption_lengths.json'
-
-def readImage(path):
+def read_image(path):
   img = imread(path)
   if len(img.shape) == 2:  # b/w image
     img = img[:, :, np.newaxis]
@@ -52,8 +39,8 @@ def readImage(path):
   return img
 
 
-def getImageIndicesSplitsFromFile(data_folder, test_set_image_coco_ids_file, val_set_size=0):
-  image_coco_ids_file = os.path.join(data_folder, getImageCocoIdsFilename())
+def get_image_indices_splits_from_file(data_folder, test_set_image_coco_ids_file, val_set_size=0):
+  image_coco_ids_file = os.path.join(data_folder, IMAGES_COCO_IDS_FILENAME)
   with open(image_coco_ids_file, 'r') as json_file:
     image_coco_ids = json.load(json_file)
 
@@ -71,23 +58,23 @@ def getImageIndicesSplitsFromFile(data_folder, test_set_image_coco_ids_file, val
   return train_images_split, val_images_split, test_images_split
 
 
-def showImg(img):
+def show_img(img):
   plt.imshow(img.transpose(1, 2, 0))
   plt.show()
 
 
-def decodeCaption(encoded_caption, word_map):
+def decode_caption(encoded_caption, word_map):
   rev_word_map = {v: k for k, v in word_map.items()}
   return [rev_word_map[ind] for ind in encoded_caption]
 
-def getCaptionWithoutSpecialTokens(caption, word_map):
+def get_caption_without_special_tokens(caption, word_map):
   """Remove start, end and padding tokens from and encoded caption."""
 
   return [token for token in caption
           if token not in {word_map[TOKEN_START], word_map[TOKEN_END], word_map[TOKEN_PADDING]}]
 
 
-def clip_gradient(optimizer, grad_clip):
+def clip_gradients(optimizer, grad_clip):
   """
   Clips gradients computed during backpropagation to avoid explosion of gradients.
 

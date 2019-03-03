@@ -5,7 +5,7 @@ from utils import TOKEN_START, TOKEN_END
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def generateCaption(encoder, decoder, img, word_map, beam_size=1, max_caption_len=50, store_alphas=False):
+def generate_caption(encoder, decoder, img, word_map, beam_size=1, max_caption_len=50, store_alphas=False):
   k = beam_size
   vocab_size = len(word_map)
 

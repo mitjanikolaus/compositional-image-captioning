@@ -5,7 +5,7 @@ import json
 import os
 import numpy as np
 
-from utils import getImagesFilename, getCaptionsFilename, getCaptionLengthsFilename, SPLIT_TRAIN, showImg
+from utils import SPLIT_TRAIN, IMAGES_FILENAME, CAPTIONS_FILENAME, CAPTION_LENGTHS_FILENAME
 
 
 class CaptionDataset(Dataset):
@@ -21,7 +21,7 @@ class CaptionDataset(Dataset):
     :param transform: pytorch image transform pipeline
     """
     self.split_type = split_type
-    self.h5py_file = h5py.File(os.path.join(data_folder, getImagesFilename()), 'r')
+    self.h5py_file = h5py.File(os.path.join(data_folder, IMAGES_FILENAME), 'r')
 
     self.captions_per_image = self.h5py_file.attrs['captions_per_image']
     self.max_caption_len = self.h5py_file.attrs['max_caption_len']
@@ -35,11 +35,11 @@ class CaptionDataset(Dataset):
     self.imgs = self.h5py_file['images']
 
     # Load captions
-    with open(os.path.join(data_folder, getCaptionsFilename()), 'r') as json_file:
+    with open(os.path.join(data_folder, CAPTIONS_FILENAME), 'r') as json_file:
       self.captions = json.load(json_file)
 
     # Load caption lengths
-    with open(os.path.join(data_folder, getCaptionLengthsFilename()), 'r') as json_file:
+    with open(os.path.join(data_folder, CAPTION_LENGTHS_FILENAME), 'r') as json_file:
       self.caption_lengths = json.load(json_file)
 
     # Set pytorch transformation pipeline
