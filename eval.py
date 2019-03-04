@@ -25,17 +25,16 @@ def evaluate(data_folder, test_set_image_coco_ids_file, checkpoint, beam_size=1,
   encoder.eval()
 
   # Load word map
-  word_map_path = os.path.join(data_folder, getWordMapFilename())
+  word_map_path = os.path.join(data_folder, WORD_MAP_FILENAME)
   with open(word_map_path, 'r') as json_file:
     word_map = json.load(json_file)
-  vocab_size = len(word_map)
 
   # Normalization
   normalize = transforms.Normalize(mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD)
 
   # DataLoader
   _, _, test_images_split = get_image_indices_splits_from_file(data_folder, test_set_image_coco_ids_file)
-  loader = torch.utils.data.DataLoader(
+  data_loader = torch.utils.data.DataLoader(
     CaptionDataset(data_folder, test_images_split, SPLIT_TEST, transform=transforms.Compose([normalize])),
     batch_size=1, shuffle=True, num_workers=1, pin_memory=True
   )
@@ -45,7 +44,7 @@ def evaluate(data_folder, test_set_image_coco_ids_file, checkpoint, beam_size=1,
   generated_captions = []
 
   for i, (image, _, _, all_captions_for_image) in enumerate(
-      tqdm(loader, desc="Evaluate with beam size " + str(beam_size))):
+      tqdm(data_loader, desc="Evaluate with beam size " + str(beam_size))):
 
     # Target captions
     target_captions.append(
@@ -56,8 +55,8 @@ def evaluate(data_folder, test_set_image_coco_ids_file, checkpoint, beam_size=1,
     generated_caption = generate_caption(encoder, decoder, image, word_map, beam_size, max_caption_len, store_alphas=False)
     generated_captions.append(get_caption_without_special_tokens(generated_caption, word_map))
 
-    # print(decodeCaption(generated_caption, word_map))
-    # showImg(image.squeeze(0).numpy())
+    # print(decode_caption(generated_caption, word_map))
+    # show_img(image.squeeze(0).numpy())
     assert len(target_captions) == len(generated_captions)
 
   # Calculate BLEU-4 scores

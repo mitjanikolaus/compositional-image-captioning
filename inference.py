@@ -45,7 +45,7 @@ def generate_caption(encoder, decoder, img, word_map, beam_size=1, max_caption_l
   # Start decoding
   decoder_hidden_state, decoder_cell_state = decoder.init_hidden_state(encoder_out)
 
-  for step in range(0, max_caption_len):
+  for step in range(0, max_caption_len-1):
     embeddings = decoder.embedding(k_prev_words).squeeze(1)  # (k, embed_dim)
 
     attention_weighted_encoding, alpha = decoder.attention(

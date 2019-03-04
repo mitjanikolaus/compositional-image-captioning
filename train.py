@@ -2,7 +2,6 @@ import argparse
 import json
 import os
 import sys
-import time
 import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
@@ -15,13 +14,13 @@ from nltk.translate.bleu_score import corpus_bleu
 
 from utils import SPLIT_TRAIN, SPLIT_VAL, adjust_learning_rate, save_checkpoint, \
   AverageMeter, clip_gradients, accuracy, get_image_indices_splits_from_file, IMAGENET_IMAGES_MEAN, IMAGENET_IMAGES_STD, \
-  WORD_MAP_FILENAME, TOKEN_START, TOKEN_PADDING
+  WORD_MAP_FILENAME, get_caption_without_special_tokens
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True  # set to true only if inputs to model are fixed size; otherwise lot of computational overhead
 
-epochs_since_last_improvement = 0  # number of epochs since the last improvement of BLEU validation score
-best_bleu4 = 0.  # BLEU-4 score right now
+epochs_since_last_improvement = 0
+best_bleu4 = 0.
 
 
 def main(data_folder, test_set_image_coco_ids_file, emb_dim=512, attention_dim=512, decoder_dim=512, dropout=0.5,
@@ -29,10 +28,6 @@ def main(data_folder, test_set_image_coco_ids_file, emb_dim=512, attention_dim=5
          batch_size=32, workers=1, encoder_lr=1e-4, decoder_lr=4e-4, grad_clip=5., alpha_c=1.,
          fine_tune_encoder=False, epochs_early_stopping=20, epochs_adjust_learning_rate=8,
          rate_adjust_learning_rate=0.8, val_set_size=0.1, checkpoint=None, print_freq=100):
-  """
-  Training and validation.
-  """
-
   global best_bleu4, epochs_since_last_improvement
 
   print("Starting training on device: ", device)
@@ -44,7 +39,7 @@ def main(data_folder, test_set_image_coco_ids_file, emb_dim=512, attention_dim=5
 
   # Load checkpoint
   if checkpoint:
-    checkpoint = torch.load(checkpoint)
+    checkpoint = torch.load(checkpoint, map_location=device)
     start_epoch = checkpoint['epoch'] + 1
     epochs_since_last_improvement = checkpoint['epochs_since_improvement']
     best_bleu4 = checkpoint['bleu-4']
@@ -138,34 +133,21 @@ def main(data_folder, test_set_image_coco_ids_file, emb_dim=512, attention_dim=5
   print("\n\nFinished training.")
 
 
-def train(train_loader, encoder, decoder, loss_function, encoder_optimizer, decoder_optimizer, epoch, grad_clip,
+def train(data_loader, encoder, decoder, loss_function, encoder_optimizer, decoder_optimizer, epoch, grad_clip,
           alpha_c, print_freq):
   """
-  Performs one epoch's training.
+  Perform one training epoch.
 
-  :param train_loader: DataLoader for training data
-  :param encoder: encoder model
-  :param decoder: decoder model
-  :param loss_function: loss layer
-  :param encoder_optimizer: optimizer to update encoder's weights (if fine-tuning)
-  :param decoder_optimizer: optimizer to update decoder's weights
-  :param epoch: epoch number
   """
 
-  decoder.train()  # train mode (dropout and batchnorm is used)
+  decoder.train()
   encoder.train()
 
-  batch_time = AverageMeter()  # forward prop. + back prop. time
-  data_time = AverageMeter()  # data loading time
   losses = AverageMeter()  # loss (per word decoded)
-  top5accs = AverageMeter()  # top5 accuracy
-
-  start = time.time()
+  top5accuracies = AverageMeter()  # top5 accuracy
 
   # Batches
-  for i, (imgs, caps, caplens) in enumerate(train_loader):
-    data_time.update(time.time() - start)
-
+  for i, (imgs, caps, caplens) in enumerate(data_loader):
     # Move to GPU, if available
     imgs = imgs.to(device)
     caps = caps.to(device)
@@ -207,50 +189,36 @@ def train(train_loader, encoder, decoder, loss_function, encoder_optimizer, deco
       encoder_optimizer.step()
 
     # Keep track of metrics
-    top5 = accuracy(scores, targets, 5)
+    top5accuracy = accuracy(scores, targets, 5)
     losses.update(loss.item(), sum(decode_lengths))
-    top5accs.update(top5, sum(decode_lengths))
-    batch_time.update(time.time() - start)
-
-    start = time.time()
+    top5accuracies.update(top5accuracy, sum(decode_lengths))
 
     # Print status
     if i % print_freq == 0:
-      print('Epoch: [{0}][{1}/{2}]\t'
-            'Batch Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-            'Data Load Time {data_time.val:.3f} ({data_time.avg:.3f})\t'
-            'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-            'Top-5 Accuracy {top5.val:.3f} ({top5.avg:.3f})'.format(epoch, i, len(train_loader),
-                                                                    batch_time=batch_time,
-                                                                    data_time=data_time, loss=losses,
-                                                                    top5=top5accs))
+      print('Epoch: {0}[Sample {1}/{2}]\t'
+            'Loss {loss.val:.4f} (Average: {loss.avg:.4f})\t'
+            'Top-5 Accuracy {top5.val:.4f} (Average: {top5.avg:.4f})'.format(epoch, i, len(data_loader),
+                                                                             loss=losses,
+                                                                             top5=top5accuracies))
 
 
-def validate(val_loader, encoder, decoder, criterion, word_map, alpha_c, print_freq):
+def validate(data_loader, encoder, decoder, criterion, word_map, alpha_c, print_freq):
   """
-  Performs one epoch's validation.
+  Perform validation of one training epoch.
 
-  :param val_loader: DataLoader for validation data.
-  :param encoder: encoder model
-  :param decoder: decoder model
-  :param criterion: loss layer
-  :return: BLEU-4 score
   """
-  decoder.eval()  # eval mode (no dropout or batchnorm)
+  decoder.eval()
   if encoder:
     encoder.eval()
 
-  batch_time = AverageMeter()
   losses = AverageMeter()
-  top5accs = AverageMeter()
-
-  start = time.time()
+  top5accuracies = AverageMeter()
 
   target_captions = []
   generated_captions = []
 
   # Batches
-  for i, (imgs, caps, caplens, allcaps) in enumerate(val_loader):
+  for i, (imgs, caps, caplens, allcaps) in enumerate(data_loader):
 
     # Move to device, if available
     imgs = imgs.to(device)
@@ -279,39 +247,25 @@ def validate(val_loader, encoder, decoder, criterion, word_map, alpha_c, print_f
 
     # Keep track of metrics
     losses.update(loss.item(), sum(decode_lengths))
-    top5 = accuracy(scores, targets, 5)
-    top5accs.update(top5, sum(decode_lengths))
-    batch_time.update(time.time() - start)
-
-    start = time.time()
+    top5accuracy = accuracy(scores, targets, 5)
+    top5accuracies.update(top5accuracy, sum(decode_lengths))
 
     if i % print_freq == 0:
       print('Validation: [{0}/{1}]\t'
-            'Batch Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
             'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-            'Top-5 Accuracy {top5.val:.3f} ({top5.avg:.3f})\t'.format(i, len(val_loader), batch_time=batch_time,
-                                                                      loss=losses, top5=top5accs))
+            'Top-5 Accuracy {top5.val:.3f} ({top5.avg:.3f})\t'.format(i, len(data_loader),
+                                                                      loss=losses, top5=top5accuracies))
 
-    # Store references (true captions), and hypothesis (prediction) for each image
-    # If for n images, we have n hypotheses, and references a, b, c... for each image, we need -
-    # references = [[ref1a, ref1b, ref1c], [ref2a, ref2b], ...], hypotheses = [hyp1, hyp2, ...]
-
-    # References
-    allcaps = allcaps[sort_ind]  # because images were sorted in the decoder
+    # Target captions
+    allcaps = allcaps[sort_ind]  # images were sorted in the decoder
     for j in range(allcaps.shape[0]):
-      img_captions = list(
-        map(lambda c: [w for w in c if w not in {word_map[TOKEN_START], word_map[TOKEN_PADDING]}], allcaps[j].tolist())
-      )
+      img_captions = [get_caption_without_special_tokens(caption, word_map) for caption in allcaps[j].tolist()]
       target_captions.append(img_captions)
 
-    # Hypotheses
-    _, preds = torch.max(scores_copy, dim=2)
-    preds = preds.tolist()
-    temp_preds = list()
-    for j, p in enumerate(preds):
-      temp_preds.append(preds[j][:decode_lengths[j]])  # remove pads
-    preds = temp_preds
-    generated_captions.extend(preds)
+    # Generated captions
+    _, best_captions = torch.max(scores_copy, dim=2)
+    best_captions = [get_caption_without_special_tokens(caption, word_map) for caption in best_captions.tolist()]
+    generated_captions.extend(best_captions)
 
     assert len(target_captions) == len(generated_captions)
 
@@ -321,7 +275,7 @@ def validate(val_loader, encoder, decoder, criterion, word_map, alpha_c, print_f
   print(
     '\n * LOSS - {loss.avg:.3f}, TOP-5 ACCURACY - {top5.avg:.3f}, BLEU-4 - {bleu}\n'.format(
       loss=losses,
-      top5=top5accs,
+      top5=top5accuracies,
       bleu=bleu4))
 
   return bleu4
