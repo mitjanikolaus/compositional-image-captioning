@@ -15,7 +15,7 @@ from nltk.translate.bleu_score import corpus_bleu
 
 from utils import SPLIT_TRAIN, SPLIT_VAL, adjust_learning_rate, save_checkpoint, \
   AverageMeter, clip_gradients, accuracy, get_image_indices_splits_from_file, IMAGENET_IMAGES_MEAN, IMAGENET_IMAGES_STD, \
-  get_caption_without_special_tokens, WORD_MAP_FILENAME
+  WORD_MAP_FILENAME, TOKEN_START, TOKEN_PADDING
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True  # set to true only if inputs to model are fixed size; otherwise lot of computational overhead
@@ -299,7 +299,9 @@ def validate(val_loader, encoder, decoder, criterion, word_map, alpha_c, print_f
     # References
     allcaps = allcaps[sort_ind]  # because images were sorted in the decoder
     for j in range(allcaps.shape[0]):
-      img_captions = [get_caption_without_special_tokens(caption, word_map) for caption in allcaps[j].tolist()]
+      img_captions = list(
+        map(lambda c: [w for w in c if w not in {word_map[TOKEN_START], word_map[TOKEN_PADDING]}], allcaps[j].tolist())
+      )
       target_captions.append(img_captions)
 
     # Hypotheses
