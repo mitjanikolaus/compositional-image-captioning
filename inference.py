@@ -25,7 +25,7 @@ def generate_caption(encoder, decoder, img, word_map, beam_size=1, max_caption_l
   encoder_out = encoder_out.expand(k, num_pixels, encoder_dim)  # (k, num_pixels, encoder_dim)
 
   # Tensor to store top k previous words at each step; now they're just <start>
-  k_prev_words = torch.LongTensor([[word_map[TOKEN_START]]] * k).to(device)  # (k, 1)
+  k_prev_words = torch.full((k,1), word_map[TOKEN_START], dtype=torch.int64, device=device)
 
   # Tensor to store top k sequences; now they're just <start>
   top_k_sequences = k_prev_words  # (k, 1)
@@ -48,19 +48,11 @@ def generate_caption(encoder, decoder, img, word_map, beam_size=1, max_caption_l
   for step in range(0, max_caption_len-1):
     embeddings = decoder.embedding(k_prev_words).squeeze(1)  # (k, embed_dim)
 
-    attention_weighted_encoding, alpha = decoder.attention(
-      encoder_out, decoder_hidden_state
-    )  # (k, encoder_dim), (k, num_pixels)
+    predictions, alpha, decoder_hidden_state, decoder_cell_state = decoder.forward_step(
+      encoder_out, decoder_hidden_state, decoder_cell_state, embeddings
+    )
 
-    gate = decoder.sigmoid(decoder.f_beta(decoder_hidden_state))  # (k, encoder_dim)
-    attention_weighted_encoding = gate * attention_weighted_encoding
-
-    decoder_hidden_state, decoder_cell_state = decoder.decode_step(
-      torch.cat((embeddings, attention_weighted_encoding), dim=1), (decoder_hidden_state, decoder_cell_state)
-    )  # (k, decoder_dim)
-
-    scores = decoder.fc(decoder_hidden_state)  # (k, vocab_size)
-    scores = F.log_softmax(scores, dim=1)
+    scores = F.log_softmax(predictions, dim=1)
 
     # Add the new scores
     scores = top_k_scores.expand_as(scores) + scores  # (k, vocab_size)
