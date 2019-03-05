@@ -198,7 +198,7 @@ def train(data_loader, encoder, decoder, loss_function, encoder_optimizer, decod
 
     # Print status
     if i % print_freq == 0:
-      print('Epoch: {0}[Sample {1}/{2}]\t'
+      print('Epoch: {0}[Batch {1}/{2}]\t'
             'Loss {loss.val:.4f} (Average: {loss.avg:.4f})\t'
             'Top-5 Accuracy {top5.val:.4f} (Average: {top5.avg:.4f})'.format(epoch, i, len(data_loader),
                                                                              loss=losses,
@@ -253,7 +253,7 @@ def validate(data_loader, encoder, decoder, criterion, word_map, alpha_c, print_
     top5accuracies.update(top5accuracy, sum(decode_lengths))
 
     if i % print_freq == 0:
-      print('Validation: [{0}/{1}]\t'
+      print('Validation: [Batch {0}/{1}]\t'
             'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
             'Top-5 Accuracy {top5.val:.3f} ({top5.avg:.3f})\t'.format(i, len(data_loader),
                                                                       loss=losses, top5=top5accuracies))
