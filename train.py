@@ -152,27 +152,9 @@ def train(data_loader, encoder, decoder, loss_function, encoder_optimizer, decod
 
   # Loop over training batches
   for i, (images, captions, caption_lengths) in enumerate(data_loader):
-    # Move data to GPU, if available
-    images = images.to(device)
-    captions = captions.to(device)
-    caption_lengths = caption_lengths.to(device)
-
-    # Forward propagation
-    images = encoder(images)
-    scores, caps_sorted, decode_lengths, alphas, sort_ind = decoder(images, captions, caption_lengths)
-
-    # Since we decoded starting with <start>, the targets are all words after <start>, up to <end>
-    targets = caps_sorted[:, 1:]
-
-    # Remove timesteps that we didn't decode at, or are pads
-    scores, _ = pack_padded_sequence(scores, decode_lengths, batch_first=True)
-    targets, _ = pack_padded_sequence(targets, decode_lengths, batch_first=True)
-
-    # Calculate loss
-    loss = loss_function(scores, targets)
-
-    # Add doubly stochastic attention regularization
-    loss += alpha_c * ((1. - alphas.sum(dim=1)) ** 2).mean()
+    loss, decode_lengths, scores, targets, sort_ind, scores_copy, top5accuracy = forward_prop(
+      images, captions, caption_lengths, encoder, decoder, loss_function, alpha_c
+    )
 
     # Back propagation
     decoder_optimizer.zero_grad()
@@ -193,7 +175,6 @@ def train(data_loader, encoder, decoder, loss_function, encoder_optimizer, decod
 
     # Keep track of metrics
     losses.update(loss.item(), sum(decode_lengths))
-    top5accuracy = top_k_accuracy(scores, targets, 5)
     top5accuracies.update(top5accuracy, sum(decode_lengths))
 
     # Print status
@@ -204,8 +185,36 @@ def train(data_loader, encoder, decoder, loss_function, encoder_optimizer, decod
                                                                              loss=losses,
                                                                              top5=top5accuracies))
 
+def forward_prop(images, captions, caption_lengths, encoder, decoder, loss_function, alpha_c):
+  # Move data to GPU, if available
+  images = images.to(device)
+  captions = captions.to(device)
+  caption_lengths = caption_lengths.to(device)
 
-def validate(data_loader, encoder, decoder, criterion, word_map, alpha_c, print_freq):
+  # Forward propagation
+  images = encoder(images)
+  scores, caps_sorted, decode_lengths, alphas, sort_ind = decoder(images, captions, caption_lengths)
+
+  # Since we decoded starting with <start>, the targets are all words after <start>, up to <end>
+  targets = caps_sorted[:, 1:]
+
+  # Remove timesteps that we didn't decode at, or are pads
+  scores_copy = scores.clone()
+  scores, _ = pack_padded_sequence(scores, decode_lengths, batch_first=True)
+  targets, _ = pack_padded_sequence(targets, decode_lengths, batch_first=True)
+
+  # Calculate loss
+  loss = loss_function(scores, targets)
+
+  # Add doubly stochastic attention regularization
+  loss += alpha_c * ((1. - alphas.sum(dim=1)) ** 2).mean()
+
+  top5accuracy = top_k_accuracy(scores, targets, 5)
+
+  return loss, decode_lengths, scores, targets, sort_ind, scores_copy, top5accuracy
+
+
+def validate(data_loader, encoder, decoder, loss_function, word_map, alpha_c, print_freq):
   """
   Perform validation of one training epoch.
 
@@ -222,34 +231,12 @@ def validate(data_loader, encoder, decoder, criterion, word_map, alpha_c, print_
 
   # Loop over batches
   for i, (images, captions, caption_lengths, all_captions_for_image) in enumerate(data_loader):
-
-    # Move data to GPU, if available
-    images = images.to(device)
-    captions = captions.to(device)
-    caption_lengths = caption_lengths.to(device)
-
-    # Forward propagation
-    if encoder:
-      images = encoder(images)
-    scores, caps_sorted, decode_lengths, alphas, sort_ind = decoder(images, captions, caption_lengths)
-
-    # Since we decoded starting with <start>, the targets are all words after <start>, up to <end>
-    targets = caps_sorted[:, 1:]
-
-    # Remove timesteps that we didn't decode at, or are pads
-    scores_copy = scores.clone()
-    scores, _ = pack_padded_sequence(scores, decode_lengths, batch_first=True)
-    targets, _ = pack_padded_sequence(targets, decode_lengths, batch_first=True)
-
-    # Calculate loss
-    loss = criterion(scores, targets)
-
-    # Add doubly stochastic attention regularization
-    loss += alpha_c * ((1. - alphas.sum(dim=1)) ** 2).mean()
+    loss, decode_lengths, scores, targets, sort_ind, scores_copy, top5accuracy = forward_prop(
+      images, captions, caption_lengths, encoder, decoder, loss_function, alpha_c
+    )
 
     # Keep track of metrics
     losses.update(loss.item(), sum(decode_lengths))
-    top5accuracy = top_k_accuracy(scores, targets, 5)
     top5accuracies.update(top5accuracy, sum(decode_lengths))
 
     if i % print_freq == 0:
