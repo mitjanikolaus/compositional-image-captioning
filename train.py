@@ -292,6 +292,9 @@ def check_args(args):
   parser.add_argument('-C', '--checkpoint',
                       help='Path to checkpoint of previously trained model',
                       default=None)
+  parser.add_argument('--epochs',
+                      help='Maximum number of training epochs',
+                      type=int, default=120)
 
   parsed_args = parser.parse_args(args)
   print(parsed_args)
@@ -308,5 +311,6 @@ if __name__ == '__main__':
     alpha_c=parsed_args.alpha_c,
     fine_tune_encoder=parsed_args.fine_tune_encoder,
     checkpoint=parsed_args.checkpoint,
+    epochs=parsed_args.epochs,
   )
 

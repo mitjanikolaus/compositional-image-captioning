@@ -88,7 +88,7 @@ def clip_gradients(optimizer, grad_clip):
         param.grad.data.clamp_(-grad_clip, grad_clip)
 
 DEFAULT_CHECKPOINT_NAME = 'checkpoint.pth.tar'
-DEFAULT_BEST_CHECKPOINT_NAME = 'best' + DEFAULT_CHECKPOINT_NAME
+DEFAULT_BEST_CHECKPOINT_NAME = 'best_' + DEFAULT_CHECKPOINT_NAME
 
 def save_checkpoint(epoch, epochs_since_improvement, encoder, decoder, encoder_optimizer, decoder_optimizer,
                     bleu4, is_best):
