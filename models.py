@@ -202,7 +202,7 @@ class DecoderWithAttention(nn.Module):
           (h[:batch_size_t], c[:batch_size_t]))  # (batch_size_t, decoder_dim)
       else:
         if t == 0:
-          prev_predicted_words = torch.full((batch_size_t,), 10002, dtype=torch.int64) #TODO store <start> map value
+          prev_predicted_words = torch.full((batch_size_t,), 10002, dtype=torch.int64, device=device) #TODO store <start> map value
         else:
           prev_predicted_words = torch.max(predictions[:batch_size_t, t-1, :],dim=1)[1]
         prev_word_embeddings = self.embedding(prev_predicted_words)
