@@ -152,7 +152,7 @@ def train(data_loader, encoder, decoder, loss_function, encoder_optimizer, decod
 
   # Loop over training batches
   for i, (images, captions, caption_lengths) in enumerate(data_loader):
-    loss, decode_lengths, scores, targets, sort_ind, scores_copy, top5accuracy = forward_prop(
+    loss, decode_lengths, _, _, top5accuracy = forward_prop(
       images, captions, caption_lengths, encoder, decoder, loss_function, alpha_c
     )
 
@@ -199,19 +199,18 @@ def forward_prop(images, captions, caption_lengths, encoder, decoder, loss_funct
   targets = caps_sorted[:, 1:]
 
   # Remove timesteps that we didn't decode at, or are pads
-  scores_copy = scores.clone()
-  scores, _ = pack_padded_sequence(scores, decode_lengths, batch_first=True)
-  targets, _ = pack_padded_sequence(targets, decode_lengths, batch_first=True)
+  packed_scores, _ = pack_padded_sequence(scores.clone(), decode_lengths, batch_first=True)
+  packed_targets, _ = pack_padded_sequence(targets, decode_lengths, batch_first=True)
 
   # Calculate loss
-  loss = loss_function(scores, targets)
+  loss = loss_function(packed_scores, packed_targets)
 
   # Add doubly stochastic attention regularization
   loss += alpha_c * ((1. - alphas.sum(dim=1)) ** 2).mean()
 
-  top5accuracy = top_k_accuracy(scores, targets, 5)
+  top5accuracy = top_k_accuracy(packed_scores, packed_targets, 5)
 
-  return loss, decode_lengths, scores, targets, sort_ind, scores_copy, top5accuracy
+  return loss, decode_lengths, sort_ind, scores, top5accuracy
 
 
 def validate(data_loader, encoder, decoder, loss_function, word_map, alpha_c, print_freq):
@@ -231,7 +230,7 @@ def validate(data_loader, encoder, decoder, loss_function, word_map, alpha_c, pr
 
   # Loop over batches
   for i, (images, captions, caption_lengths, all_captions_for_image) in enumerate(data_loader):
-    loss, decode_lengths, scores, targets, sort_ind, scores_copy, top5accuracy = forward_prop(
+    loss, decode_lengths, sort_ind, scores, top5accuracy = forward_prop(
       images, captions, caption_lengths, encoder, decoder, loss_function, alpha_c
     )
 
@@ -252,7 +251,7 @@ def validate(data_loader, encoder, decoder, loss_function, word_map, alpha_c, pr
       target_captions.append(img_captions)
 
     # Generated captions
-    _, best_captions = torch.max(scores_copy, dim=2)
+    _, best_captions = torch.max(scores, dim=2)
     best_captions = [get_caption_without_special_tokens(caption, word_map) for caption in best_captions.tolist()]
     generated_captions.extend(best_captions)
 
