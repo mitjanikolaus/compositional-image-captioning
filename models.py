@@ -207,6 +207,9 @@ class DecoderWithAttention(nn.Module):
     predictions = torch.zeros(batch_size, max(decode_lengths), vocab_size).to(device)
     alphas = torch.zeros(batch_size, max(decode_lengths), num_pixels).to(device)
 
+    # At the start, all 'previous words' are the <start> token
+    prev_predicted_words = torch.full((batch_size,), self.start_token, dtype=torch.int64, device=device)
+
     # At each time-step, decode by
     # attention-weighing the encoder's output based on the decoder's previous hidden state output
     # then generate a new word in the decoder with the previous word and the attention weighted encoding
@@ -216,21 +219,20 @@ class DecoderWithAttention(nn.Module):
       if self.training:
         prev_word_embeddings = embeddings[:batch_size_t, t, :]
       else:
-        # In evaluation mode, we do not feed back the target tokens into the decoder but instead use its own output
-        # from the previous time step.
-        if t == 0:
-          # At the start, all 'previous words' are the start token
-          prev_predicted_words = torch.full((batch_size_t,), self.start_token, dtype=torch.int64, device=device)
-        else:
-          prev_predicted_words = torch.max(predictions[:batch_size_t, t - 1, :], dim=1)[1]
-        prev_word_embeddings = self.embedding(prev_predicted_words)
+        # In evaluation mode, use the model's own output from the previous time step.
+        prev_word_embeddings = self.embedding(prev_predicted_words[:batch_size_t])
 
-      preds, alpha, decoder_hidden_state, decoder_cell_state = self.forward_step(
-        encoder_out[:batch_size_t], decoder_hidden_state[:batch_size_t], decoder_cell_state[:batch_size_t],
+      predictions_for_timestep, alphas_for_timestep, decoder_hidden_state, decoder_cell_state = self.forward_step(
+        encoder_out[:batch_size_t],
+        decoder_hidden_state[:batch_size_t],
+        decoder_cell_state[:batch_size_t],
         prev_word_embeddings
       )
 
-      predictions[:batch_size_t, t, :] = preds
-      alphas[:batch_size_t, t, :] = alpha
+      # Update the previously predicted words
+      prev_predicted_words = torch.max(predictions_for_timestep, dim=1)[1]
+
+      predictions[:batch_size_t, t, :] = predictions_for_timestep
+      alphas[:batch_size_t, t, :] = alphas_for_timestep
 
     return predictions, encoded_captions, decode_lengths, alphas, sort_ind
