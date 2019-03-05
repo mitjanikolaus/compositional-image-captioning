@@ -19,10 +19,11 @@ class Encoder(nn.Module):
     # Resize input image to fixed size
     self.adaptive_pool = nn.AdaptiveAvgPool2d((encoded_image_size, encoded_image_size))
 
-    # Disable calculation of gradients
+    # Disable calculation of all gradients
     for p in self.model.parameters():
       p.requires_grad = False
 
+    # Enable calculation of some gradients for fine tuning
     self.set_fine_tuning_enabled()
 
   def forward(self, images):
@@ -103,9 +104,9 @@ class DecoderWithAttention(nn.Module):
     self.start_token = start_token
     self.dropout = dropout
 
-    self.attention = AttentionModule(encoder_dim, decoder_dim, attention_dim)  # attention network
+    self.attention = AttentionModule(encoder_dim, decoder_dim, attention_dim)
 
-    self.embedding = nn.Embedding(vocab_size, embed_dim)  # embedding layer
+    self.embedding = nn.Embedding(vocab_size, embed_dim)
     self.dropout = nn.Dropout(p=self.dropout)
     self.decode_step = nn.LSTMCell(embed_dim + encoder_dim, decoder_dim, bias=True)  # decoding LSTMCell
     self.init_h = nn.Linear(encoder_dim, decoder_dim)  # linear layer to find initial hidden state of LSTMCell
@@ -113,11 +114,12 @@ class DecoderWithAttention(nn.Module):
     self.f_beta = nn.Linear(decoder_dim, encoder_dim)  # linear layer to create a sigmoid-activated gate
     self.sigmoid = nn.Sigmoid()
     self.fc = nn.Linear(decoder_dim, vocab_size)  # linear layer to find scores over vocabulary
-    self.init_weights()  # initialize some layers with the uniform distribution
+
+    self.init_weights()
 
   def init_weights(self):
     """
-    Initializes some parameters with values from the uniform distribution, for easier convergence.
+    Initialize some parameters with values from a uniform distribution
     """
     self.embedding.weight.data.uniform_(-0.1, 0.1)
     self.fc.bias.data.fill_(0)
@@ -125,7 +127,7 @@ class DecoderWithAttention(nn.Module):
 
   def load_pretrained_embeddings(self, embeddings):
     """
-    Loads embedding layer with pre-trained embeddings.
+    Load an embedding layer with pre-trained embeddings.
 
     :param embeddings: pre-trained embeddings
     """
@@ -133,18 +135,18 @@ class DecoderWithAttention(nn.Module):
 
   def fine_tune_embeddings(self, fine_tune=True):
     """
-    Allow fine-tuning of embedding layer? (Only makes sense to not-allow if using pre-trained embeddings).
+    Allow fine-tuning of the embedding layer.
 
-    :param fine_tune: Allow?
+    :param fine_tune: Set to True to allow fine tuning
     """
     for p in self.embedding.parameters():
       p.requires_grad = fine_tune
 
   def init_hidden_state(self, encoder_out):
     """
-    Creates the initial hidden and cell states for the decoder's LSTM based on the encoded images.
+    Create the initial hidden and cell states for the decoder's LSTM based on the encoded images.
 
-    :param encoder_out: encoded images, a tensor of dimension (batch_size, num_pixels, encoder_dim)
+    :param encoder_out: encoded images, shape: (batch_size, num_pixels, encoder_dim)
     :return: hidden state, cell state
     """
     mean_encoder_out = encoder_out.mean(dim=1)
@@ -170,7 +172,7 @@ class DecoderWithAttention(nn.Module):
     encoder_out = encoder_out.view(batch_size, -1, encoder_dim)  # (batch_size, num_pixels, encoder_dim)
     num_pixels = encoder_out.size(1)
 
-    # Sort input data by decreasing lengths; why? apparent below
+    # Sort input data by decreasing lengths to allow for decrease of batch size when sequences are complete
     caption_lengths, sort_ind = caption_lengths.squeeze(1).sort(dim=0, descending=True)
     encoder_out = encoder_out[sort_ind]
     encoded_captions = encoded_captions[sort_ind]
@@ -185,7 +187,7 @@ class DecoderWithAttention(nn.Module):
     # So, decoding lengths are actual lengths - 1
     decode_lengths = (caption_lengths - 1).tolist()
 
-    # Create tensors to hold word predicion scores and alphas
+    # Tensors to hold word prediction scores and alphas
     predictions = torch.zeros(batch_size, max(decode_lengths), vocab_size).to(device)
     alphas = torch.zeros(batch_size, max(decode_lengths), num_pixels).to(device)
 
@@ -199,20 +201,21 @@ class DecoderWithAttention(nn.Module):
       attention_weighted_encoding = gate * attention_weighted_encoding
 
       if self.training:
-        h, c = self.decode_step(
-          torch.cat((embeddings[:batch_size_t, t, :], attention_weighted_encoding), dim=1),
-          (h[:batch_size_t], c[:batch_size_t]))  # (batch_size_t, decoder_dim)
+        prev_word_embeddings = embeddings[:batch_size_t, t, :]
       else:
+        # In evaluation mode, we do not feed back the target tokens into the decoder but instead use its own output
+        # from the previous time step.
         if t == 0:
           # At the start, all 'previous words' are the start token
           prev_predicted_words = torch.full((batch_size_t,), self.start_token, dtype=torch.int64, device=device)
         else:
           prev_predicted_words = torch.max(predictions[:batch_size_t, t-1, :],dim=1)[1]
         prev_word_embeddings = self.embedding(prev_predicted_words)
-        h, c = self.decode_step(
-          torch.cat((prev_word_embeddings, attention_weighted_encoding), dim=1),
-          (h[:batch_size_t], c[:batch_size_t]))  # (batch_size_t, decoder_dim)
 
+      h, c = self.decode_step(
+        torch.cat((prev_word_embeddings, attention_weighted_encoding), dim=1),
+        (h[:batch_size_t], c[:batch_size_t])
+      )  # (batch_size_t, decoder_dim)
 
       preds = self.fc(self.dropout(h))  # (batch_size_t, vocab_size)
       predictions[:batch_size_t, t, :] = preds
