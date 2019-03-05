@@ -52,12 +52,11 @@ def generate_caption(encoder, decoder, img, word_map, beam_size=1, max_caption_l
       encoder_out, decoder_hidden_state
     )  # (k, encoder_dim), (k, num_pixels)
 
-
     gate = decoder.sigmoid(decoder.f_beta(decoder_hidden_state))  # (k, encoder_dim)
     attention_weighted_encoding = gate * attention_weighted_encoding
 
     decoder_hidden_state, decoder_cell_state = decoder.decode_step(
-      torch.cat([embeddings, attention_weighted_encoding], dim=1), (decoder_hidden_state, decoder_cell_state)
+      torch.cat((embeddings, attention_weighted_encoding), dim=1), (decoder_hidden_state, decoder_cell_state)
     )  # (k, decoder_dim)
 
     scores = decoder.fc(decoder_hidden_state)  # (k, vocab_size)
@@ -78,11 +77,11 @@ def generate_caption(encoder, decoder, img, word_map, beam_size=1, max_caption_l
     next_word_inds = top_k_words % vocab_size  # (k)
 
     # Add new words to sequences, alphas
-    top_k_sequences = torch.cat([top_k_sequences[prev_word_inds], next_word_inds.unsqueeze(1)], dim=1)  # (k, step+2)
+    top_k_sequences = torch.cat((top_k_sequences[prev_word_inds], next_word_inds.unsqueeze(1)), dim=1)  # (k, step+2)
     if store_alphas:
       alpha = alpha.view(-1, enc_image_size, enc_image_size)  # (k, enc_image_size, enc_image_size)
       seqs_alpha = torch.cat(
-        [seqs_alpha[prev_word_inds], alpha[prev_word_inds].unsqueeze(1)], dim=1
+        (seqs_alpha[prev_word_inds], alpha[prev_word_inds].unsqueeze(1)), dim=1
       )  # (k, step+2, enc_image_size, enc_image_size)
 
     # Check for complete and incomplete sequences (based on the <end> token)
