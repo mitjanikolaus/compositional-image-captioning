@@ -154,6 +154,22 @@ class DecoderWithAttention(nn.Module):
     c = self.init_c(mean_encoder_out)
     return h, c
 
+  def forward_step(self, encoder_out, decoder_hidden_state, decoder_cell_state, prev_word_embeddings):
+    """Perform a single decoding step."""
+
+    attention_weighted_encoding, alpha = self.attention(encoder_out, decoder_hidden_state)
+    gate = self.sigmoid(self.f_beta(decoder_hidden_state))  # gating scalar, (batch_size_t, encoder_dim)
+    attention_weighted_encoding = gate * attention_weighted_encoding
+
+    decoder_input = torch.cat((prev_word_embeddings, attention_weighted_encoding), dim=1)
+    decoder_hidden_state, decoder_cell_state = self.decode_step(
+      decoder_input, (decoder_hidden_state, decoder_cell_state)
+    )  # (batch_size, decoder_dim)
+
+    predictions = self.fc(self.dropout(decoder_hidden_state))  # (batch_size, vocab_size)
+
+    return predictions, alpha, decoder_hidden_state, decoder_cell_state
+
   def forward(self, encoder_out, encoded_captions, caption_lengths):
     """
     Forward propagation.
@@ -181,7 +197,7 @@ class DecoderWithAttention(nn.Module):
     embeddings = self.embedding(encoded_captions)  # (batch_size, max_caption_length, embed_dim)
 
     # Initialize LSTM state
-    h, c = self.init_hidden_state(encoder_out)  # (batch_size, decoder_dim)
+    decoder_hidden_state, decoder_cell_state = self.init_hidden_state(encoder_out)  # (batch_size, decoder_dim)
 
     # We won't decode at the <end> position, since we've finished generating as soon as we generate <end>
     # So, decoding lengths are actual lengths - 1
@@ -196,9 +212,6 @@ class DecoderWithAttention(nn.Module):
     # then generate a new word in the decoder with the previous word and the attention weighted encoding
     for t in range(max(decode_lengths)):
       batch_size_t = sum([l > t for l in decode_lengths])
-      attention_weighted_encoding, alpha = self.attention(encoder_out[:batch_size_t], h[:batch_size_t])
-      gate = self.sigmoid(self.f_beta(h[:batch_size_t]))  # gating scalar, (batch_size_t, encoder_dim)
-      attention_weighted_encoding = gate * attention_weighted_encoding
 
       if self.training:
         prev_word_embeddings = embeddings[:batch_size_t, t, :]
@@ -209,15 +222,14 @@ class DecoderWithAttention(nn.Module):
           # At the start, all 'previous words' are the start token
           prev_predicted_words = torch.full((batch_size_t,), self.start_token, dtype=torch.int64, device=device)
         else:
-          prev_predicted_words = torch.max(predictions[:batch_size_t, t-1, :],dim=1)[1]
+          prev_predicted_words = torch.max(predictions[:batch_size_t, t - 1, :], dim=1)[1]
         prev_word_embeddings = self.embedding(prev_predicted_words)
 
-      h, c = self.decode_step(
-        torch.cat((prev_word_embeddings, attention_weighted_encoding), dim=1),
-        (h[:batch_size_t], c[:batch_size_t])
-      )  # (batch_size_t, decoder_dim)
+      preds, alpha, decoder_hidden_state, decoder_cell_state = self.forward_step(
+        encoder_out[:batch_size_t], decoder_hidden_state[:batch_size_t], decoder_cell_state[:batch_size_t],
+        prev_word_embeddings
+      )
 
-      preds = self.fc(self.dropout(h))  # (batch_size_t, vocab_size)
       predictions[:batch_size_t, t, :] = preds
       alphas[:batch_size_t, t, :] = alpha
 
