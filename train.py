@@ -14,7 +14,7 @@ from nltk.translate.bleu_score import corpus_bleu
 
 from utils import SPLIT_TRAIN, SPLIT_VAL, adjust_learning_rate, save_checkpoint, \
   AverageMeter, clip_gradients, accuracy, get_image_indices_splits_from_file, IMAGENET_IMAGES_MEAN, IMAGENET_IMAGES_STD, \
-  WORD_MAP_FILENAME, get_caption_without_special_tokens
+  WORD_MAP_FILENAME, get_caption_without_special_tokens, TOKEN_START
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True  # set to true only if inputs to model are fixed size; otherwise lot of computational overhead
@@ -58,6 +58,7 @@ def main(data_folder, test_set_image_coco_ids_file, emb_dim=512, attention_dim=5
                                    embed_dim=emb_dim,
                                    decoder_dim=decoder_dim,
                                    vocab_size=len(word_map),
+                                   start_token=word_map[TOKEN_START],
                                    dropout=dropout)
     decoder_optimizer = torch.optim.Adam(params=filter(lambda p: p.requires_grad, decoder.parameters()),
                                          lr=decoder_lr)
@@ -97,16 +98,16 @@ def main(data_folder, test_set_image_coco_ids_file, emb_dim=512, attention_dim=5
         adjust_learning_rate(encoder_optimizer, rate_adjust_learning_rate)
 
     # One epoch's training
-    train(train_images_loader,
-          encoder,
-          decoder,
-          loss_function,
-          encoder_optimizer,
-          decoder_optimizer,
-          epoch,
-          grad_clip,
-          alpha_c,
-          print_freq)
+    # train(train_images_loader,
+    #       encoder,
+    #       decoder,
+    #       loss_function,
+    #       encoder_optimizer,
+    #       decoder_optimizer,
+    #       epoch,
+    #       grad_clip,
+    #       alpha_c,
+    #       print_freq)
 
     # One epoch's validation
     current_bleu4 = validate(val_images_loader,

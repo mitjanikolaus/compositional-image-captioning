@@ -83,12 +83,13 @@ class AttentionModule(nn.Module):
 
 class DecoderWithAttention(nn.Module):
 
-  def __init__(self, attention_dim, embed_dim, decoder_dim, vocab_size, encoder_dim=2048, dropout=0.5):
+  def __init__(self, attention_dim, embed_dim, decoder_dim, vocab_size, start_token, encoder_dim=2048, dropout=0.5):
     """
     :param attention_dim: size of attention network
     :param embed_dim: embedding size
     :param decoder_dim: size of decoder's RNN
     :param vocab_size: size of vocabulary
+    :param start_token: word map value of the sentence <start> token
     :param encoder_dim: feature size of encoded images
     :param dropout: dropout rate
     """
@@ -99,6 +100,7 @@ class DecoderWithAttention(nn.Module):
     self.embed_dim = embed_dim
     self.decoder_dim = decoder_dim
     self.vocab_size = vocab_size
+    self.start_token = start_token
     self.dropout = dropout
 
     self.attention = AttentionModule(encoder_dim, decoder_dim, attention_dim)  # attention network
@@ -202,7 +204,8 @@ class DecoderWithAttention(nn.Module):
           (h[:batch_size_t], c[:batch_size_t]))  # (batch_size_t, decoder_dim)
       else:
         if t == 0:
-          prev_predicted_words = torch.full((batch_size_t,), 10002, dtype=torch.int64, device=device) #TODO store <start> map value
+          # At the start, all 'previous words' are the start token
+          prev_predicted_words = torch.full((batch_size_t,), self.start_token, dtype=torch.int64, device=device)
         else:
           prev_predicted_words = torch.max(predictions[:batch_size_t, t-1, :],dim=1)[1]
         prev_word_embeddings = self.embedding(prev_predicted_words)
