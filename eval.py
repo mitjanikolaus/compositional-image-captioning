@@ -12,7 +12,7 @@ from nltk.translate.bleu_score import corpus_bleu
 from tqdm import tqdm
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-cudnn.benchmark = True  # set to true only if inputs to model are fixed size; otherwise lot of computational overhead
+cudnn.benchmark = True  # improve performance if inputs to model are fixed size
 
 def evaluate(data_folder, test_set_image_coco_ids_file, checkpoint, beam_size=1, max_caption_len=50):
   # Load model
