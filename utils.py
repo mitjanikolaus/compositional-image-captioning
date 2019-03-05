@@ -67,6 +67,7 @@ def decode_caption(encoded_caption, word_map):
   rev_word_map = {v: k for k, v in word_map.items()}
   return [rev_word_map[ind] for ind in encoded_caption]
 
+
 def get_caption_without_special_tokens(caption, word_map):
   """Remove start, end and padding tokens from and encoded caption."""
 
@@ -86,21 +87,22 @@ def clip_gradients(optimizer, grad_clip):
       if param.grad is not None:
         param.grad.data.clamp_(-grad_clip, grad_clip)
 
+DEFAULT_CHECKPOINT_NAME = 'checkpoint.pth.tar'
+DEFAULT_BEST_CHECKPOINT_NAME = 'best' + DEFAULT_CHECKPOINT_NAME
 
 def save_checkpoint(epoch, epochs_since_improvement, encoder, decoder, encoder_optimizer, decoder_optimizer,
                     bleu4, is_best):
   """
-  Saves model checkpoint.
+  Save a model checkpoint.
 
-  :param data_name: base name of processed dataset
   :param epoch: epoch number
-  :param epochs_since_improvement: number of epochs since last improvement in BLEU-4 score
+  :param epochs_since_improvement: number of epochs since last improvement
   :param encoder: encoder model
   :param decoder: decoder model
-  :param encoder_optimizer: optimizer to update encoder's weights, if fine-tuning
-  :param decoder_optimizer: optimizer to update decoder's weights
-  :param bleu4: validation BLEU-4 score for this epoch
-  :param is_best: is this checkpoint the best so far?
+  :param encoder_optimizer: optimizer to update the encoder's weights
+  :param decoder_optimizer: optimizer to update the decoder's weights
+  :param bleu4: validation set BLEU-4 score for this epoch
+  :param is_best: True, if this is the best checkpoint so far (will save the model to a dedicated file)
   """
   state = {'epoch': epoch,
            'epochs_since_improvement': epochs_since_improvement,
@@ -109,17 +111,16 @@ def save_checkpoint(epoch, epochs_since_improvement, encoder, decoder, encoder_o
            'decoder': decoder,
            'encoder_optimizer': encoder_optimizer,
            'decoder_optimizer': decoder_optimizer}
-  filename = 'checkpoint-white-cars-epoch-22.pth.tar'
+  filename = DEFAULT_CHECKPOINT_NAME
   torch.save(state, filename)
+
   # If this checkpoint is the best so far, store a copy so it doesn't get overwritten by a worse checkpoint
   if is_best:
-    torch.save(state, 'best_' + filename)
+    torch.save(state, DEFAULT_BEST_CHECKPOINT_NAME)
 
 
 class AverageMeter(object):
-  """
-  Keeps track of most recent, average, sum, and count of a metric.
-  """
+  """Class to keep track of most recent, average, sum, and count of a metric."""
 
   def __init__(self):
     self.reset()
@@ -139,25 +140,25 @@ class AverageMeter(object):
 
 def adjust_learning_rate(optimizer, shrink_factor):
   """
-  Shrinks learning rate by a specified factor.
+  Shrink the learning rate by a specified factor.
 
-  :param optimizer: optimizer whose learning rate must be shrunk.
-  :param shrink_factor: factor in interval (0, 1) to multiply learning rate with.
+  :param optimizer: optimizer whose learning rate should be shrunk.
+  :param shrink_factor: factor to multiply learning rate with.
   """
 
-  print("\nDECAYING learning rate.")
+  print("\nAdjusting learning rate.")
   for param_group in optimizer.param_groups:
     param_group['lr'] = param_group['lr'] * shrink_factor
-  print("The new learning rate is %f\n" % (optimizer.param_groups[0]['lr'],))
+  print("The new learning rate is {}\n".format(optimizer.param_groups[0]['lr'],))
 
 
-def accuracy(scores, targets, k):
+def top_k_accuracy(scores, targets, k):
   """
-  Computes top-k accuracy, from predicted and true labels.
+  Compute the top-k accuracy from predicted and true labels.
 
-  :param scores: scores from the model
+  :param scores: predicted scores from the model
   :param targets: true labels
-  :param k: k in top-k accuracy
+  :param k: k
   :return: top-k accuracy
   """
 

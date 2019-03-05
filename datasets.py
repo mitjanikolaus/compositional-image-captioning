@@ -53,27 +53,27 @@ class CaptionDataset(Dataset):
     # Convert index depending on the dataset split
     converted_index = self.split[i]
 
-    # Get the coresponding image for the caption
-    image = self.imgs[converted_index // self.captions_per_image]
+    # Get the corresponding image for the caption
+    image_data = self.imgs[converted_index // self.captions_per_image]
 
     # normalize the values to be between [0,1]
-    image = image / 255.
+    image_data = image_data / 255.
 
-    img = torch.FloatTensor(image)
+    image = torch.FloatTensor(image_data)
     if self.transform:
-      img = self.transform(img)
+      image = self.transform(image)
 
     caption = torch.LongTensor(self.captions[converted_index])
     caption_length = torch.LongTensor([self.caption_lengths[converted_index]])
 
     if self.split_type == SPLIT_TRAIN:
-      return img, caption, caption_length
+      return image, caption, caption_length
     else:
       # For validation and testing, return all captions for the image to calculate the metrics
       first_caption_index = (converted_index // self.captions_per_image) * self.captions_per_image
       last_caption_index = first_caption_index + self.captions_per_image
       all_captions_for_image = torch.LongTensor(self.captions[first_caption_index:last_caption_index])
-      return img, caption, caption_length, all_captions_for_image
+      return image, caption, caption_length, all_captions_for_image
 
   def __len__(self):
     return self.dataset_size
