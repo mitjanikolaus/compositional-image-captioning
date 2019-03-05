@@ -13,11 +13,11 @@ from datasets import CaptionDataset
 from nltk.translate.bleu_score import corpus_bleu
 
 from utils import SPLIT_TRAIN, SPLIT_VAL, adjust_learning_rate, save_checkpoint, \
-  AverageMeter, clip_gradients, accuracy, get_image_indices_splits_from_file, IMAGENET_IMAGES_MEAN, IMAGENET_IMAGES_STD, \
+  AverageMeter, clip_gradients, top_k_accuracy, get_image_indices_splits_from_file, IMAGENET_IMAGES_MEAN, IMAGENET_IMAGES_STD, \
   WORD_MAP_FILENAME, get_caption_without_special_tokens, TOKEN_START
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-cudnn.benchmark = True  # set to true only if inputs to model are fixed size; otherwise lot of computational overhead
+cudnn.benchmark = True  # improve performance if inputs to model are fixed size
 
 epochs_since_last_improvement = 0
 best_bleu4 = 0.
@@ -28,6 +28,7 @@ def main(data_folder, test_set_image_coco_ids_file, emb_dim=512, attention_dim=5
          batch_size=32, workers=1, encoder_lr=1e-4, decoder_lr=4e-4, grad_clip=5., alpha_c=1.,
          fine_tune_encoder=False, epochs_early_stopping=20, epochs_adjust_learning_rate=8,
          rate_adjust_learning_rate=0.8, val_set_size=0.1, checkpoint=None, print_freq=100):
+
   global best_bleu4, epochs_since_last_improvement
 
   print("Starting training on device: ", device)
@@ -79,6 +80,7 @@ def main(data_folder, test_set_image_coco_ids_file, emb_dim=512, attention_dim=5
     data_folder, test_set_image_coco_ids_file, val_set_size
   )
 
+  # Data loaders
   normalize = transforms.Normalize(mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD)
   train_images_loader = torch.utils.data.DataLoader(
     CaptionDataset(data_folder, train_images_split, SPLIT_TRAIN, transform=transforms.Compose([normalize])),
@@ -88,7 +90,6 @@ def main(data_folder, test_set_image_coco_ids_file, emb_dim=512, attention_dim=5
     batch_size=batch_size, shuffle=True, num_workers=workers, pin_memory=True)
 
   for epoch in range(start_epoch, epochs):
-
     if epochs_since_last_improvement >= epochs_early_stopping:
       print("No improvement since {} epochs, stopping training".format(epochs_since_last_improvement))
       break
@@ -98,16 +99,17 @@ def main(data_folder, test_set_image_coco_ids_file, emb_dim=512, attention_dim=5
         adjust_learning_rate(encoder_optimizer, rate_adjust_learning_rate)
 
     # One epoch's training
-    # train(train_images_loader,
-    #       encoder,
-    #       decoder,
-    #       loss_function,
-    #       encoder_optimizer,
-    #       decoder_optimizer,
-    #       epoch,
-    #       grad_clip,
-    #       alpha_c,
-    #       print_freq)
+    train(train_images_loader,
+          encoder,
+          decoder,
+          loss_function,
+          encoder_optimizer,
+          decoder_optimizer,
+          epoch,
+          grad_clip,
+          alpha_c,
+          print_freq
+    )
 
     # One epoch's validation
     current_bleu4 = validate(val_images_loader,
@@ -116,7 +118,8 @@ def main(data_folder, test_set_image_coco_ids_file, emb_dim=512, attention_dim=5
                              loss_function,
                              word_map,
                              alpha_c,
-                             print_freq)
+                             print_freq
+    )
 
     # Check if there was an improvement
     current_checkpoint_is_best = current_bleu4 > best_bleu4
@@ -144,25 +147,24 @@ def train(data_loader, encoder, decoder, loss_function, encoder_optimizer, decod
   decoder.train()
   encoder.train()
 
-  losses = AverageMeter()  # loss (per word decoded)
-  top5accuracies = AverageMeter()  # top5 accuracy
+  losses = AverageMeter()  # losses (per decoded word)
+  top5accuracies = AverageMeter()
 
-  # Batches
-  for i, (imgs, caps, caplens) in enumerate(data_loader):
-    # Move to GPU, if available
-    imgs = imgs.to(device)
-    caps = caps.to(device)
-    caplens = caplens.to(device)
+  # Loop over training batches
+  for i, (images, captions, caption_lengths) in enumerate(data_loader):
+    # Move data to GPU, if available
+    images = images.to(device)
+    captions = captions.to(device)
+    caption_lengths = caption_lengths.to(device)
 
-    # Forward prop.
-    imgs = encoder(imgs)
-    scores, caps_sorted, decode_lengths, alphas, sort_ind = decoder(imgs, caps, caplens)
+    # Forward propagation
+    images = encoder(images)
+    scores, caps_sorted, decode_lengths, alphas, sort_ind = decoder(images, captions, caption_lengths)
 
     # Since we decoded starting with <start>, the targets are all words after <start>, up to <end>
     targets = caps_sorted[:, 1:]
 
     # Remove timesteps that we didn't decode at, or are pads
-    # pack_padded_sequence is an easy trick to do this
     scores, _ = pack_padded_sequence(scores, decode_lengths, batch_first=True)
     targets, _ = pack_padded_sequence(targets, decode_lengths, batch_first=True)
 
@@ -172,7 +174,7 @@ def train(data_loader, encoder, decoder, loss_function, encoder_optimizer, decod
     # Add doubly stochastic attention regularization
     loss += alpha_c * ((1. - alphas.sum(dim=1)) ** 2).mean()
 
-    # Back prop.
+    # Back propagation
     decoder_optimizer.zero_grad()
     if encoder_optimizer:
       encoder_optimizer.zero_grad()
@@ -190,8 +192,8 @@ def train(data_loader, encoder, decoder, loss_function, encoder_optimizer, decod
       encoder_optimizer.step()
 
     # Keep track of metrics
-    top5accuracy = accuracy(scores, targets, 5)
     losses.update(loss.item(), sum(decode_lengths))
+    top5accuracy = top_k_accuracy(scores, targets, 5)
     top5accuracies.update(top5accuracy, sum(decode_lengths))
 
     # Print status
@@ -218,24 +220,23 @@ def validate(data_loader, encoder, decoder, criterion, word_map, alpha_c, print_
   target_captions = []
   generated_captions = []
 
-  # Batches
-  for i, (imgs, caps, caplens, allcaps) in enumerate(data_loader):
+  # Loop over batches
+  for i, (images, captions, caption_lengths, all_captions_for_image) in enumerate(data_loader):
 
-    # Move to device, if available
-    imgs = imgs.to(device)
-    caps = caps.to(device)
-    caplens = caplens.to(device)
+    # Move data to GPU, if available
+    images = images.to(device)
+    captions = captions.to(device)
+    caption_lengths = caption_lengths.to(device)
 
-    # Forward prop.
+    # Forward propagation
     if encoder:
-      imgs = encoder(imgs)
-    scores, caps_sorted, decode_lengths, alphas, sort_ind = decoder(imgs, caps, caplens)
+      images = encoder(images)
+    scores, caps_sorted, decode_lengths, alphas, sort_ind = decoder(images, captions, caption_lengths)
 
     # Since we decoded starting with <start>, the targets are all words after <start>, up to <end>
     targets = caps_sorted[:, 1:]
 
     # Remove timesteps that we didn't decode at, or are pads
-    # pack_padded_sequence is an easy trick to do this
     scores_copy = scores.clone()
     scores, _ = pack_padded_sequence(scores, decode_lengths, batch_first=True)
     targets, _ = pack_padded_sequence(targets, decode_lengths, batch_first=True)
@@ -248,7 +249,7 @@ def validate(data_loader, encoder, decoder, criterion, word_map, alpha_c, print_
 
     # Keep track of metrics
     losses.update(loss.item(), sum(decode_lengths))
-    top5accuracy = accuracy(scores, targets, 5)
+    top5accuracy = top_k_accuracy(scores, targets, 5)
     top5accuracies.update(top5accuracy, sum(decode_lengths))
 
     if i % print_freq == 0:
@@ -258,9 +259,9 @@ def validate(data_loader, encoder, decoder, criterion, word_map, alpha_c, print_
                                                                       loss=losses, top5=top5accuracies))
 
     # Target captions
-    allcaps = allcaps[sort_ind]  # images were sorted in the decoder
-    for j in range(allcaps.shape[0]):
-      img_captions = [get_caption_without_special_tokens(caption, word_map) for caption in allcaps[j].tolist()]
+    all_captions_for_image = all_captions_for_image[sort_ind]  # images were sorted in the decoder
+    for j in range(all_captions_for_image.shape[0]):
+      img_captions = [get_caption_without_special_tokens(caption, word_map) for caption in all_captions_for_image[j].tolist()]
       target_captions.append(img_captions)
 
     # Generated captions
@@ -270,7 +271,6 @@ def validate(data_loader, encoder, decoder, criterion, word_map, alpha_c, print_
 
     assert len(target_captions) == len(generated_captions)
 
-  # Calculate BLEU-4 scores
   bleu4 = corpus_bleu(target_captions, generated_captions)
 
   print(
