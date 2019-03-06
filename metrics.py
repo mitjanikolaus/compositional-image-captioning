@@ -1,5 +1,6 @@
 import json
 
+import numpy as np
 from utils import decode_caption
 
 
@@ -63,8 +64,8 @@ def adjective_noun_matches(target_captions, generated_captions, word_map):
     with open("data/brown.json", "r") as json_file:
         adjectives = set(json.load(json_file))
 
-    true_positives = 0
-    false_negatives = 0
+    true_positives = np.zeros(5)
+    false_negatives = np.zeros(5)
     for i, caption in enumerate(generated_captions):
         count = 0
         for target_caption in target_captions[i]:
@@ -75,24 +76,18 @@ def adjective_noun_matches(target_captions, generated_captions, word_map):
             if target_match:
                 count += 1
 
-        # If the adj-n pair is salient
-        if count >= 4:
-            caption = " ".join(decode_caption(caption, word_map))
-            _, _, match = contains_adjective_noun_pair(
-                nlp_pipeline, caption, nouns, adjectives
-            )
+        caption = " ".join(decode_caption(caption, word_map))
+        _, _, match = contains_adjective_noun_pair(
+            nlp_pipeline, caption, nouns, adjectives
+        )
+        for j in range(count):
             if match:
-                print(caption)
-                true_positives += 1
+                true_positives[j] += 1
             else:
-                false_negatives += 1
-
-        print("\n")
+                false_negatives[j] += 1
 
     print(true_positives)
     print(false_negatives)
     recall = true_positives / (true_positives + false_negatives)
     print(recall)
     return recall
-
-    # f_score = 2 * (precision * recall) / (precision + recall)
