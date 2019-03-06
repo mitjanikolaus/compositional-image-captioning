@@ -12,10 +12,6 @@ TOKEN_START = "<start>"
 TOKEN_END = "<end>"
 TOKEN_PADDING = "<pad>"
 
-SPLIT_TRAIN = "TRAIN"
-SPLIT_VAL = "VAL"
-SPLIT_TEST = "TEST"
-
 # Normalization for images (cf. https://pytorch-zh.readthedocs.io/en/latest/torchvision/models.html)
 IMAGENET_IMAGES_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_IMAGES_STD = [0.229, 0.224, 0.225]

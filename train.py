@@ -9,12 +9,10 @@ import torchvision.transforms as transforms
 from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence
 from models import Encoder, DecoderWithAttention
-from datasets import CaptionDataset
+from datasets import CaptionTrainDataset, CaptionTestDataset
 from nltk.translate.bleu_score import corpus_bleu
 
 from utils import (
-    SPLIT_TRAIN,
-    SPLIT_VAL,
     adjust_learning_rate,
     save_checkpoint,
     AverageMeter,
@@ -26,6 +24,7 @@ from utils import (
     WORD_MAP_FILENAME,
     get_caption_without_special_tokens,
     TOKEN_START,
+    TOKEN_END,
 )
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -93,6 +92,7 @@ def main(
             decoder_dim=decoder_dim,
             vocab_size=len(word_map),
             start_token=word_map[TOKEN_START],
+            end_token=word_map[TOKEN_END],
             dropout=dropout,
         )
         decoder_optimizer = torch.optim.Adam(
@@ -125,11 +125,8 @@ def main(
     # Data loaders
     normalize = transforms.Normalize(mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD)
     train_images_loader = torch.utils.data.DataLoader(
-        CaptionDataset(
-            data_folder,
-            train_images_split,
-            SPLIT_TRAIN,
-            transform=transforms.Compose([normalize]),
+        CaptionTrainDataset(
+            data_folder, train_images_split, transform=transforms.Compose([normalize])
         ),
         batch_size=batch_size,
         shuffle=True,
@@ -137,11 +134,8 @@ def main(
         pin_memory=True,
     )
     val_images_loader = torch.utils.data.DataLoader(
-        CaptionDataset(
-            data_folder,
-            val_images_split,
-            SPLIT_VAL,
-            transform=transforms.Compose([normalize]),
+        CaptionTestDataset(
+            data_folder, val_images_split, transform=transforms.Compose([normalize])
         ),
         batch_size=batch_size,
         shuffle=True,
@@ -284,8 +278,10 @@ def forward_prop(
 ):
     # Move data to GPU, if available
     images = images.to(device)
-    captions = captions.to(device)
-    caption_lengths = caption_lengths.to(device)
+    if captions is not None:
+        captions = captions.to(device)
+    if caption_lengths is not None:
+        caption_lengths = caption_lengths.to(device)
 
     # Forward propagation
     images = encoder(images)
@@ -331,11 +327,9 @@ def validate(
     generated_captions = []
 
     # Loop over batches
-    for i, (images, captions, caption_lengths, all_captions_for_image) in enumerate(
-        data_loader
-    ):
+    for i, (images, all_captions_for_image) in enumerate(data_loader):
         loss, decode_lengths, sort_ind, scores, top5accuracy = forward_prop(
-            images, captions, caption_lengths, encoder, decoder, loss_function, alpha_c
+            images, None, None, encoder, decoder, loss_function, alpha_c
         )
 
         # Keep track of metrics

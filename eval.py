@@ -46,11 +46,8 @@ def evaluate(
         data_folder, test_set_image_coco_ids_file
     )
     data_loader = torch.utils.data.DataLoader(
-        CaptionDataset(
-            data_folder,
-            test_images_split,
-            SPLIT_TEST,
-            transform=transforms.Compose([normalize]),
+        CaptionTestDataset(
+            data_folder, test_images_split, transform=transforms.Compose([normalize])
         ),
         batch_size=1,
         shuffle=True,
@@ -62,7 +59,7 @@ def evaluate(
     target_captions = []
     generated_captions = []
 
-    for i, (image, _, _, all_captions_for_image) in enumerate(
+    for i, (image, all_captions_for_image) in enumerate(
         tqdm(data_loader, desc="Evaluate with beam size " + str(beam_size))
     ):
 
