@@ -7,6 +7,7 @@ import torch.utils.data
 import torchvision.transforms as transforms
 from datasets import *
 from inference import generate_caption
+from metrics import adjective_noun_matches
 from utils import *
 from nltk.translate.bleu_score import corpus_bleu
 from tqdm import tqdm
@@ -19,6 +20,7 @@ def evaluate(
     data_folder,
     test_set_image_coco_ids_file,
     checkpoint,
+    metric=corpus_bleu,
     beam_size=1,
     max_caption_len=50,
 ):
@@ -90,11 +92,20 @@ def evaluate(
         # show_img(image.squeeze(0).numpy())
         assert len(target_captions) == len(generated_captions)
 
-    # Calculate BLEU-4 scores
-    bleu4 = corpus_bleu(target_captions, generated_captions)
+    # Calculate metric scores
+    metric_score = calculate_metric(
+        metric, target_captions, generated_captions, word_map
+    )
 
-    print("\nBLEU-4 score @ beam size of {} is {}".format(beam_size, bleu4))
-    return bleu4
+    print("\n{} score @ beam size {} is {}".format(metric, beam_size, metric_score))
+    return metric_score
+
+
+def calculate_metric(metric_name, target_captions, generated_captions, word_map):
+    if metric_name == "bleu4":
+        return corpus_bleu(target_captions, generated_captions)
+    elif metric_name == "adj-n":
+        return adjective_noun_matches(target_captions, generated_captions, word_map)
 
 
 def check_args(args):
@@ -117,6 +128,7 @@ def check_args(args):
         help="Path to checkpoint of trained model",
         default="best_checkpoint.pth.tar",
     )
+    parser.add_argument("--metric", help="Evaluation metric", default="bleu4")
     parser.add_argument(
         "-B", "--beam-size", help="Size of the decoding beam", type=int, default=1
     )
@@ -135,6 +147,7 @@ if __name__ == "__main__":
         data_folder=parsed_args.data_folder,
         test_set_image_coco_ids_file=parsed_args.test_set_image_coco_ids_file,
         checkpoint=parsed_args.checkpoint,
+        metric=parsed_args.metric,
         beam_size=parsed_args.beam_size,
         max_caption_len=parsed_args.max_caption_len,
     )
