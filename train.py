@@ -237,9 +237,28 @@ def train(
 
     # Loop over training batches
     for i, (images, captions, caption_lengths) in enumerate(data_loader):
-        loss, decode_lengths, _, _, top5accuracy = forward_prop(
+        caps_sorted, decode_lengths, sort_ind, scores, alphas = forward_prop(
             images, captions, caption_lengths, encoder, decoder, loss_function, alpha_c
         )
+
+        # Since we decoded starting with <start>, the targets are all words after <start>, up to <end>
+        targets = caps_sorted[:, 1:]
+
+        # Remove timesteps that we didn't decode at, or are pads
+        packed_scores, _ = pack_padded_sequence(
+            scores.clone(), decode_lengths, batch_first=True
+        )
+        packed_targets, _ = pack_padded_sequence(
+            targets, decode_lengths, batch_first=True
+        )
+
+        # Calculate loss
+        loss = loss_function(packed_scores, packed_targets)
+
+        # Add doubly stochastic attention regularization
+        loss += alpha_c * ((1.0 - alphas.sum(dim=1)) ** 2).mean()
+
+        top5accuracy = top_k_accuracy(packed_scores, packed_targets, 5)
 
         # Back propagation
         decoder_optimizer.zero_grad()
@@ -289,24 +308,7 @@ def forward_prop(
         images, captions, caption_lengths
     )
 
-    # Since we decoded starting with <start>, the targets are all words after <start>, up to <end>
-    targets = caps_sorted[:, 1:]
-
-    # Remove timesteps that we didn't decode at, or are pads
-    packed_scores, _ = pack_padded_sequence(
-        scores.clone(), decode_lengths, batch_first=True
-    )
-    packed_targets, _ = pack_padded_sequence(targets, decode_lengths, batch_first=True)
-
-    # Calculate loss
-    loss = loss_function(packed_scores, packed_targets)
-
-    # Add doubly stochastic attention regularization
-    loss += alpha_c * ((1.0 - alphas.sum(dim=1)) ** 2).mean()
-
-    top5accuracy = top_k_accuracy(packed_scores, packed_targets, 5)
-
-    return loss, decode_lengths, sort_ind, scores, top5accuracy
+    return caps_sorted, decode_lengths, sort_ind, scores, alphas
 
 
 def validate(
@@ -328,27 +330,14 @@ def validate(
 
     # Loop over batches
     for i, (images, all_captions_for_image) in enumerate(data_loader):
-        loss, decode_lengths, sort_ind, scores, top5accuracy = forward_prop(
+        caps_sorted, decode_lengths, _, scores, alphas = forward_prop(
             images, None, None, encoder, decoder, loss_function, alpha_c
         )
 
-        # Keep track of metrics
-        losses.update(loss.item(), sum(decode_lengths))
-        top5accuracies.update(top5accuracy, sum(decode_lengths))
-
         if i % print_freq == 0:
-            print(
-                "Validation: [Batch {0}/{1}]\t"
-                "Loss {loss.val:.4f} ({loss.avg:.4f})\t"
-                "Top-5 Accuracy {top5.val:.3f} ({top5.avg:.3f})\t".format(
-                    i, len(data_loader), loss=losses, top5=top5accuracies
-                )
-            )
+            print("Validation: [Batch {0}/{1}]\t".format(i, len(data_loader)))
 
         # Target captions
-        all_captions_for_image = all_captions_for_image[
-            sort_ind
-        ]  # images were sorted in the decoder
         for j in range(all_captions_for_image.shape[0]):
             img_captions = [
                 get_caption_without_special_tokens(caption, word_map)

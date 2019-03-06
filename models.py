@@ -246,18 +246,13 @@ class DecoderWithAttention(nn.Module):
         )  # (batch_size, num_pixels, encoder_dim)
         num_pixels = encoder_out.size(1)
 
-        # Sort input data by decreasing lengths to allow for decrease of batch size when sequences are complete
-        caption_lengths, sort_ind = caption_lengths.squeeze(1).sort(
-            dim=0, descending=True
-        )
-        encoder_out = encoder_out[sort_ind]
-
-        # Initialize LSTM state
-        decoder_hidden_state, decoder_cell_state = self.init_hidden_state(
-            encoder_out
-        )  # (batch_size, decoder_dim)
-
         if self.training:
+            # Sort input data by decreasing lengths to allow for decrease of batch size when sequences are complete
+            caption_lengths, sort_ind = caption_lengths.squeeze(1).sort(
+                dim=0, descending=True
+            )
+            encoder_out = encoder_out[sort_ind]
+
             encoded_captions = encoded_captions[sort_ind]
 
             # Embedding
@@ -269,7 +264,13 @@ class DecoderWithAttention(nn.Module):
             # So, decoding lengths are actual lengths - 1
             decode_lengths = (caption_lengths - 1).tolist()
         else:
+            sort_ind = None
             decode_lengths = [50]  # TODO
+
+        # Initialize LSTM state
+        decoder_hidden_state, decoder_cell_state = self.init_hidden_state(
+            encoder_out
+        )  # (batch_size, decoder_dim)
 
         # Tensors to hold word prediction scores and alphas
         predictions = torch.zeros(batch_size, max(decode_lengths), vocab_size).to(
@@ -312,11 +313,7 @@ class DecoderWithAttention(nn.Module):
             # Update the previously predicted words
             prev_predicted_words = torch.max(predictions_for_timestep, dim=1)[1]
             indices_of_complete_sequences.update(
-                set(
-                    torch.nonzero(prev_predicted_words == self.end_token)
-                    .view(-1)
-                    .tolist()
-                )
+                set(torch.nonzero(prev_predicted_words == 10003).view(-1).tolist())
             )
 
             predictions[:batch_size_t, t, :] = predictions_for_timestep
