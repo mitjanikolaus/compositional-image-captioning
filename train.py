@@ -234,6 +234,8 @@ def train(
 
     # Loop over training batches
     for i, (images, captions, caption_lengths) in enumerate(data_loader):
+        captions = captions.to(device)
+        caption_lengths = caption_lengths.to(device)
         scores, alphas, decode_lengths = forward_prop(
             images, captions, caption_lengths, encoder, decoder
         )
@@ -299,10 +301,6 @@ def train(
 def forward_prop(images, captions, caption_lengths, encoder, decoder):
     # Move data to GPU, if available
     images = images.to(device)
-    if captions is not None:
-        captions = captions.to(device)
-    if caption_lengths is not None:
-        caption_lengths = caption_lengths.to(device)
 
     # Forward propagation
     images = encoder(images)
