@@ -112,6 +112,8 @@ class DecoderWithAttention(nn.Module):
         vocab_size,
         start_token,
         end_token,
+        padding_token,
+        max_caption_len,
         encoder_dim=2048,
         dropout=0.5,
     ):
@@ -122,6 +124,8 @@ class DecoderWithAttention(nn.Module):
         :param vocab_size: size of vocabulary
         :param start_token: word map value of the sentence <start> token
         :param end_token: word map value of the sentence <end> token
+        :param padding_token: word map value of the sentence <pad> token
+        :param max_caption_len: maximum caption length (for decoding in evaluation mode)
         :param encoder_dim: feature size of encoded images
         :param dropout: dropout rate
         """
@@ -134,6 +138,8 @@ class DecoderWithAttention(nn.Module):
         self.vocab_size = vocab_size
         self.start_token = start_token
         self.end_token = end_token
+        self.padding_token = padding_token
+        self.max_caption_len = max_caption_len
         self.dropout = dropout
 
         self.attention = AttentionModule(encoder_dim, decoder_dim, attention_dim)
@@ -220,20 +226,18 @@ class DecoderWithAttention(nn.Module):
             decoder_input, (decoder_hidden_state, decoder_cell_state)
         )  # (batch_size, decoder_dim)
 
-        predictions = self.fc(
-            self.dropout(decoder_hidden_state)
-        )  # (batch_size, vocab_size)
+        scores = self.fc(self.dropout(decoder_hidden_state))  # (batch_size, vocab_size)
 
-        return predictions, alpha, decoder_hidden_state, decoder_cell_state
+        return scores, alpha, decoder_hidden_state, decoder_cell_state
 
-    def forward(self, encoder_out, encoded_captions, caption_lengths):
+    def forward(self, encoder_out, target_captions, caption_lengths):
         """
         Forward propagation.
 
         :param encoder_out: encoded images, shape: (batch_size, enc_image_size, enc_image_size, encoder_dim)
-        :param encoded_captions: encoded captions, shape: (batch_size, max_caption_length)
+        :param target_captions: encoded target captions, shape: (batch_size, max_caption_length)
         :param caption_lengths: caption lengths, shape: (batch_size, 1)
-        :return: scores for vocabulary, sorted encoded captions, decode lengths, weights, sort indices
+        :return: scores for vocabulary, decode lengths, weights
         """
 
         batch_size = encoder_out.size(0)
@@ -241,82 +245,74 @@ class DecoderWithAttention(nn.Module):
         vocab_size = self.vocab_size
 
         # Flatten image
-        encoder_out = encoder_out.view(
-            batch_size, -1, encoder_dim
-        )  # (batch_size, num_pixels, encoder_dim)
-        num_pixels = encoder_out.size(1)
+        encoder_out = encoder_out.view(batch_size, -1, encoder_dim)
 
         if self.training:
-            # Sort input data by decreasing lengths to allow for decrease of batch size when sequences are complete
-            caption_lengths, sort_ind = caption_lengths.squeeze(1).sort(
-                dim=0, descending=True
-            )
-            encoder_out = encoder_out[sort_ind]
+            # Embed the target captions (output shape: (batch_size, max_caption_length, embed_dim))
+            embedded_target_captions = self.embedding(target_captions)
 
-            encoded_captions = encoded_captions[sort_ind]
-
-            # Embedding
-            embeddings = self.embedding(
-                encoded_captions
-            )  # (batch_size, max_caption_length, embed_dim)
-
-            # We won't decode at the <end> position, since we've finished generating as soon as we generate <end>
-            # So, decoding lengths are actual lengths - 1
-            decode_lengths = (caption_lengths - 1).tolist()
+            # Decoding lengths are actual lengths - 1, as we don't decode at the <end> token position
+            decode_lengths = caption_lengths.squeeze(1) - 1
         else:
-            sort_ind = None
-            decode_lengths = [50]  # TODO
+            decode_lengths = torch.full(
+                (batch_size,), self.max_caption_len, dtype=torch.int64, device=device
+            )
 
-        # Initialize LSTM state
-        decoder_hidden_state, decoder_cell_state = self.init_hidden_state(
-            encoder_out
-        )  # (batch_size, decoder_dim)
+        # Initialize LSTM state (output shape: (batch_size, decoder_dim))
+        decoder_hidden_state, decoder_cell_state = self.init_hidden_state(encoder_out)
 
         # Tensors to hold word prediction scores and alphas
-        predictions = torch.zeros(batch_size, max(decode_lengths), vocab_size).to(
-            device
+        scores = torch.zeros(
+            (batch_size, max(decode_lengths), vocab_size), device=device
         )
-        alphas = torch.zeros(batch_size, max(decode_lengths), num_pixels).to(device)
+        alphas = torch.zeros(
+            batch_size, max(decode_lengths), encoder_out.size(1), device=device
+        )
 
         # At the start, all 'previous words' are the <start> token
         prev_predicted_words = torch.full(
             (batch_size,), self.start_token, dtype=torch.int64, device=device
         )
 
-        # At each time-step, decode by
-        # attention-weighing the encoder's output based on the decoder's previous hidden state output
-        # then generate a new word in the decoder with the previous word and the attention weighted encoding
-        indices_of_complete_sequences = set()
-        batch_size_t = batch_size
         for t in range(max(decode_lengths)):
             if self.training:
-                batch_size_t = sum([l > t for l in decode_lengths])
-                prev_word_embeddings = embeddings[:batch_size_t, t, :]
+                prev_word_embeddings = embedded_target_captions[:, t, :]
             else:
-                # Check if all sequences are finished:
-                if len(indices_of_complete_sequences) == batch_size:
-                    break
-                # TODO continue computation only for sequences that have not finished
-
-                # In evaluation mode, use the model's own output from the previous time step.
-                prev_word_embeddings = self.embedding(
-                    prev_predicted_words[:batch_size_t]
+                # Find all sequences where an <end> token has been produced in the last timestep
+                ind_end_token = (
+                    torch.nonzero(prev_predicted_words == self.end_token)
+                    .view(-1)
+                    .tolist()
                 )
 
-            predictions_for_timestep, alphas_for_timestep, decoder_hidden_state, decoder_cell_state = self.forward_step(
-                encoder_out[:batch_size_t],
-                decoder_hidden_state[:batch_size_t],
-                decoder_cell_state[:batch_size_t],
+                # Update the decode lengths accordingly
+                decode_lengths[ind_end_token] = torch.min(
+                    decode_lengths[ind_end_token],
+                    torch.full_like(decode_lengths[ind_end_token], t),
+                )
+
+                prev_word_embeddings = self.embedding(prev_predicted_words)
+
+            # Check if all sequences are finished:
+            indices_incomplete_sequences = torch.nonzero(decode_lengths > t).view(-1)
+            if len(indices_incomplete_sequences) == 0:
+                break
+
+            scores_for_timestep, alphas_for_timestep, decoder_hidden_state, decoder_cell_state = self.forward_step(
+                encoder_out,
+                decoder_hidden_state,
+                decoder_cell_state,
                 prev_word_embeddings,
             )
 
             # Update the previously predicted words
-            prev_predicted_words = torch.max(predictions_for_timestep, dim=1)[1]
-            indices_of_complete_sequences.update(
-                set(torch.nonzero(prev_predicted_words == 10003).view(-1).tolist())
-            )
+            prev_predicted_words = torch.max(scores_for_timestep, dim=1)[1]
 
-            predictions[:batch_size_t, t, :] = predictions_for_timestep
-            alphas[:batch_size_t, t, :] = alphas_for_timestep
+            scores[indices_incomplete_sequences, t, :] = scores_for_timestep[
+                indices_incomplete_sequences
+            ]
+            alphas[indices_incomplete_sequences, t, :] = alphas_for_timestep[
+                indices_incomplete_sequences
+            ]
 
-        return predictions, encoded_captions, decode_lengths, alphas, sort_ind
+        return scores, alphas, decode_lengths

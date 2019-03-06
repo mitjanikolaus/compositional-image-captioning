@@ -25,6 +25,7 @@ from utils import (
     get_caption_without_special_tokens,
     TOKEN_START,
     TOKEN_END,
+    TOKEN_PADDING,
 )
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -49,6 +50,7 @@ def main(
     decoder_lr=4e-4,
     grad_clip=5.0,
     alpha_c=1.0,
+    max_caption_len=50,
     fine_tune_encoder=False,
     epochs_early_stopping=20,
     epochs_adjust_learning_rate=8,
@@ -93,6 +95,8 @@ def main(
             vocab_size=len(word_map),
             start_token=word_map[TOKEN_START],
             end_token=word_map[TOKEN_END],
+            padding_token=word_map[TOKEN_PADDING],
+            max_caption_len=max_caption_len,
             dropout=dropout,
         )
         decoder_optimizer = torch.optim.Adam(
@@ -175,15 +179,8 @@ def main(
 
         # One epoch's validation
         current_bleu4 = validate(
-            val_images_loader,
-            encoder,
-            decoder,
-            loss_function,
-            word_map,
-            alpha_c,
-            print_freq,
+            val_images_loader, encoder, decoder, word_map, print_freq
         )
-
         # Check if there was an improvement
         current_checkpoint_is_best = current_bleu4 > best_bleu4
         if current_checkpoint_is_best:
@@ -237,19 +234,20 @@ def train(
 
     # Loop over training batches
     for i, (images, captions, caption_lengths) in enumerate(data_loader):
-        caps_sorted, decode_lengths, sort_ind, scores, alphas = forward_prop(
-            images, captions, caption_lengths, encoder, decoder, loss_function, alpha_c
+        scores, alphas, decode_lengths = forward_prop(
+            images, captions, caption_lengths, encoder, decoder
         )
 
         # Since we decoded starting with <start>, the targets are all words after <start>, up to <end>
-        targets = caps_sorted[:, 1:]
+        targets = captions[:, 1:]
 
         # Remove timesteps that we didn't decode at, or are pads
+        decode_lengths, sort_ind = decode_lengths.sort(dim=0, descending=True)
         packed_scores, _ = pack_padded_sequence(
-            scores.clone(), decode_lengths, batch_first=True
+            scores[sort_ind], decode_lengths, batch_first=True
         )
         packed_targets, _ = pack_padded_sequence(
-            targets, decode_lengths, batch_first=True
+            targets[sort_ind], decode_lengths, batch_first=True
         )
 
         # Calculate loss
@@ -291,10 +289,14 @@ def train(
                 )
             )
 
+    print(
+        "\n * LOSS - {loss.avg:.3f}, TOP-5 ACCURACY - {top5.avg:.3f}\n".format(
+            loss=losses, top5=top5accuracies
+        )
+    )
 
-def forward_prop(
-    images, captions, caption_lengths, encoder, decoder, loss_function, alpha_c
-):
+
+def forward_prop(images, captions, caption_lengths, encoder, decoder):
     # Move data to GPU, if available
     images = images.to(device)
     if captions is not None:
@@ -304,16 +306,10 @@ def forward_prop(
 
     # Forward propagation
     images = encoder(images)
-    scores, caps_sorted, decode_lengths, alphas, sort_ind = decoder(
-        images, captions, caption_lengths
-    )
-
-    return caps_sorted, decode_lengths, sort_ind, scores, alphas
+    return decoder(images, captions, caption_lengths)
 
 
-def validate(
-    data_loader, encoder, decoder, loss_function, word_map, alpha_c, print_freq
-):
+def validate(data_loader, encoder, decoder, word_map, print_freq):
     """
     Perform validation of one training epoch.
 
@@ -330,8 +326,8 @@ def validate(
 
     # Loop over batches
     for i, (images, all_captions_for_image) in enumerate(data_loader):
-        caps_sorted, decode_lengths, _, scores, alphas = forward_prop(
-            images, None, None, encoder, decoder, loss_function, alpha_c
+        scores, alphas, decode_lengths = forward_prop(
+            images, None, None, encoder, decoder
         )
 
         if i % print_freq == 0:
