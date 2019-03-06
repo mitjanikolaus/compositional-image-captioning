@@ -288,7 +288,7 @@ class DecoderWithAttention(nn.Module):
                 # Update the decode lengths accordingly
                 decode_lengths[ind_end_token] = torch.min(
                     decode_lengths[ind_end_token],
-                    torch.full_like(decode_lengths[ind_end_token], t),
+                    torch.full_like(decode_lengths[ind_end_token], t, device=device),
                 )
 
                 prev_word_embeddings = self.embedding(prev_predicted_words)
