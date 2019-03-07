@@ -92,9 +92,7 @@ def read_image(path):
     return img
 
 
-def get_splits_from_occurrences_data(
-    data_folder, occurrences_data_file, val_set_size=0
-):
+def get_splits_from_occurrences_data(occurrences_data_file, val_set_size=0):
     with open(occurrences_data_file, "r") as json_file:
         occurrences_data = json.load(json_file)
 
@@ -103,12 +101,10 @@ def get_splits_from_occurrences_data(
         for key, value in occurrences_data[OCCURRENCE_DATA].items()
         if value[PAIR_OCCURENCES] >= 1
     ]
-    # test_images_split = [str(id) for id in test_set_image_coco_ids]
 
-    h5py_file = h5py.File(os.path.join(data_folder, IMAGES_FILENAME), "r")
-    all_coco_ids = list(h5py_file.keys())
-
-    indices_without_test = list(set(all_coco_ids) - set(test_images_split))
+    indices_without_test = list(
+        set(occurrences_data[OCCURRENCE_DATA].keys()) - set(test_images_split)
+    )
 
     train_val_split = int((1 - val_set_size) * len(indices_without_test))
     train_images_split = indices_without_test[:train_val_split]

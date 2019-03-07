@@ -42,9 +42,7 @@ def evaluate(
     normalize = transforms.Normalize(mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD)
 
     # DataLoader
-    _, _, test_images_split = get_splits_from_occurrences_data(
-        data_folder, occurrences_data
-    )
+    _, _, test_images_split = get_splits_from_occurrences_data(occurrences_data)
     data_loader = torch.utils.data.DataLoader(
         CaptionTestDataset(
             data_folder, test_images_split, transform=transforms.Compose([normalize])
@@ -116,7 +114,7 @@ def check_args(args):
     parser.add_argument(
         "--occurrences-data",
         help="File containing occurrences statistics about adjective noun pairs",
-        default="data/brown_dogs.json",
+        default="data/brown_dog.json",
     )
     parser.add_argument(
         "-C",
