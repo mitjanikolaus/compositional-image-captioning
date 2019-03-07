@@ -1,7 +1,5 @@
 import json
-import os
 
-import h5py
 import torch
 
 from scipy.misc import imread, imresize
