@@ -18,7 +18,7 @@ from utils import (
     AverageMeter,
     clip_gradients,
     top_k_accuracy,
-    get_image_indices_splits_from_file,
+    get_splits_from_occurrences_data,
     IMAGENET_IMAGES_MEAN,
     IMAGENET_IMAGES_STD,
     WORD_MAP_FILENAME,
@@ -122,7 +122,7 @@ def main(
     loss_function = nn.CrossEntropyLoss().to(device)
 
     # Generate dataset splits
-    train_images_split, val_images_split, test_images_split = get_image_indices_splits_from_file(
+    train_images_split, val_images_split, test_images_split = get_splits_from_occurrences_data(
         data_folder, test_set_image_coco_ids_file, val_set_size
     )
 

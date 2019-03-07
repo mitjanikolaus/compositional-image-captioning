@@ -18,7 +18,7 @@ cudnn.benchmark = True  # improve performance if inputs to model are fixed size
 
 def evaluate(
     data_folder,
-    test_set_image_coco_ids_file,
+    occurrences_data,
     checkpoint,
     metric=corpus_bleu,
     beam_size=1,
@@ -42,8 +42,8 @@ def evaluate(
     normalize = transforms.Normalize(mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD)
 
     # DataLoader
-    _, _, test_images_split = get_image_indices_splits_from_file(
-        data_folder, test_set_image_coco_ids_file
+    _, _, test_images_split = get_splits_from_occurrences_data(
+        data_folder, occurrences_data
     )
     data_loader = torch.utils.data.DataLoader(
         CaptionTestDataset(
@@ -114,10 +114,9 @@ def check_args(args):
         default=os.path.expanduser("~/datasets/coco2014_preprocessed/"),
     )
     parser.add_argument(
-        "-T",
-        "--test-set-image-coco-ids-file",
-        help="File containing JSON-serialized list of image IDs for the test set",
-        default="data/white_cars.json",
+        "--occurrences-data",
+        help="File containing occurrences statistics about adjective noun pairs",
+        default="data/brown_dogs.json",
     )
     parser.add_argument(
         "-C",
@@ -142,7 +141,7 @@ if __name__ == "__main__":
     parsed_args = check_args(sys.argv[1:])
     evaluate(
         data_folder=parsed_args.data_folder,
-        test_set_image_coco_ids_file=parsed_args.test_set_image_coco_ids_file,
+        occurrences_data=parsed_args.occurrences_data,
         checkpoint=parsed_args.checkpoint,
         metric=parsed_args.metric,
         beam_size=parsed_args.beam_size,

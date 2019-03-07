@@ -1,68 +1,21 @@
 import json
 
 import numpy as np
-from utils import decode_caption
+from utils import decode_caption, NOUNS, ADJECTIVES, contains_adjective_noun_pair
 
 
-RELATION_NOMINAL_SUBJECT = "nsubj"
-RELATION_ADJECTIVAL_MODIFIER = "amod"
-RELATION_CONJUNCT = "conj"
-
-
-def contains_adjective_noun_pair(nlp_pipeline, caption, nouns, adjectives):
-    noun_is_present = False
-    adjective_is_present = False
-
-    doc = nlp_pipeline(caption)
-    sentence = doc.sentences[0]
-
-    for token in sentence.tokens:
-        if token.text in nouns:
-            noun_is_present = True
-        if token.text in adjectives:
-            adjective_is_present = True
-
-    dependencies = sentence.dependencies
-    caption_adjectives = {
-        d[2].text
-        for d in dependencies
-        if d[1] == RELATION_ADJECTIVAL_MODIFIER and d[0].text in nouns
-    } | {
-        d[0].text
-        for d in dependencies
-        if d[1] == RELATION_NOMINAL_SUBJECT and d[2].text in nouns
-    }
-    conjuncted_caption_adjectives = set()
-    for adjective in caption_adjectives:
-        conjuncted_caption_adjectives.update(
-            {
-                d[2].text
-                for d in dependencies
-                if d[1] == RELATION_CONJUNCT and d[0].text == adjective
-            }
-            | {
-                d[2].text
-                for d in dependencies
-                if d[1] == RELATION_ADJECTIVAL_MODIFIER and d[0].text == adjective
-            }
-        )
-
-    caption_adjectives |= conjuncted_caption_adjectives
-    combination_is_present = bool(adjectives & caption_adjectives)
-
-    return noun_is_present, adjective_is_present, combination_is_present
-
-
-def adjective_noun_matches(target_captions, generated_captions, word_map):
+def adjective_noun_matches(
+    target_captions, generated_captions, occurrences_data, word_map
+):
     import stanfordnlp
 
     # stanfordnlp.download('en', confirm_if_exists=True)
     nlp_pipeline = stanfordnlp.Pipeline()
 
-    with open("data/dogs.json", "r") as json_file:
-        nouns = set(json.load(json_file))
-    with open("data/brown.json", "r") as json_file:
-        adjectives = set(json.load(json_file))
+    nouns = set(occurrences_data[NOUNS])
+    adjectives = set(occurrences_data[ADJECTIVES])
+    # nouns = {'machine', 'auto', 'car', 'motorcar', 'automobile'}
+    # adjectives = {'white'}
 
     true_positives = np.zeros(5)
     false_negatives = np.zeros(5)
