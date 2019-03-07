@@ -87,6 +87,11 @@ def count_adjective_noun_pairs(
     with open(word_map_path, "r") as json_file:
         word_map = json.load(json_file)
 
+    with open(
+        os.path.join(preprocessed_data_folder, CAPTIONS_FILENAME), "r"
+    ) as json_file:
+        all_captions = json.load(json_file)
+
     first_noun = nouns[0]
     first_adjective = adjectives[0]
     catIds = coco.getCatIds(catNms=[first_noun])
@@ -94,19 +99,12 @@ def count_adjective_noun_pairs(
 
     print("Found {} {} images.".format(len(imgIds), nouns[0]))
 
-    print("Looking for pairs: {} - {}".format(adjectives, nouns))
-
     nouns = {noun for noun in nouns if noun in word_map}
     adjectives = {adjective for adjective in adjectives if adjective in word_map}
 
-    # Load captions
-    with open(
-        os.path.join(preprocessed_data_folder, CAPTIONS_FILENAME), "r"
-    ) as json_file:
-        all_captions = json.load(json_file)
+    print("Looking for pairs: {} - {}".format(adjectives, nouns))
 
     data = {}
-
     for i, coco_id in enumerate(tqdm(imgIds)):
         encoded_captions = all_captions[str(coco_id)]
 
