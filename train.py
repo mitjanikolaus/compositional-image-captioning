@@ -316,9 +316,6 @@ def validate(data_loader, encoder, decoder, word_map, print_freq):
     if encoder:
         encoder.eval()
 
-    losses = AverageMeter()
-    top5accuracies = AverageMeter()
-
     target_captions = []
     generated_captions = []
 
@@ -351,11 +348,7 @@ def validate(data_loader, encoder, decoder, word_map, print_freq):
 
     bleu4 = corpus_bleu(target_captions, generated_captions)
 
-    print(
-        "\n * LOSS - {loss.avg:.3f}, TOP-5 ACCURACY - {top5.avg:.3f}, BLEU-4 - {bleu}\n".format(
-            loss=losses, top5=top5accuracies, bleu=bleu4
-        )
-    )
+    print("\n * BLEU-4 - {bleu}\n".format(bleu=bleu4))
 
     return bleu4
 
