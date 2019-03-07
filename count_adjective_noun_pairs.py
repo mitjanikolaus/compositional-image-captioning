@@ -105,6 +105,10 @@ def count_adjective_noun_pairs(
     print("Looking for pairs: {} - {}".format(adjectives, nouns))
 
     data = {}
+    data["nouns"] = list(nouns)
+    data["adjectives"] = list(adjectives)
+
+    images = {}
     for i, coco_id in enumerate(tqdm(imgIds)):
         encoded_captions = all_captions[str(coco_id)]
 
@@ -118,10 +122,10 @@ def count_adjective_noun_pairs(
             for caption in encoded_captions
         ]
 
-        data[coco_id] = {}
-        data[coco_id]["pair_occurrences"] = 0
-        data[coco_id]["adjective_occurrences"] = 0
-        data[coco_id]["noun_occurrences"] = 0
+        images[coco_id] = {}
+        images[coco_id]["pair_occurrences"] = 0
+        images[coco_id]["adjective_occurrences"] = 0
+        images[coco_id]["noun_occurrences"] = 0
 
         for caption in decoded_captions:
             noun_is_present, adjective_is_present, combination_is_present = contains_adjective_noun_pair(
@@ -129,11 +133,13 @@ def count_adjective_noun_pairs(
             )
             if combination_is_present:
                 print(caption)
-                data[coco_id]["pair_occurrences"] += 1
+                images[coco_id]["pair_occurrences"] += 1
             if adjective_is_present:
-                data[coco_id]["adjective_occurrences"] += 1
+                images[coco_id]["adjective_occurrences"] += 1
             if noun_is_present:
-                data[coco_id]["noun_occurrences"] += 1
+                images[coco_id]["noun_occurrences"] += 1
+
+    data["images"] = images
 
     data_path = "{}_{}.json".format(first_adjective, first_noun)
     print("\nSaving results to {}".format(data_path))
@@ -144,21 +150,21 @@ def count_adjective_noun_pairs(
         noun_occurences = len(
             [
                 image_data
-                for image_data in data.values()
+                for image_data in images.values()
                 if image_data["noun_occurrences"] >= n
             ]
         )
         adjective_occurences = len(
             [
                 image_data
-                for image_data in data.values()
+                for image_data in images.values()
                 if image_data["adjective_occurrences"] >= n
             ]
         )
         pair_occurences = len(
             [
                 image_data
-                for image_data in data.values()
+                for image_data in images.values()
                 if image_data["pair_occurrences"] >= n
             ]
         )
