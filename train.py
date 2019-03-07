@@ -322,7 +322,7 @@ def validate(data_loader, encoder, decoder, word_map, print_freq):
     generated_captions = []
 
     # Loop over batches
-    for i, (images, all_captions_for_image) in enumerate(data_loader):
+    for i, (images, all_captions_for_image, _) in enumerate(data_loader):
         scores, alphas, decode_lengths = forward_prop(
             images, None, None, encoder, decoder
         )

@@ -1,35 +1,41 @@
 import json
 
 import numpy as np
-from utils import decode_caption, NOUNS, ADJECTIVES, contains_adjective_noun_pair
+from utils import (
+    decode_caption,
+    NOUNS,
+    ADJECTIVES,
+    contains_adjective_noun_pair,
+    OCCURRENCE_DATA,
+    PAIR_OCCURENCES,
+    get_caption_without_special_tokens,
+)
 
 
 def adjective_noun_matches(
-    target_captions, generated_captions, occurrences_data, word_map
+    target_captions, generated_captions, coco_ids, word_map, occurrences_data_file
 ):
     import stanfordnlp
 
     # stanfordnlp.download('en', confirm_if_exists=True)
     nlp_pipeline = stanfordnlp.Pipeline()
 
+    with open(occurrences_data_file, "r") as json_file:
+        occurrences_data = json.load(json_file)
+
     nouns = set(occurrences_data[NOUNS])
     adjectives = set(occurrences_data[ADJECTIVES])
-    # nouns = {'machine', 'auto', 'car', 'motorcar', 'automobile'}
-    # adjectives = {'white'}
 
     true_positives = np.zeros(5)
     false_negatives = np.zeros(5)
-    for i, caption in enumerate(generated_captions):
-        count = 0
-        for target_caption in target_captions[i]:
-            target_caption = " ".join(decode_caption(target_caption, word_map))
-            _, _, target_match = contains_adjective_noun_pair(
-                nlp_pipeline, target_caption, nouns, adjectives
-            )
-            if target_match:
-                count += 1
+    for coco_id, caption in zip(coco_ids, generated_captions):
+        count = occurrences_data[OCCURRENCE_DATA][coco_id][PAIR_OCCURENCES]
 
-        caption = " ".join(decode_caption(caption, word_map))
+        caption = " ".join(
+            decode_caption(
+                get_caption_without_special_tokens(caption, word_map), word_map
+            )
+        )
         _, _, match = contains_adjective_noun_pair(
             nlp_pipeline, caption, nouns, adjectives
         )
@@ -40,7 +46,7 @@ def adjective_noun_matches(
                 false_negatives[j] += 1
 
     print(true_positives)
-    print(false_negatives)
+    print((true_positives + false_negatives))
     recall = true_positives / (true_positives + false_negatives)
     print(recall)
     return recall

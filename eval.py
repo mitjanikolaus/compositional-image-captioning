@@ -56,8 +56,9 @@ def evaluate(
     # Lists for target captions and generated captions for each image
     target_captions = []
     generated_captions = []
+    coco_ids = []
 
-    for i, (image, all_captions_for_image) in enumerate(
+    for i, (image, all_captions_for_image, coco_id) in enumerate(
         tqdm(data_loader, desc="Evaluate with beam size " + str(beam_size))
     ):
 
@@ -83,24 +84,40 @@ def evaluate(
             get_caption_without_special_tokens(generated_caption, word_map)
         )
 
+        coco_ids.append(coco_id[0])
+
         # print(decode_caption(generated_caption, word_map))
         # show_img(image.squeeze(0).numpy())
         assert len(target_captions) == len(generated_captions)
 
     # Calculate metric scores
     metric_score = calculate_metric(
-        metric, target_captions, generated_captions, word_map
+        metric,
+        target_captions,
+        generated_captions,
+        coco_ids,
+        word_map,
+        occurrences_data,
     )
 
     print("\n{} score @ beam size {} is {}".format(metric, beam_size, metric_score))
     return metric_score
 
 
-def calculate_metric(metric_name, target_captions, generated_captions, word_map):
+def calculate_metric(
+    metric_name,
+    target_captions,
+    generated_captions,
+    coco_ids,
+    word_map,
+    occurrences_data,
+):
     if metric_name == "bleu4":
         return corpus_bleu(target_captions, generated_captions)
     elif metric_name == "adj-n":
-        return adjective_noun_matches(target_captions, generated_captions, word_map)
+        return adjective_noun_matches(
+            target_captions, generated_captions, coco_ids, word_map, occurrences_data
+        )
 
 
 def check_args(args):
