@@ -195,7 +195,9 @@ def main(
             )
 
         # Save checkpoint
+        name = os.path.basename(occurrences_data).split(".")[0]
         save_checkpoint(
+            name,
             epoch,
             epochs_since_last_improvement,
             encoder,
