@@ -278,8 +278,8 @@ def train(
             encoder_optimizer.step()
 
         # Keep track of metrics
-        losses.update(loss.item(), sum(decode_lengths))
-        top5accuracies.update(top5accuracy, sum(decode_lengths))
+        losses.update(loss.item(), sum(decode_lengths).item())
+        top5accuracies.update(top5accuracy, sum(decode_lengths).item())
 
         # Print status
         if i % print_freq == 0:
