@@ -96,4 +96,4 @@ class CaptionTestDataset(CaptionDataset):
         image = self.get_image_data(coco_id)
         all_captions_for_image = torch.LongTensor(self.captions[coco_id])
 
-        return image, all_captions_for_image
+        return image, all_captions_for_image, coco_id
