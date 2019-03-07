@@ -3,7 +3,6 @@ from torch.utils.data import Dataset
 import h5py
 import json
 import os
-import numpy as np
 
 from utils import IMAGES_FILENAME, CAPTIONS_FILENAME, CAPTION_LENGTHS_FILENAME
 
