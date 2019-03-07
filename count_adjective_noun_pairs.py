@@ -13,59 +13,18 @@ from utils import (
     CAPTIONS_FILENAME,
     decode_caption,
     get_caption_without_special_tokens,
+    PAIR_OCCURENCES,
+    ADJECTIVE_OCCURRENCES,
+    NOUN_OCCURRENCES,
+    NOUNS,
+    ADJECTIVES,
+    contains_adjective_noun_pair,
+    OCCURRENCE_DATA,
 )
 
 nltk.download("wordnet", quiet=True)
 
 # stanfordnlp.download('en', confirm_if_exists=True)
-
-RELATION_NOMINAL_SUBJECT = "nsubj"
-RELATION_ADJECTIVAL_MODIFIER = "amod"
-RELATION_CONJUNCT = "conj"
-
-
-def contains_adjective_noun_pair(nlp_pipeline, caption, nouns, adjectives):
-    noun_is_present = False
-    adjective_is_present = False
-
-    doc = nlp_pipeline(caption)
-    sentence = doc.sentences[0]
-
-    for token in sentence.tokens:
-        if token.text in nouns:
-            noun_is_present = True
-        if token.text in adjectives:
-            adjective_is_present = True
-
-    dependencies = sentence.dependencies
-    caption_adjectives = {
-        d[2].text
-        for d in dependencies
-        if d[1] == RELATION_ADJECTIVAL_MODIFIER and d[0].text in nouns
-    } | {
-        d[0].text
-        for d in dependencies
-        if d[1] == RELATION_NOMINAL_SUBJECT and d[2].text in nouns
-    }
-    conjuncted_caption_adjectives = set()
-    for adjective in caption_adjectives:
-        conjuncted_caption_adjectives.update(
-            {
-                d[2].text
-                for d in dependencies
-                if d[1] == RELATION_CONJUNCT and d[0].text == adjective
-            }
-            | {
-                d[2].text
-                for d in dependencies
-                if d[1] == RELATION_ADJECTIVAL_MODIFIER and d[0].text == adjective
-            }
-        )
-
-    caption_adjectives |= conjuncted_caption_adjectives
-    combination_is_present = bool(adjectives & caption_adjectives)
-
-    return noun_is_present, adjective_is_present, combination_is_present
 
 
 def count_adjective_noun_pairs(
@@ -105,10 +64,10 @@ def count_adjective_noun_pairs(
     print("Looking for pairs: {} - {}".format(adjectives, nouns))
 
     data = {}
-    data["nouns"] = list(nouns)
-    data["adjectives"] = list(adjectives)
+    data[NOUNS] = list(nouns)
+    data[ADJECTIVES] = list(adjectives)
 
-    images = {}
+    occurrence_data = {}
     for i, coco_id in enumerate(tqdm(imgIds)):
         encoded_captions = all_captions[str(coco_id)]
 
@@ -122,10 +81,10 @@ def count_adjective_noun_pairs(
             for caption in encoded_captions
         ]
 
-        images[coco_id] = {}
-        images[coco_id]["pair_occurrences"] = 0
-        images[coco_id]["adjective_occurrences"] = 0
-        images[coco_id]["noun_occurrences"] = 0
+        occurrence_data[coco_id] = {}
+        occurrence_data[coco_id][PAIR_OCCURENCES] = 0
+        occurrence_data[coco_id][ADJECTIVE_OCCURRENCES] = 0
+        occurrence_data[coco_id][NOUN_OCCURRENCES] = 0
 
         for caption in decoded_captions:
             noun_is_present, adjective_is_present, combination_is_present = contains_adjective_noun_pair(
@@ -133,13 +92,13 @@ def count_adjective_noun_pairs(
             )
             if combination_is_present:
                 print(caption)
-                images[coco_id]["pair_occurrences"] += 1
+                occurrence_data[coco_id][PAIR_OCCURENCES] += 1
             if adjective_is_present:
-                images[coco_id]["adjective_occurrences"] += 1
+                occurrence_data[coco_id][ADJECTIVE_OCCURRENCES] += 1
             if noun_is_present:
-                images[coco_id]["noun_occurrences"] += 1
+                occurrence_data[coco_id][NOUN_OCCURRENCES] += 1
 
-    data["images"] = images
+    data[OCCURRENCE_DATA] = occurrence_data
 
     data_path = "{}_{}.json".format(first_adjective, first_noun)
     print("\nSaving results to {}".format(data_path))
@@ -148,25 +107,13 @@ def count_adjective_noun_pairs(
 
     for n in range(1, 5):
         noun_occurences = len(
-            [
-                image_data
-                for image_data in images.values()
-                if image_data["noun_occurrences"] >= n
-            ]
+            [d for d in occurrence_data.values() if d[NOUN_OCCURRENCES] >= n]
         )
         adjective_occurences = len(
-            [
-                image_data
-                for image_data in images.values()
-                if image_data["adjective_occurrences"] >= n
-            ]
+            [d for d in occurrence_data.values() if d[ADJECTIVE_OCCURRENCES] >= n]
         )
         pair_occurences = len(
-            [
-                image_data
-                for image_data in images.values()
-                if image_data["pair_occurrences"] >= n
-            ]
+            [d for d in occurrence_data.values() if d[PAIR_OCCURENCES] >= n]
         )
 
         print(
