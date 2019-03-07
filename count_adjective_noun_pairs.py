@@ -105,7 +105,7 @@ def count_adjective_noun_pairs(
     with open(data_path, "w") as json_file:
         json.dump(data, json_file)
 
-    for n in range(1, 5):
+    for n in range(1, 6):
         noun_occurences = len(
             [d for d in occurrence_data.values() if d[NOUN_OCCURRENCES] >= n]
         )
