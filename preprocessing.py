@@ -17,7 +17,6 @@ from utils import (
     TOKEN_END,
     TOKEN_PADDING,
     read_image,
-    IMAGES_COCO_IDS_FILENAME,
     WORD_MAP_FILENAME,
     IMAGES_FILENAME,
     CAPTIONS_FILENAME,
@@ -92,12 +91,6 @@ def preprocess_images_and_captions(
         image_captions.append(captions)
         image_coco_ids.append(img["id"])
 
-    # Save image coco ids to JSON file
-    image_coco_ids_path = os.path.join(output_folder, IMAGES_COCO_IDS_FILENAME)
-    print("Saving image COCO IDs to {}".format(image_coco_ids_path))
-    with open(image_coco_ids_path, "w") as json_file:
-        json.dump(image_coco_ids, json_file)
-
     # Select the most frequent words
     words = [w for w, c in word_freq.most_common(vocabulary_size)]
 
@@ -116,14 +109,12 @@ def preprocess_images_and_captions(
         h5py_file.attrs["captions_per_image"] = captions_per_image
         h5py_file.attrs["max_caption_len"] = max_caption_len
 
-        image_dataset = h5py_file.create_dataset(
-            "images", (len(image_paths), 3, 256, 256), dtype="uint8"
-        )
+        encoded_captions = {}
+        caption_lengths = {}
 
-        encoded_captions = []
-        caption_lengths = []
-
-        for i, path in enumerate(tqdm(image_paths)):
+        for i, (path, coco_id) in enumerate(
+            tqdm(zip(image_paths, image_coco_ids), total=len(image_paths))
+        ):
 
             # Discard any additional captions
             captions = image_captions[i][:captions_per_image]
@@ -132,20 +123,27 @@ def preprocess_images_and_captions(
 
             # Read image and save it to hdf5 file
             img = read_image(path)
-            image_dataset[i] = img
+            h5py_file.create_dataset(
+                str(coco_id), (3, 256, 256), dtype="uint8", data=img
+            )
 
+            encoded_captions_for_image = []
+            encoded_caption_lengths_for_image = []
             for j, caption in enumerate(captions):
                 # Encode caption
                 encoded_caption = encode_caption(caption, word_map, max_caption_len)
-                encoded_captions.append(encoded_caption)
+                encoded_captions_for_image.append(encoded_caption)
 
                 # extend caption length by 2 for start and end of sentence tokens
                 caption_length = len(caption) + 2
-                caption_lengths.append(caption_length)
+                encoded_caption_lengths_for_image.append(caption_length)
+
+            encoded_captions[coco_id] = encoded_captions_for_image
+            caption_lengths[coco_id] = encoded_caption_lengths_for_image
 
         # Sanity check
         assert (
-            image_dataset.shape[0] * captions_per_image
+            len(h5py_file.keys()) * captions_per_image
             == len(encoded_captions)
             == len(caption_lengths)
         )

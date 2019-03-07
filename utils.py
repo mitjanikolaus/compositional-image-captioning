@@ -1,6 +1,7 @@
 import json
 import os
 
+import h5py
 import torch
 
 from scipy.misc import imread, imresize
@@ -19,7 +20,6 @@ IMAGENET_IMAGES_STD = [0.229, 0.224, 0.225]
 
 WORD_MAP_FILENAME = "word_map.json"
 IMAGES_FILENAME = "images.hdf5"
-IMAGES_COCO_IDS_FILENAME = "coco_ids.json"
 CAPTIONS_FILENAME = "captions.json"
 CAPTION_LENGTHS_FILENAME = "caption_lengths.json"
 
@@ -39,20 +39,15 @@ def read_image(path):
 def get_image_indices_splits_from_file(
     data_folder, test_set_image_coco_ids_file, val_set_size=0
 ):
-    image_coco_ids_file = os.path.join(data_folder, IMAGES_COCO_IDS_FILENAME)
-    with open(image_coco_ids_file, "r") as json_file:
-        image_coco_ids = json.load(json_file)
-
     with open(test_set_image_coco_ids_file, "r") as json_file:
         test_set_image_coco_ids = json.load(json_file)
 
-    test_images_split = [
-        image_coco_ids.index(coco_id) for coco_id in test_set_image_coco_ids
-    ]
+    test_images_split = [str(id) for id in test_set_image_coco_ids]
 
-    indices_without_test = list(
-        set(range(len(image_coco_ids))) - set(test_images_split)
-    )
+    h5py_file = h5py.File(os.path.join(data_folder, IMAGES_FILENAME), "r")
+    all_coco_ids = list(h5py_file.keys())
+
+    indices_without_test = list(set(all_coco_ids) - set(test_images_split))
 
     train_val_split = int((1 - val_set_size) * len(indices_without_test))
     train_images_split = indices_without_test[:train_val_split]

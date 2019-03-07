@@ -26,9 +26,6 @@ class CaptionDataset(Dataset):
 
         self.split = split
 
-        # Load references to images
-        self.imgs = self.h5py_file["images"]
-
         # Load captions
         with open(os.path.join(data_folder, CAPTIONS_FILENAME), "r") as json_file:
             self.captions = json.load(json_file)
@@ -45,8 +42,8 @@ class CaptionDataset(Dataset):
         # Set size of the dataset
         self.dataset_size = len(self.split)
 
-    def get_image_data(self, index):
-        image_data = self.imgs[index]
+    def get_image_data(self, coco_id):
+        image_data = self.h5py_file[coco_id].value
 
         # normalize the values to be between [0,1]
         image_data = image_data / 255.0
@@ -69,38 +66,21 @@ class CaptionTrainDataset(CaptionDataset):
     PyTorch training dataset that provides batches of images with a corresponding caption each.
     """
 
-    def __init__(self, data_folder, split, transform=None):
-        """
-        :param data_folder: folder where data files are stored
-        :param split: split, indices of images that should be included
-        :param transform: pytorch image transform pipeline
-        """
-
-        h5py_file = h5py.File(os.path.join(data_folder, IMAGES_FILENAME), "r")
-
-        captions_per_image = h5py_file.attrs["captions_per_image"]
-        # convert list of indices of image to list of indices of captions (include all captions for each image)
-        split = np.array(
-            [
-                np.arange(
-                    i * captions_per_image, i * captions_per_image + captions_per_image
-                )
-                for i in split
-            ]
-        ).flatten()
-
-        super(CaptionTrainDataset, self).__init__(data_folder, split, transform)
-
     def __getitem__(self, i):
         # Convert index depending on the dataset split
-        converted_index = self.split[i]
+        coco_id = self.split[i // self.captions_per_image]
+        caption_index = i % self.captions_per_image
 
-        image = self.get_image_data(converted_index // self.captions_per_image)
-
-        caption = torch.LongTensor(self.captions[converted_index])
-        caption_length = torch.LongTensor([self.caption_lengths[converted_index]])
+        image = self.get_image_data(coco_id)
+        caption = torch.LongTensor(self.captions[coco_id][caption_index])
+        caption_length = torch.LongTensor(
+            [self.caption_lengths[coco_id][caption_index]]
+        )
 
         return image, caption, caption_length
+
+    def __len__(self):
+        return self.dataset_size * self.captions_per_image
 
 
 class CaptionTestDataset(CaptionDataset):
@@ -109,19 +89,11 @@ class CaptionTestDataset(CaptionDataset):
 
     """
 
-    def __init__(self, data_folder, split, transform=None):
-        super(CaptionTestDataset, self).__init__(data_folder, split, transform)
-
     def __getitem__(self, i):
         # Convert index depending on the dataset split
-        converted_index = self.split[i]
+        coco_id = self.split[i]
 
-        image = self.get_image_data(converted_index)
+        image = self.get_image_data(coco_id)
+        all_captions_for_image = torch.LongTensor(self.captions[coco_id])
 
-        # Collect all available captions for the image and return them
-        first_caption_index = converted_index * self.captions_per_image
-        last_caption_index = first_caption_index + self.captions_per_image
-        all_captions_for_image = torch.LongTensor(
-            self.captions[first_caption_index:last_caption_index]
-        )
         return image, all_captions_for_image
