@@ -100,9 +100,11 @@ def get_splits_from_occurrences_data(occurrences_data_file, val_set_size=0):
         if value[PAIR_OCCURENCES] >= 1
     ]
 
-    indices_without_test = list(
-        set(occurrences_data[OCCURRENCE_DATA].keys()) - set(test_images_split)
-    )
+    indices_without_test = [
+        key
+        for key, value in occurrences_data[OCCURRENCE_DATA].items()
+        if value[PAIR_OCCURENCES] == 0
+    ]
 
     train_val_split = int((1 - val_set_size) * len(indices_without_test))
     train_images_split = indices_without_test[:train_val_split]
