@@ -30,7 +30,7 @@ nltk.download("wordnet", quiet=True)
 def count_adjective_noun_pairs(
     nouns_file, adjectives_file, preprocessed_data_folder, dataset_folder
 ):
-    # nlp_pipeline = stanfordnlp.Pipeline()
+    nlp_pipeline = stanfordnlp.Pipeline()
 
     dataType = "train2014"
 
