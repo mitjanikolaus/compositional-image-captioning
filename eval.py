@@ -17,12 +17,7 @@ cudnn.benchmark = True  # improve performance if inputs to model are fixed size
 
 
 def evaluate(
-    data_folder,
-    occurrences_data,
-    checkpoint,
-    metric=corpus_bleu,
-    beam_size=1,
-    max_caption_len=50,
+    data_folder, occurrences_data, checkpoint, metrics, beam_size=1, max_caption_len=50
 ):
     # Load model
     checkpoint = torch.load(checkpoint, map_location=device)
@@ -42,7 +37,7 @@ def evaluate(
     normalize = transforms.Normalize(mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD)
 
     # DataLoader
-    _, _, test_images_split = get_splits_from_occurrences_data(occurrences_data)
+    _, _, test_images_split = get_splits_from_occurrences_data(occurrences_data, 0.1)
     data_loader = torch.utils.data.DataLoader(
         CaptionTestDataset(
             data_folder, test_images_split, transform=transforms.Compose([normalize])
@@ -91,17 +86,16 @@ def evaluate(
         assert len(target_captions) == len(generated_captions)
 
     # Calculate metric scores
-    metric_score = calculate_metric(
-        metric,
-        target_captions,
-        generated_captions,
-        coco_ids,
-        word_map,
-        occurrences_data,
-    )
-
-    print("\n{} score @ beam size {} is {}".format(metric, beam_size, metric_score))
-    return metric_score
+    for metric in metrics:
+        metric_score = calculate_metric(
+            metric,
+            target_captions,
+            generated_captions,
+            coco_ids,
+            word_map,
+            occurrences_data,
+        )
+        print("\n{} score @ beam size {} is {}".format(metric, beam_size, metric_score))
 
 
 def calculate_metric(
@@ -139,7 +133,10 @@ def check_args(args):
         help="Path to checkpoint of trained model",
         default="best_checkpoint.pth.tar",
     )
-    parser.add_argument("--metric", help="Evaluation metric", default="bleu4")
+    parser.add_argument(
+        "--metrics", help="Evaluation metrics", nargs="+", default=["bleu4"]
+    )
+
     parser.add_argument(
         "-B", "--beam-size", help="Size of the decoding beam", type=int, default=1
     )
@@ -158,7 +155,7 @@ if __name__ == "__main__":
         data_folder=parsed_args.data_folder,
         occurrences_data=parsed_args.occurrences_data,
         checkpoint=parsed_args.checkpoint,
-        metric=parsed_args.metric,
+        metrics=parsed_args.metrics,
         beam_size=parsed_args.beam_size,
         max_caption_len=parsed_args.max_caption_len,
     )
