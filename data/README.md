@@ -1,9 +1,10 @@
 # captioning-models data
 
+## Numbers of matching adjective-noun pairs in the COCO dataset
 
-| Nouns | Adjectives | #Images annotated with noun | #Matches (Pairs) | #Matches (Nouns) |  #Matches (Adjectives) | #Captions for images annotated with noun | #Matches (Pairs) | #Matches (Nouns) |  #Matches (Adjectives)  
-|-------|------------|---------|------------------| -----------------|------------------------|---------|--------|---------|---------|
-| ['machine', 'auto', '**car**', 'motorcar', 'automobile'] | ['**white**'] | 8606 | 96 | 1564 | 1473 | 43046 | 138 | 3735 | 2152 |
-| ['dog', 'dogs', 'canine', 'canines', 'hounds', 'chihuahua', 'chihuahuas', 'puppy', 'puppies', 'husky', 'huskies', 'pug', 'pugs', 'bulldog', 'bulldogs', 'sheepdog', 'sheepdogs', 'collie', 'collies', 'poodle', 'poodles', 'terrier', 'terriers', 'labrador', 'labradors', 'corgi', 'corgis', 'dachshund', 'dachshunds', 'yorkie', 'yorkies', 'dalmatian', 'dalmatians', 'beagle', 'beagles'] | ['brown', 'brownish', 'dark-brown', 'light-brown'] | 3041 | 604 | 2746 | 709 | 15209 | 801 | 12292 | 964 |
-| ['mortal', 'individual', '**person**', 'soul', 'somebody', 'someone'] | ['immature', '**young**'] | 45174 | 285 | 11488 | 8100 | 225976 | 293 | 18537 | 18537 |
- 
+| Nouns | Adjectives | #Images annotated with noun | #Matches (N=1) |  #Matches (N=2) | #Matches (N=3) | #Matches (N=4) | #Matches (N=5) |
+|-------|------------|-----------------------------| ---------------|-----------------|----------------|----------------|----------------|
+| ['sheepdog', 'yorkie', 'dogs', 'puppy', 'husky', 'puppies', 'poodle', 'pugs', 'chihuahua', '**dog**', 'dalmatian', 'bulldog', 'terrier', 'collie', 'labrador', 'dachshund', 'pug', 'beagle', 'corgi'] | ['brown', 'brownish'] | 3041 | 603 | 164 | 32 | 3 | 0 |
+| ['sheepdog', 'yorkie', 'dogs', 'puppy', 'husky', 'puppies', 'poodle', 'pugs', 'chihuahua', '**dog**', 'dalmatian', 'bulldog', 'terrier', 'collie', 'labrador', 'dachshund', 'pug', 'beagle', 'corgi'] | ['least', 'small', 'narrow', 'mini', 'shorter', 'short', 'little', 'tiny', 'thin', 'skinny', 'compact', 'petite', 'smaller'] | 3041 | 666 | 264 | 95 | 34 | 5 |
+| ['trucks', 'truck', 'minivan', '**car**', 'cars', 'van', 'buses', 'bus', 'taxi', 'taxis', 'vans'] | ['**white**'] | 8606 | 429 | 153 | 59 | 20 | 3 |
+
