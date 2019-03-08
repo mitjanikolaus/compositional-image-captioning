@@ -20,6 +20,7 @@ def visualize_occurrences(occurrences_data_file):
                 if value[PAIR_OCCURENCES] > n
             ]
         )
+        print("Found {} matches for n >= {}".format(matches[n], n + 1))
 
     patches, texts, _ = plt.pie(matches, autopct="%1.2f")
     labels = ["N=1", "N=2", "N=3", "N=4", "N=5"]
