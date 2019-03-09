@@ -6,9 +6,11 @@ from utils import TOKEN_START, TOKEN_END
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def generate_caption(
+def generate_captions(
     encoder, decoder, img, word_map, beam_size=1, max_caption_len=50, store_alphas=False
 ):
+    """Generate and return the top k sequences using beam search."""
+
     k = beam_size
     vocab_size = len(word_map)
 
@@ -123,11 +125,19 @@ def generate_caption(
         if store_alphas:
             seqs_alpha = seqs_alpha[incomplete_inds]
 
-    index_of_best_sequence = complete_seqs_scores.index(max(complete_seqs_scores))
-    best_generated_sequence = complete_seqs[index_of_best_sequence]
-
+    sorted_sequences = [
+        sequence
+        for _, sequence in sorted(
+            zip(complete_seqs_scores, complete_seqs), reverse=True
+        )
+    ]
     if not store_alphas:
-        return best_generated_sequence
+        return sorted_sequences
     else:
-        alphas = complete_seqs_alpha[index_of_best_sequence]
-        return best_generated_sequence, alphas
+        sorted_alphas = [
+            alpha
+            for _, alpha in sorted(
+                zip(complete_seqs_scores, complete_seqs_alpha), reverse=True
+            )
+        ]
+        return sorted_sequences, sorted_alphas

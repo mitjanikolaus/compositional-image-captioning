@@ -11,7 +11,7 @@ import skimage.transform
 import argparse
 from PIL import Image
 
-from inference import generate_caption
+from inference import generate_captions
 from utils import (
     decode_caption,
     read_image,
@@ -90,9 +90,9 @@ def generate_and_visualize(checkpoint, data_folder, img_path, beam_size, smoothe
     image = image.unsqueeze(0)  # (1, 3, 256, 256)
 
     # Encode, decode with attention and beam search
-    seq, alphas = generate_caption(
+    seq, alphas = generate_captions(
         encoder, decoder, image, word_map, beam_size, store_alphas=True
-    )
+    )[0]
     alphas = torch.FloatTensor(alphas)
 
     # Visualize caption and attention of best sequence

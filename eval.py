@@ -6,7 +6,7 @@ import torch.optim
 import torch.utils.data
 import torchvision.transforms as transforms
 from datasets import *
-from inference import generate_caption
+from inference import generate_captions
 from metrics import recall_adjective_noun_pairs
 from utils import *
 from nltk.translate.bleu_score import corpus_bleu
@@ -66,7 +66,7 @@ def evaluate(
         )
 
         # Generated caption
-        generated_caption = generate_caption(
+        top_k_generated_captions = generate_captions(
             encoder,
             decoder,
             image,
@@ -75,9 +75,7 @@ def evaluate(
             max_caption_len,
             store_alphas=False,
         )
-        generated_captions.append(
-            get_caption_without_special_tokens(generated_caption, word_map)
-        )
+        generated_captions.append(top_k_generated_captions)
 
         coco_ids.append(coco_id[0])
 
@@ -107,6 +105,10 @@ def calculate_metric(
     occurrences_data,
 ):
     if metric_name == "bleu4":
+        generated_captions = [
+            get_caption_without_special_tokens(top_k_captions[0], word_map)
+            for top_k_captions in generated_captions
+        ]
         return corpus_bleu(target_captions, generated_captions)
     elif metric_name == "recall":
         return recall_adjective_noun_pairs(

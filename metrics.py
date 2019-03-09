@@ -28,19 +28,24 @@ def recall_adjective_noun_pairs(
 
     true_positives = np.zeros(5)
     false_negatives = np.zeros(5)
-    for coco_id, caption in zip(coco_ids, generated_captions):
+    for coco_id, top_k_captions in zip(coco_ids, generated_captions):
         count = occurrences_data[OCCURRENCE_DATA][coco_id][PAIR_OCCURENCES]
 
-        caption = " ".join(
-            decode_caption(
-                get_caption_without_special_tokens(caption, word_map), word_map
+        hit = False
+        for caption in top_k_captions:
+            caption = " ".join(
+                decode_caption(
+                    get_caption_without_special_tokens(caption, word_map), word_map
+                )
             )
-        )
-        _, _, match = contains_adjective_noun_pair(
-            nlp_pipeline, caption, nouns, adjectives
-        )
-        for j in range(count):
+            _, _, match = contains_adjective_noun_pair(
+                nlp_pipeline, caption, nouns, adjectives
+            )
             if match:
+                hit = True
+
+        for j in range(count):
+            if hit:
                 true_positives[j] += 1
             else:
                 false_negatives[j] += 1
