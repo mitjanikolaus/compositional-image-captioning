@@ -12,8 +12,8 @@ from utils import (
 )
 
 
-def adjective_noun_matches(
-    target_captions, generated_captions, coco_ids, word_map, occurrences_data_file
+def recall_adjective_noun_pairs(
+    generated_captions, coco_ids, word_map, occurrences_data_file
 ):
     import stanfordnlp
 
@@ -45,8 +45,5 @@ def adjective_noun_matches(
             else:
                 false_negatives[j] += 1
 
-    print(true_positives)
-    print((true_positives + false_negatives))
     recall = true_positives / (true_positives + false_negatives)
-    print(recall)
     return recall

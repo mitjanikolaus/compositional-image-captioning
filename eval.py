@@ -7,7 +7,7 @@ import torch.utils.data
 import torchvision.transforms as transforms
 from datasets import *
 from inference import generate_caption
-from metrics import adjective_noun_matches
+from metrics import recall_adjective_noun_pairs
 from utils import *
 from nltk.translate.bleu_score import corpus_bleu
 from tqdm import tqdm
@@ -108,9 +108,9 @@ def calculate_metric(
 ):
     if metric_name == "bleu4":
         return corpus_bleu(target_captions, generated_captions)
-    elif metric_name == "adj-n":
-        return adjective_noun_matches(
-            target_captions, generated_captions, coco_ids, word_map, occurrences_data
+    elif metric_name == "recall":
+        return recall_adjective_noun_pairs(
+            generated_captions, coco_ids, word_map, occurrences_data
         )
 
 
@@ -134,7 +134,11 @@ def check_args(args):
         default="best_checkpoint.pth.tar",
     )
     parser.add_argument(
-        "--metrics", help="Evaluation metrics", nargs="+", default=["bleu4"]
+        "--metrics",
+        help="Evaluation metrics",
+        nargs="+",
+        default=["bleu4"],
+        choices=["bleu4", "recall"],
     )
 
     parser.add_argument(
