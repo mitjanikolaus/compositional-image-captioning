@@ -5,6 +5,7 @@ import string
 import sys
 
 from collections import Counter
+from shutil import copy
 
 import h5py
 from nltk import word_tokenize
@@ -45,11 +46,15 @@ def encode_caption(caption, word_map, max_caption_len):
 
 
 def preprocess_images_and_captions(
-    dataset_folder, output_folder, vocabulary_size, captions_per_image
+    dataset_folder,
+    coco_split,
+    output_folder,
+    vocabulary_size,
+    captions_per_image,
+    existing_word_map_path,
 ):
-    data_type = "train2014"
 
-    annFile = "{}/annotations/captions_{}.json".format(dataset_folder, data_type)
+    annFile = "{}/annotations/captions_{}.json".format(dataset_folder, coco_split)
     coco = COCO(annFile)
 
     images = coco.loadImgs(coco.getImgIds())
@@ -85,22 +90,30 @@ def preprocess_images_and_captions(
             if len(caption) > max_caption_len:
                 max_caption_len = len(caption)
 
-        path = os.path.join(dataset_folder, data_type, img["file_name"])
+        path = os.path.join(dataset_folder, coco_split, img["file_name"])
 
         image_paths.append(path)
         image_captions.append(captions)
         image_coco_ids.append(img["id"])
 
-    # Select the most frequent words
-    words = [w for w, c in word_freq.most_common(vocabulary_size)]
+    if existing_word_map_path:
+        print("Loading existing word mapping from {}".format(existing_word_map_path))
+        with open(existing_word_map_path, "r") as json_file:
+            word_map = json.load(json_file)
 
-    # Create word map
-    word_map = create_word_map(words)
-    word_map_path = os.path.join(output_folder, WORD_MAP_FILENAME)
+        copy(existing_word_map_path, output_folder)
 
-    print("Saving word mapping to {}".format(word_map_path))
-    with open(word_map_path, "w") as file:
-        json.dump(word_map, file)
+    else:
+        # Select the most frequent words
+        words = [w for w, c in word_freq.most_common(vocabulary_size)]
+
+        # Create word map
+        word_map = create_word_map(words)
+        word_map_path = os.path.join(output_folder, WORD_MAP_FILENAME)
+
+        print("Saving new word mapping to {}".format(word_map_path))
+        with open(word_map_path, "w") as file:
+            json.dump(word_map, file)
 
     # Create hdf5 file and dataset for the images
     images_dataset_path = os.path.join(output_folder, IMAGES_FILENAME)
@@ -142,11 +155,7 @@ def preprocess_images_and_captions(
             caption_lengths[coco_id] = encoded_caption_lengths_for_image
 
         # Sanity check
-        assert (
-            len(h5py_file.keys()) * captions_per_image
-            == len(encoded_captions)
-            == len(caption_lengths)
-        )
+        assert len(h5py_file.keys()) == len(encoded_captions) == len(caption_lengths)
 
         # Save encoded captions and their lengths to JSON files
         captions_path = os.path.join(output_folder, CAPTIONS_FILENAME)
@@ -162,46 +171,49 @@ def preprocess_images_and_captions(
 def check_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-D",
         "--dataset-folder",
         help="Folder where the coco dataset is located",
         default=os.path.expanduser("~/datasets/coco2014/"),
     )
     parser.add_argument(
-        "-O",
+        "--coco-split",
+        help="Split of the COCO dataset that should be used ('train2014', 'val2014' or 'test2014')",
+        default="train2014",
+    )
+    parser.add_argument(
         "--output-folder",
         help="Folder in which the preprocessed data should be stored",
         default=os.path.expanduser("~/datasets/coco2014_preprocessed/"),
     )
     parser.add_argument(
-        "-V",
         "--vocabulary-size",
         help="Number of words that should be saved in the vocabulary",
         type=int,
         default=10000,
     )
     parser.add_argument(
-        "-C",
         "--captions-per-image",
         help="Number of captions per image. Additional captions are discarded.",
         type=int,
         default=5,
     )
+    parser.add_argument(
+        "--word-map",
+        help="Path to an existing word map file that should be used instead of creating a new one",
+    )
 
     parsed_args = parser.parse_args(args)
     print(parsed_args)
-    return (
-        parsed_args.dataset_folder,
-        parsed_args.output_folder,
-        parsed_args.vocabulary_size,
-        parsed_args.captions_per_image,
-    )
+    return parsed_args
 
 
 if __name__ == "__main__":
-    dataset_folder, output_folder, vocabulary_size, captions_per_image = check_args(
-        sys.argv[1:]
-    )
+    parsed_args = check_args(sys.argv[1:])
     preprocess_images_and_captions(
-        dataset_folder, output_folder, vocabulary_size, captions_per_image
+        parsed_args.dataset_folder,
+        parsed_args.coco_split,
+        parsed_args.output_folder,
+        parsed_args.vocabulary_size,
+        parsed_args.captions_per_image,
+        parsed_args.word_map,
     )
