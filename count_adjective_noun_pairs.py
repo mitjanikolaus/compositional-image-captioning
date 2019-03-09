@@ -28,13 +28,11 @@ nltk.download("wordnet", quiet=True)
 
 
 def count_adjective_noun_pairs(
-    nouns_file, adjectives_file, preprocessed_data_folder, dataset_folder
+    nouns_file, adjectives_file, preprocessed_data_folder, dataset_folder, coco_split
 ):
     nlp_pipeline = stanfordnlp.Pipeline()
 
-    dataType = "train2014"
-
-    annFile = "{}/annotations/instances_{}.json".format(dataset_folder, dataType)
+    annFile = "{}/annotations/instances_{}.json".format(dataset_folder, coco_split)
     coco = COCO(annFile)
 
     with open(nouns_file, "r") as json_file:
@@ -168,6 +166,11 @@ def check_args(args):
         help="Folder where the coco dataset is located (only the annotation file is read)",
         default=os.path.expanduser("~/datasets/coco2014/"),
     )
+    parser.add_argument(
+        "--coco_split",
+        help="Split of the COCO dataset that should be used ('train2014', 'val2014' or 'test2014')",
+        default="train2014",
+    )
 
     parsed_args = parser.parse_args(args)
     print(parsed_args)
@@ -181,4 +184,5 @@ if __name__ == "__main__":
         parsed_args.adjectives,
         parsed_args.preprocessed_data_folder,
         parsed_args.dataset_folder,
+        parsed_args.coco_split,
     )
