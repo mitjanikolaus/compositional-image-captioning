@@ -49,13 +49,11 @@ def visualize_attention(image_path, encoded_caption, alphas, word_map, smooth=Tr
             fontsize=12,
         )
         plt.imshow(image)
-        current_alpha = alphas[t, :]
+        current_alpha = alphas[t]
         if smooth:
-            alpha = skimage.transform.pyramid_expand(
-                current_alpha.numpy(), upscale=24, sigma=8
-            )
+            alpha = skimage.transform.pyramid_expand(current_alpha, upscale=24, sigma=8)
         else:
-            alpha = skimage.transform.resize(current_alpha.numpy(), [14 * 24, 14 * 24])
+            alpha = skimage.transform.resize(current_alpha, [14 * 24, 14 * 24])
         if t == 0:
             plt.imshow(alpha, alpha=0)
         else:
@@ -82,41 +80,36 @@ def generate_and_visualize(checkpoint, data_folder, img_path, beam_size, smoothe
 
     # Read image and process
     image = read_image(img_path)
-    image = image / 255.0
-    image = torch.FloatTensor(image)
+    image = torch.FloatTensor(image / 255.0)
     normalize = transforms.Normalize(mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD)
     transform = transforms.Compose([normalize])
-    image = transform(image)  # (3, 256, 256)
-    image = image.unsqueeze(0)  # (1, 3, 256, 256)
+    image = transform(image)
+    image = image.unsqueeze(0)
 
-    # Encode, decode with attention and beam search
     seq, alphas = generate_captions(
         encoder, decoder, image, word_map, beam_size, store_alphas=True
-    )[0]
-    alphas = torch.FloatTensor(alphas)
+    )
 
     # Visualize caption and attention of best sequence
-    visualize_attention(img_path, seq, alphas, word_map, smoothen)
+    visualize_attention(img_path, seq[0], np.array(alphas[0]), word_map, smoothen)
 
 
 def check_args(args):
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-I", "--image", help="Path to the image", required=True)
+    parser.add_argument("--image", help="Path to the image", required=True)
     parser.add_argument(
-        "-C",
         "--checkpoint",
         help="Path to checkpoint of trained model",
         default="best_checkpoint.pth.tar",
     )
     parser.add_argument(
-        "-D",
         "--data-folder",
         help="Folder where the preprocessed data is located (only the word map file is read)",
         default=os.path.expanduser("~/datasets/coco2014_preprocessed/"),
     )
     parser.add_argument(
-        "-B", "--beam_size", default=5, type=int, help="beam size for beam search"
+        "--beam-size", default=5, type=int, help="beam size for beam search"
     )
     parser.add_argument(
         "--dont_smoothen",
