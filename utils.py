@@ -147,9 +147,6 @@ def clip_gradients(optimizer, grad_clip):
                 param.grad.data.clamp_(-grad_clip, grad_clip)
 
 
-CHECKPOINT_BASE_NAME = "_checkpoint.pth.tar"
-
-
 def save_checkpoint(
     name,
     epoch,
@@ -182,12 +179,11 @@ def save_checkpoint(
         "encoder_optimizer": encoder_optimizer,
         "decoder_optimizer": decoder_optimizer,
     }
-    filename = name + CHECKPOINT_BASE_NAME
-    torch.save(state, filename)
+    torch.save(state, "checkpoint_" + name + ".pth.tar")
 
     # If this checkpoint is the best so far, store a copy so it doesn't get overwritten by a worse checkpoint
     if is_best:
-        torch.save(state, "best_" + name + CHECKPOINT_BASE_NAME)
+        torch.save(state, "checkpoint_" + name + "_best.pth.tar")
 
 
 class AverageMeter(object):
