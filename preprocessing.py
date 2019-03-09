@@ -177,7 +177,8 @@ def check_args(args):
     )
     parser.add_argument(
         "--coco-split",
-        help="Split of the COCO dataset that should be used ('train2014', 'val2014' or 'test2014')",
+        help="Split of the COCO dataset that should be used",
+        choices=["train2014", "val2014", "test2014"],
         default="train2014",
     )
     parser.add_argument(
