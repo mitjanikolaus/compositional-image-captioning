@@ -167,7 +167,7 @@ def check_args(args):
         default=os.path.expanduser("~/datasets/coco2014/"),
     )
     parser.add_argument(
-        "--coco_split",
+        "--coco-split",
         help="Split of the COCO dataset that should be used ('train2014', 'val2014' or 'test2014')",
         default="train2014",
     )
