@@ -28,7 +28,7 @@ def visualize_attention(image, encoded_caption, alphas, word_map, smoothen):
     Adapted from paper authors' repo: https://github.com/kelvinxu/arctic-captions/blob/master/alpha_visualization.ipynb
 
     """
-    if torch.min(image) < 0:
+    if torch.min(image).data < 0:
         image = invert_normalization(image)
 
     decoded_caption = decode_caption(encoded_caption, word_map)

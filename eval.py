@@ -32,6 +32,7 @@ def evaluate(
     beam_size,
     max_caption_len,
     visualize,
+    print_beam,
 ):
     # Load model
     checkpoint = torch.load(checkpoint, map_location=device)
@@ -89,6 +90,7 @@ def evaluate(
                 beam_size,
                 max_caption_len,
                 store_alphas=True,
+                print_beam=print_beam,
             )
             for caption, alpha in zip(top_k_generated_captions, alphas):
                 visualize_attention(
@@ -103,6 +105,7 @@ def evaluate(
                 beam_size,
                 max_caption_len,
                 store_alphas=False,
+                print_beam=print_beam,
             )
 
         generated_captions.append(top_k_generated_captions)
@@ -185,6 +188,12 @@ def check_args(args):
         default=False,
         action="store_true",
     )
+    parser.add_argument(
+        "--print-beam",
+        help="Print the decoding beam for every sample",
+        default=False,
+        action="store_true",
+    )
 
     parsed_args = parser.parse_args(args)
     print(parsed_args)
@@ -201,4 +210,5 @@ if __name__ == "__main__":
         beam_size=parsed_args.beam_size,
         max_caption_len=parsed_args.max_caption_len,
         visualize=parsed_args.visualize_attention,
+        print_beam=parsed_args.print_beam,
     )

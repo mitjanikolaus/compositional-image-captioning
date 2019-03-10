@@ -1,13 +1,26 @@
 import torch
 import torch.nn.functional as F
 
-from utils import TOKEN_START, TOKEN_END
+from utils import TOKEN_START, TOKEN_END, decode_caption
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
+def print_current_beam(top_k_sequences, word_map):
+    print("\n")
+    for sequence in top_k_sequences:
+        print(decode_caption(sequence.numpy(), word_map))
+
+
 def generate_captions(
-    encoder, decoder, img, word_map, beam_size=1, max_caption_len=50, store_alphas=False
+    encoder,
+    decoder,
+    img,
+    word_map,
+    beam_size=1,
+    max_caption_len=50,
+    store_alphas=False,
+    print_beam=False,
 ):
     """Generate and return the top k sequences using beam search."""
 
@@ -83,10 +96,15 @@ def generate_captions(
         prev_word_inds = top_k_words / vocab_size  # (k)
         next_word_inds = top_k_words % vocab_size  # (k)
 
-        # Add new words to sequences, alphas
+        # Add new words to sequences
         top_k_sequences = torch.cat(
             (top_k_sequences[prev_word_inds], next_word_inds.unsqueeze(1)), dim=1
         )  # (k, step+2)
+
+        if print_beam:
+            print_current_beam(top_k_sequences, word_map)
+
+        # Store the new alphas
         if store_alphas:
             alpha = alpha.view(
                 -1, enc_image_size, enc_image_size
