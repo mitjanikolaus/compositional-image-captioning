@@ -5,6 +5,7 @@ import torch
 from scipy.misc import imread, imresize
 import matplotlib.pyplot as plt
 import numpy as np
+from torchvision.transforms import transforms
 
 TOKEN_UNKNOWN = "<unk>"
 TOKEN_START = "<start>"
@@ -88,6 +89,15 @@ def read_image(path):
     assert img.shape == (3, 256, 256)
     assert np.max(img) <= 255
     return img
+
+
+def invert_normalization(image):
+    image = torch.FloatTensor(image)
+    inv_normalize = transforms.Normalize(
+        mean=(-1 * np.array(IMAGENET_IMAGES_MEAN) / np.array(IMAGENET_IMAGES_STD)),
+        std=(1 / np.array(IMAGENET_IMAGES_STD)),
+    )
+    return inv_normalize(image)
 
 
 def get_splits_from_occurrences_data(occurrences_data_file, val_set_size=0):

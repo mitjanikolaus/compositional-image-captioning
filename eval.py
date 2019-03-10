@@ -8,16 +8,30 @@ import torchvision.transforms as transforms
 from datasets import *
 from inference import generate_captions
 from metrics import recall_adjective_noun_pairs
-from utils import *
 from nltk.translate.bleu_score import corpus_bleu
 from tqdm import tqdm
+
+from utils import (
+    get_caption_without_special_tokens,
+    IMAGENET_IMAGES_MEAN,
+    WORD_MAP_FILENAME,
+    IMAGENET_IMAGES_STD,
+    get_splits_from_occurrences_data,
+)
+from visualize_attention import visualize_attention
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True  # improve performance if inputs to model are fixed size
 
 
 def evaluate(
-    data_folder, occurrences_data, checkpoint, metrics, beam_size=1, max_caption_len=50
+    data_folder,
+    occurrences_data,
+    checkpoint,
+    metrics,
+    beam_size,
+    max_caption_len,
+    visualize,
 ):
     # Load model
     checkpoint = torch.load(checkpoint, map_location=device)
@@ -65,16 +79,32 @@ def evaluate(
             ]
         )
 
-        # Generated caption
-        top_k_generated_captions = generate_captions(
-            encoder,
-            decoder,
-            image,
-            word_map,
-            beam_size,
-            max_caption_len,
-            store_alphas=False,
-        )
+        # Generate captions
+        if visualize:
+            top_k_generated_captions, alphas = generate_captions(
+                encoder,
+                decoder,
+                image,
+                word_map,
+                beam_size,
+                max_caption_len,
+                store_alphas=True,
+            )
+            for caption, alpha in zip(top_k_generated_captions, alphas):
+                visualize_attention(
+                    image.squeeze(0), caption, alpha, word_map, smoothen=True
+                )
+        else:
+            top_k_generated_captions = generate_captions(
+                encoder,
+                decoder,
+                image,
+                word_map,
+                beam_size,
+                max_caption_len,
+                store_alphas=False,
+            )
+
         generated_captions.append(top_k_generated_captions)
 
         coco_ids.append(coco_id[0])
@@ -149,6 +179,12 @@ def check_args(args):
     parser.add_argument(
         "-L", "--max-caption-len", help="Maximum caption length", type=int, default=50
     )
+    parser.add_argument(
+        "--visualize-attention",
+        help="Visualize the attention for every sample",
+        default=False,
+        action="store_true",
+    )
 
     parsed_args = parser.parse_args(args)
     print(parsed_args)
@@ -164,4 +200,5 @@ if __name__ == "__main__":
         metrics=parsed_args.metrics,
         beam_size=parsed_args.beam_size,
         max_caption_len=parsed_args.max_caption_len,
+        visualize=parsed_args.visualize_attention,
     )
