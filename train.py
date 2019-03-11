@@ -361,7 +361,7 @@ def check_args(args):
         "-D",
         "--data-folder",
         help="Folder where the preprocessed data is located",
-        default=os.path.expanduser("~/datasets/coco2014_preprocessed/"),
+        default=os.path.expanduser("../datasets/coco2014_preprocessed/"),
     )
     parser.add_argument(
         "--occurrences-data",

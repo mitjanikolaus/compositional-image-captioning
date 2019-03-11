@@ -173,7 +173,7 @@ def check_args(args):
     parser.add_argument(
         "--dataset-folder",
         help="Folder where the coco dataset is located",
-        default=os.path.expanduser("~/datasets/coco2014/"),
+        default=os.path.expanduser("../datasets/coco2014/"),
     )
     parser.add_argument(
         "--coco-split",
@@ -184,7 +184,7 @@ def check_args(args):
     parser.add_argument(
         "--output-folder",
         help="Folder in which the preprocessed data should be stored",
-        default=os.path.expanduser("~/datasets/coco2014_preprocessed/"),
+        default=os.path.expanduser("../datasets/coco2014_preprocessed/"),
     )
     parser.add_argument(
         "--vocabulary-size",

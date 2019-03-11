@@ -155,7 +155,7 @@ def check_args(args):
         "-D",
         "--data-folder",
         help="Folder where the preprocessed data is located",
-        default=os.path.expanduser("~/datasets/coco2014_preprocessed/"),
+        default=os.path.expanduser("../datasets/coco2014_preprocessed/"),
     )
     parser.add_argument(
         "--occurrences-data",
@@ -163,10 +163,7 @@ def check_args(args):
         default="data/brown_dog.json",
     )
     parser.add_argument(
-        "-C",
-        "--checkpoint",
-        help="Path to checkpoint of trained model",
-        default="best_checkpoint.pth.tar",
+        "-C", "--checkpoint", help="Path to checkpoint of trained model", required=True
     )
     parser.add_argument(
         "--metrics",
