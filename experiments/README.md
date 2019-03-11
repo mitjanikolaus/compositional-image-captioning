@@ -22,7 +22,7 @@ adjective-noun pair, the sample is counted as true positive
 
 ### Show, Attend and Tell
 
-### Baseline Performance
+#### Baseline Performance
 
 BLEU-4: 0.278
 
@@ -61,3 +61,18 @@ Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=
 ----------|--------| --------------| --------------| --------------| --------------| -------------
 1         | 0.259  | 0.017         | 0             | 0             | 0             | N/A
 5         | 0.329  | 0.346         | 0.437         | 0.8           | 1             | N/A
+
+The results suggest that the model does not generalise to unseen adjective-noun pairs. The recall for adjective-noun
+pairs of a model that was trained on data excluding the pairs is in all cases significantly lower compared to the recall of models that
+were trained without the pairs being excluded from the training set.
+
+#### Case studies
+
+To understand why the models are failing to describe the respective adjective-noun pairs, case studies are performed.
+We analyse samples where the agreement among the target captions is very high (n >= 4).
+
+The following files contain the visualized attention and the full decoding beam for every timestep for different
+samples:
+- [brown_dog_1.md](brown_dog_1.md)
+- [brown_dog_2.md](brown_dog_2.md)
+- [brown_dog_3.md](brown_dog_3.md)
