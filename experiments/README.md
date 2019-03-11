@@ -78,3 +78,14 @@ samples:
 - [brown_dog_3.md](brown_dog_3.md)
 - [white_car_1.md](white_car_1.md)
 - [white_car_2.md](white_car_2.md)
+- [white_car_3.md](white_car_3.md)
+- [white_car_4.md](white_car_4.md)
+- [white_car_5.md](white_car_5.md)
+- [white_car_6.md](white_car_6.md)
+
+The only case where the adjective-noun pair occurs in the generated sentences in [white_car_6.md](white_car_6.md). In
+this example, the car is very prominent in the image and has only one color. In some other examples, the adjective
+occurs early in the beam, but then disappears when it would be combined with the noun. In
+[white_car_3.md](white_car_3.md) we can see an example where the object has multiple colors, and the model describes
+only the color it has seen in relation to the object at training time.
+

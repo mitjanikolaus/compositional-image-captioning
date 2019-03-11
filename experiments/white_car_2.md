@@ -1,7 +1,7 @@
 # Attention
 ![Visualized Attention](white_car_attention_2.png)
 
-# Decoding Beam
+# Decoding Beam (k=5)
 ```
 ['<start>', 'a'] 				 Score: -0.28374719619750977
 ['<start>', 'two'] 				 Score: -2.820374011993408

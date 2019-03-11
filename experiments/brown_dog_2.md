@@ -1,7 +1,7 @@
 # Attention
 ![Visualized Attention](brown_dog_attention_2.png)
 
-# Decoding Beam
+# Decoding Beam (k=5)
 ```
 ['<start>', 'a'] 				 Score: -0.23932170867919922
 ['<start>', 'two'] 				 Score: -2.697922468185425
