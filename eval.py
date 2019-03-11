@@ -92,6 +92,7 @@ def evaluate(
                 store_alphas=True,
                 print_beam=print_beam,
             )
+            print("Image COCO ID: {}".format(coco_id[0]))
             for caption, alpha in zip(top_k_generated_captions, alphas):
                 visualize_attention(
                     image.squeeze(0), caption, alpha, word_map, smoothen=True
@@ -112,8 +113,6 @@ def evaluate(
 
         coco_ids.append(coco_id[0])
 
-        # print(decode_caption(generated_caption, word_map))
-        # show_img(image.squeeze(0).numpy())
         assert len(target_captions) == len(generated_captions)
 
     # Calculate metric scores
