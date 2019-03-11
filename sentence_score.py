@@ -85,13 +85,9 @@ def load_model_and_calculate_score(checkpoint, data_folder, image_id, sequences)
     h5py_file = h5py.File(os.path.join(data_folder, IMAGES_FILENAME), "r")
     image_data = h5py_file[image_id].value
 
-    # image = read_image(img_path)
     image = torch.FloatTensor(image_data / 255.0)
-
     normalize = transforms.Normalize(mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD)
-    image = normalize(image)
-
-    image = image.unsqueeze(0)
+    image = normalize(image).unsqueeze(0)
 
     for sequence in sequences:
         score = sequence_score(encoder, decoder, image, word_map, sequence)
