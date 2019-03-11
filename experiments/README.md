@@ -76,3 +76,5 @@ samples:
 - [brown_dog_1.md](brown_dog_1.md)
 - [brown_dog_2.md](brown_dog_2.md)
 - [brown_dog_3.md](brown_dog_3.md)
+- [white_car_1.md](white_car_1.md)
+- [white_car_2.md](white_car_2.md)
