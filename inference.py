@@ -6,10 +6,14 @@ from utils import TOKEN_START, TOKEN_END, decode_caption
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def print_current_beam(top_k_sequences, word_map):
+def print_current_beam(top_k_sequences, top_k_scores, word_map):
     print("\n")
-    for sequence in top_k_sequences:
-        print(decode_caption(sequence.numpy(), word_map))
+    for sequence, score in zip(top_k_sequences, top_k_scores):
+        print(
+            "{} \t\t\t\t Score: {}".format(
+                decode_caption(sequence.numpy(), word_map), score
+            )
+        )
 
 
 def generate_captions(
@@ -102,7 +106,7 @@ def generate_captions(
         )  # (k, step+2)
 
         if print_beam:
-            print_current_beam(top_k_sequences, word_map)
+            print_current_beam(top_k_sequences, top_k_scores, word_map)
 
         # Store the new alphas
         if store_alphas:
