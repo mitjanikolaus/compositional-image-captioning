@@ -42,9 +42,8 @@ Performance on "white car" data:
 
 Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
 ----------|--------| --------------| --------------| --------------| --------------| -------------
-1         | 0.271  | 0.136         | 0.239         | 0.364         | 0.5           | N/A
-5         | 0.297  | 0.367         | 0.493         | 0.772         | 1             | N/A
-
+1         | 0.271  | 0.134         | 0.247         | 0.348         | 0.5           | N/A
+5         | 0.299  | 0.362         | 0.493         | 0.783         | 1             | N/A
 
 #### Model trained with held out "white car"
 
@@ -52,15 +51,15 @@ Performance on held out test set ("white car"):
 
 Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
 ----------|--------| --------------| --------------| --------------| --------------| -------------
-1         | 0.251  | 0.041         | 0.045         | 0.045         | 0             | N/A
-5         | 0.227  | 0.086         | 0.104         | 0.182         | 0             | N/A
+1         | 0.251  | 0.031         | 0.041         | 0.087         | 0             | N/A
+5         | 0.230  | 0.085         | 0.109         | 0.174         | 0             | N/A
 
 Performance on "brown dog" data:
 
 Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
 ----------|--------| --------------| --------------| --------------| --------------| -------------
-1         | 0.259  | 0.017         | 0             | 0             | 0             | N/A
-5         | 0.329  | 0.346         | 0.437         | 0.8           | 1             | N/A
+1         | 0.266  | 0.035         | 0.046         | 0.133         | 0             | N/A
+5         | 0.311  | 0.377         | 0.552         | 0.8           | 1             | N/A
 
 The results suggest that the model does not generalise to unseen adjective-noun pairs. The recall for adjective-noun
 pairs of a model that was trained on data excluding the pairs is in all cases significantly lower compared to the recall of models that
