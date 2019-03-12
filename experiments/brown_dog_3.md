@@ -82,3 +82,59 @@
 
 ['<start>', 'a', 'dog', 'laying', 'on', 'top', 'of', 'a', 'bed', 'with', 'a', 'red', 'blanket', '<end>'] 				 Score: -9.7327880859375
 ```
+
+# Scores for alternatives of the top 5 sentences
+
+These examples show the scores for artificially created sentences that incorporate descriptions of colour. 
+
+```
+a dog that is laying on a bed 		Score: -5.760050296783447
+a brown dog that is laying on a bed 	Score: -10.965572357177734
+a black dog that is laying on a bed 	Score: -11.296646118164062
+a blue dog that is laying on a bed 	Score: -14.306922912597656
+a white dog that is laying on a bed 	Score: -12.557535171508789
+a red dog that is laying on a bed 	Score: -12.949856758117676
+a grey dog that is laying on a bed 	Score: -14.509344100952148
+a green dog that is laying on a bed 	Score: -12.29117202758789
+a yellow dog that is laying on a bed 	Score: -13.412904739379883
+
+a dog laying on top of a bed 		Score: -6.66064453125
+a brown dog laying on top of a bed 	Score: -9.49819278717041
+a black dog laying on top of a bed 	Score: -9.372003555297852
+a blue dog laying on top of a bed 	Score: -12.628198623657227
+a white dog laying on top of a bed 	Score: -10.980777740478516
+a red dog laying on top of a bed 	Score: -11.38990592956543
+a grey dog laying on top of a bed 	Score: -13.329254150390625
+a green dog laying on top of a bed 	Score: -11.096053123474121
+a yellow dog laying on top of a bed 	Score: -11.322017669677734
+
+a dog laying on a bed with a red blanket 	Score: -8.00438117980957
+a brown dog laying on a bed with a red blanket 	Score: -11.226739883422852
+a black dog laying on a bed with a red blanket 	Score: -11.604574203491211
+a blue dog laying on a bed with a red blanket 	Score: -14.406744003295898
+a white dog laying on a bed with a red blanket 	Score: -13.093822479248047
+a red dog laying on a bed with a red blanket 	Score: -13.356573104858398
+a grey dog laying on a bed with a red blanket 	Score: -14.714906692504883
+a green dog laying on a bed with a red blanket 	Score: -13.309267044067383
+a yellow dog laying on a bed with a red blanket Score: -13.692678451538086
+
+a dog is laying on a bed with a red blanket 		Score: -9.13542366027832
+a brown dog is laying on a bed with a red blanket 	Score: -14.595824241638184
+a black dog is laying on a bed with a red blanket 	Score: -14.581998825073242
+a blue dog is laying on a bed with a red blanket 	Score: -16.9733829498291
+a white dog is laying on a bed with a red blanket 	Score: -16.115829467773438
+a red dog is laying on a bed with a red blanket 	Score: -16.212539672851562
+a grey dog is laying on a bed with a red blanket 	Score: -18.137731552124023
+a green dog is laying on a bed with a red blanket 	Score: -15.937578201293945
+a yellow dog is laying on a bed with a red blanket 	Score: -17.068939208984375
+
+a dog laying on top of a bed with a red blanket 	Score: -9.732789993286133
+a brown dog laying on top of a bed with a red blanket 	Score: -13.437983512878418
+a black dog laying on top of a bed with a red blanket 	Score: -13.331596374511719
+a blue dog laying on top of a bed with a red blanket 	Score: -16.066267013549805
+a white dog laying on top of a bed with a red blanket 	Score: -15.028725624084473
+a red dog laying on top of a bed with a red blanket 	Score: -14.895257949829102
+a grey dog laying on top of a bed with a red blanket 	Score: -16.83128547668457
+a green dog laying on top of a bed with a red blanket 	Score: -14.637617111206055
+a yellow dog laying on top of a bed with a red blanket 	Score: -15.35109806060791
+```

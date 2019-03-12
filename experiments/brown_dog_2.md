@@ -88,3 +88,48 @@
 ['<start>', 'a', 'dog', 'is', 'looking', 'at', 'the', 'camera', 'while', 'sitting', 'on', 'the', 'floor', '<end>'] 				 Score: -10.63595199584961
 ['<start>', 'a', 'dog', 'is', 'looking', 'at', 'the', 'camera', 'while', 'sitting', 'on', 'a', 'carpet', '<end>'] 				 Score: -10.712976455688477
 ```
+# Scores for alternatives of the top 5 sentences
+
+These examples show the scores for artificially created sentences that incorporate descriptions of colour. 
+
+```
+a dog that is laying down in the grass 	        Score: -8.250770568847656
+a brown dog that is laying down in the grass 	Score: -14.98491096496582
+a black dog that is laying down in the grass 	Score: -11.933735847473145
+a blue dog that is laying down in the grass 	Score: -19.23875617980957
+a white dog that is laying down in the grass 	Score: -15.423270225524902
+a grey dog that is laying down in the grass 	Score: -16.999141693115234
+a green dog that is laying down in the grass 	Score: -17.972122192382812
+
+a dog is looking at the camera in a room 	    Score: -9.677206993103027
+a brown dog is looking at the camera in a room 	Score: -17.28998565673828
+a black dog is looking at the camera in a room 	Score: -14.42463207244873
+a blue dog is looking at the camera in a room 	Score: -21.52858543395996
+a white dog is looking at the camera in a room 	Score: -17.109485626220703
+a grey dog is looking at the camera in a room 	Score: -18.51006317138672
+a green dog is looking at the camera in a room 	Score: -20.706439971923828
+
+a dog is looking at the camera while sitting in a chair 	    Score: -10.632266998291016
+a brown dog is looking at the camera while sitting in a chair 	Score: -18.61996841430664
+a black dog is looking at the camera while sitting in a chair 	Score: -15.645105361938477
+a blue dog is looking at the camera while sitting in a chair 	Score: -22.995162963867188
+a white dog is looking at the camera while sitting in a chair 	Score: -18.2467041015625
+a grey dog is looking at the camera while sitting in a chair 	Score: -19.546621322631836
+a green dog is looking at the camera while sitting in a chair 	Score: -22.02511215209961
+
+a dog is looking at the camera while sitting on the floor 	        Score: -10.63595199584961
+a brown dog is looking at the camera while sitting on the floor 	Score: -18.455581665039062
+a black dog is looking at the camera while sitting on the floor 	Score: -15.501049041748047
+a blue dog is looking at the camera while sitting on the floor 	    Score: -22.585922241210938
+a white dog is looking at the camera while sitting on the floor 	Score: -18.043853759765625
+a grey dog is looking at the camera while sitting on the floor 	    Score: -19.436594009399414
+a green dog is looking at the camera while sitting on the floor 	Score: -21.62759780883789
+
+a dog is looking at the camera while sitting on a carpet 	    Score: -10.712980270385742
+a brown dog is looking at the camera while sitting on a carpet 	Score: -18.275360107421875
+a black dog is looking at the camera while sitting on a carpet 	Score: -15.422399520874023
+a blue dog is looking at the camera while sitting on a carpet 	Score: -22.59923553466797
+a white dog is looking at the camera while sitting on a carpet 	Score: -17.992198944091797
+a grey dog is looking at the camera while sitting on a carpet 	Score: -19.545663833618164
+a green dog is looking at the camera while sitting on a carpet 	Score: -21.586528778076172
+```
