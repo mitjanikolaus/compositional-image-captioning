@@ -52,7 +52,7 @@ def evaluate(
     normalize = transforms.Normalize(mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD)
 
     # DataLoader
-    _, _, test_images_split = get_splits_from_occurrences_data(occurrences_data, 0.1)
+    _, _, test_images_split = get_splits_from_occurrences_data(occurrences_data)
     data_loader = torch.utils.data.DataLoader(
         CaptionTestDataset(
             data_folder, test_images_split, transform=transforms.Compose([normalize])
