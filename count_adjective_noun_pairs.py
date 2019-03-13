@@ -3,8 +3,8 @@ import json
 import os
 import sys
 
+import h5py
 import stanfordnlp
-from pycocotools.coco import COCO
 import nltk
 from tqdm import tqdm
 
@@ -20,6 +20,7 @@ from utils import (
     ADJECTIVES,
     contains_adjective_noun_pair,
     OCCURRENCE_DATA,
+    IMAGES_FILENAME,
 )
 
 nltk.download("wordnet", quiet=True)
@@ -27,13 +28,8 @@ nltk.download("wordnet", quiet=True)
 # stanfordnlp.download('en', confirm_if_exists=True)
 
 
-def count_adjective_noun_pairs(
-    nouns_file, adjectives_file, preprocessed_data_folder, dataset_folder, coco_split
-):
+def count_adjective_noun_pairs(nouns_file, adjectives_file, preprocessed_data_folder):
     nlp_pipeline = stanfordnlp.Pipeline()
-
-    annFile = "{}/annotations/instances_{}.json".format(dataset_folder, coco_split)
-    coco = COCO(annFile)
 
     with open(nouns_file, "r") as json_file:
         nouns = json.load(json_file)
@@ -49,17 +45,15 @@ def count_adjective_noun_pairs(
     ) as json_file:
         all_captions = json.load(json_file)
 
+    images = h5py.File(os.path.join(preprocessed_data_folder, IMAGES_FILENAME), "r")
+
+    print("Looking for pairs: {} - {}".format(adjectives, nouns))
+
     first_noun = nouns[0]
     first_adjective = adjectives[0]
-    category_ids = coco.getCatIds(catNms=[first_noun])
-    matching_image_ids = coco.getImgIds(catIds=category_ids)
-
-    print("Found {} {} images.".format(len(matching_image_ids), nouns[0]))
 
     nouns = {noun for noun in nouns if noun in word_map}
     adjectives = {adjective for adjective in adjectives if adjective in word_map}
-
-    print("Looking for pairs: {} - {}".format(adjectives, nouns))
 
     data = {}
     data[NOUNS] = list(nouns)
@@ -67,16 +61,7 @@ def count_adjective_noun_pairs(
 
     occurrence_data = {}
 
-    non_matching_image_ids = set(coco.getImgIds()) - set(matching_image_ids)
-    for coco_id in non_matching_image_ids:
-        occurrence_data[coco_id] = {}
-        occurrence_data[coco_id][PAIR_OCCURENCES] = 0
-        occurrence_data[coco_id][
-            ADJECTIVE_OCCURRENCES
-        ] = 0  # TODO adjectives can be present!
-        occurrence_data[coco_id][NOUN_OCCURRENCES] = 0
-
-    for i, coco_id in enumerate(tqdm(matching_image_ids)):
+    for coco_id, image in tqdm(images.items()):
         encoded_captions = all_captions[str(coco_id)]
 
         # TODO is join with spaces good enough?
@@ -159,18 +144,7 @@ def check_args(args):
     parser.add_argument(
         "--preprocessed-data-folder",
         help="Folder where the preprocessed data is located (only the word map file is read)",
-        default=os.path.expanduser("~/datasets/coco2014_preprocessed/"),
-    )
-    parser.add_argument(
-        "--dataset-folder",
-        help="Folder where the coco dataset is located (only the annotation file is read)",
-        default=os.path.expanduser("~/datasets/coco2014/"),
-    )
-    parser.add_argument(
-        "--coco-split",
-        help="Split of the COCO dataset that should be used",
-        choices=["train2014", "val2014", "test2014"],
-        default="train2014",
+        default="../datasets/coco2014_preprocessed/",
     )
 
     parsed_args = parser.parse_args(args)
@@ -181,9 +155,5 @@ def check_args(args):
 if __name__ == "__main__":
     parsed_args = check_args(sys.argv[1:])
     count_adjective_noun_pairs(
-        parsed_args.nouns,
-        parsed_args.adjectives,
-        parsed_args.preprocessed_data_folder,
-        parsed_args.dataset_folder,
-        parsed_args.coco_split,
+        parsed_args.nouns, parsed_args.adjectives, parsed_args.preprocessed_data_folder
     )
