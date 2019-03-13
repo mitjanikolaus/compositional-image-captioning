@@ -16,10 +16,9 @@ def print_current_beam(top_k_sequences, top_k_scores, word_map):
         )
 
 
-def beam_search(
-    encoder,
+def beam_search_decode(
+    encoder_out,
     decoder,
-    img,
     word_map,
     beam_size=1,
     max_caption_len=50,
@@ -31,11 +30,7 @@ def beam_search(
     current_beam_width = beam_size
     vocab_size = len(word_map)
 
-    # Move image to GPU device, if available
-    image = img.to(device)
-
     # Encode
-    encoder_out = encoder(image)  # (1, enc_image_size, enc_image_size, encoder_dim)
     enc_image_size = encoder_out.size(1)
     encoder_dim = encoder_out.size(3)
 

@@ -10,7 +10,7 @@ import matplotlib.cm as cm
 import skimage.transform
 import argparse
 
-from beam_search import beam_search
+from beam_search import beam_search_decode
 from utils import (
     decode_caption,
     WORD_MAP_FILENAME,
@@ -88,10 +88,11 @@ def generate_and_visualize(checkpoint, data_folder, image_id, beam_size, smoothe
 
     # image = read_image(img_path)
     image = torch.FloatTensor(image_data / 255.0)
-    image = image.unsqueeze(0)
+    image = image.unsqueeze(0).to(device)
 
-    seq, alphas = beam_search(
-        encoder, decoder, image, word_map, beam_size, store_alphas=True
+    encoder_out = encoder(image)
+    seq, alphas = beam_search_decode(
+        encoder_out, decoder, word_map, beam_size, store_alphas=True
     )
 
     # Visualize caption and attention of best sequence
