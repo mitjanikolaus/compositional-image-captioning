@@ -81,3 +81,49 @@
 
 ['<start>', 'a', 'dog', 'laying', 'on', 'a', 'bed', 'next', 'to', 'a', 'large', 'dog', '<end>'] 				 Score: -10.77614688873291
 ```
+
+# Scores for alternatives of the top 5 sentences
+
+These examples show the scores for artificially created sentences that incorporate descriptions of colour. 
+
+```
+a dog laying on a bed with a blanket 	    Score: -9.05959701538086
+a brown dog laying on a bed with a blanket 	Score: -11.476841926574707
+a black dog laying on a bed with a blanket 	Score: -11.563711166381836
+a blue dog laying on a bed with a blanket 	Score: -15.399979591369629
+a white dog laying on a bed with a blanket 	Score: -14.829680442810059
+a grey dog laying on a bed with a blanket 	Score: -15.881896018981934
+a green dog laying on a bed with a blanket 	Score: -14.015592575073242
+
+a dog laying on a bed next to a dog 	    Score: -8.734220504760742
+a brown dog laying on a bed next to a dog 	Score: -11.877744674682617
+a black dog laying on a bed next to a dog 	Score: -11.634078979492188
+a blue dog laying on a bed next to a dog 	Score: -14.087688446044922
+a white dog laying on a bed next to a dog 	Score: -14.918807983398438
+a grey dog laying on a bed next to a dog 	Score: -15.778400421142578
+a green dog laying on a bed next to a dog 	Score: -14.039535522460938
+
+a dog laying on a bed next to a pillow 	        Score: -8.82579231262207
+a brown dog laying on a bed next to a pillow 	Score: -11.157829284667969
+a black dog laying on a bed next to a pillow 	Score: -11.538373947143555
+a blue dog laying on a bed next to a pillow 	Score: -15.310003280639648
+a white dog laying on a bed next to a pillow 	Score: -14.751129150390625
+a grey dog laying on a bed next to a pillow 	Score: -15.897743225097656
+a green dog laying on a bed next to a pillow 	Score: -14.07583999633789
+
+a dog laying on a bed with a red blanket 	    Score: -8.893169403076172
+a brown dog laying on a bed with a red blanket 	Score: -11.271944999694824
+a black dog laying on a bed with a red blanket 	Score: -11.556838989257812
+a blue dog laying on a bed with a red blanket 	Score: -14.83508014678955
+a white dog laying on a bed with a red blanket 	Score: -14.641864776611328
+a grey dog laying on a bed with a red blanket 	Score: -15.70083999633789
+a green dog laying on a bed with a red blanket 	Score: -13.989049911499023
+
+a dog laying on a bed next to a large dog 	        Score: -10.776144027709961
+a brown dog laying on a bed next to a large dog 	Score: -14.340839385986328
+a black dog laying on a bed next to a large dog 	Score: -13.913240432739258
+a blue dog laying on a bed next to a large dog 	    Score: -16.135845184326172
+a white dog laying on a bed next to a large dog 	Score: -17.19634246826172
+a grey dog laying on a bed next to a large dog 	    Score: -17.981155395507812
+a green dog laying on a bed next to a large dog 	Score: -16.31243896484375
+```
