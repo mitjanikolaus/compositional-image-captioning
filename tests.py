@@ -40,7 +40,7 @@ class UtilsTests(unittest.TestCase):
             contains_adjective_noun_pair(self.nlp_pipeline, caption, nouns, adjectives),
         )
 
-    def ttest_contains_adjective_noun_pair_hyphen_2(self):
+    def test_contains_adjective_noun_pair_hyphen_2(self):
         caption = "a blue-white car is driving down the street"
         nouns = {"car"}
         adjectives = {"white"}
