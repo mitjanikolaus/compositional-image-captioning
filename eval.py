@@ -6,7 +6,7 @@ import torch.optim
 import torch.utils.data
 import torchvision.transforms as transforms
 from datasets import *
-from inference import generate_captions
+from beam_search import beam_search
 from metrics import recall_adjective_noun_pairs
 from nltk.translate.bleu_score import corpus_bleu
 from tqdm import tqdm
@@ -82,7 +82,7 @@ def evaluate(
 
         # Generate captions
         if visualize:
-            top_k_generated_captions, alphas = generate_captions(
+            top_k_generated_captions, alphas = beam_search(
                 encoder,
                 decoder,
                 image,
@@ -98,7 +98,7 @@ def evaluate(
                     image.squeeze(0), caption, alpha, word_map, smoothen=True
                 )
         else:
-            top_k_generated_captions = generate_captions(
+            top_k_generated_captions = beam_search(
                 encoder,
                 decoder,
                 image,

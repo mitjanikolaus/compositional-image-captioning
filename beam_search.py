@@ -16,7 +16,7 @@ def print_current_beam(top_k_sequences, top_k_scores, word_map):
         )
 
 
-def generate_captions(
+def beam_search(
     encoder,
     decoder,
     img,
