@@ -10,5 +10,7 @@ dog | big | 3041 | 350 | 73 | 10 | 0 | 0
 cat | small | 2818 | 255 | 56 | 15 | 2 | 0
 cat | big | 2818 | 213 | 28 | 7 | 1 | 0
 car | white | 8606 | 439 | 158 | 66 | 23 | 3
+car | big | 8606 | 471 | 104 | 27 | 5 | 0
+car | small | 8606 | 166 | 31 | 10 | 3 | 1
 
 Captions are counted as matches also when one of the synonyms for the respective adjective or nouns is present.
