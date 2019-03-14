@@ -306,7 +306,10 @@ def forward_prop(images, captions, caption_lengths, encoder, decoder):
 
     # Forward propagation
     images = encoder(images)
-    return decoder(images, captions, caption_lengths)
+
+    # Decoding lengths are actual lengths - 1, as we don't decode at the <end> token position
+    decode_lengths = caption_lengths.squeeze(1) - 1
+    return decoder(images, captions, decode_lengths)
 
 
 def validate(data_loader, encoder, decoder, word_map, print_freq):

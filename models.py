@@ -230,13 +230,13 @@ class DecoderWithAttention(nn.Module):
 
         return scores, alpha, decoder_hidden_state, decoder_cell_state
 
-    def forward(self, encoder_out, target_captions, caption_lengths):
+    def forward(self, encoder_out, target_captions, decode_lengths):
         """
         Forward propagation.
 
         :param encoder_out: encoded images, shape: (batch_size, enc_image_size, enc_image_size, encoder_dim)
         :param target_captions: encoded target captions, shape: (batch_size, max_caption_length)
-        :param caption_lengths: caption lengths, shape: (batch_size, 1)
+        :param decode_lengths: caption lengths, shape: (batch_size, 1)
         :return: scores for vocabulary, decode lengths, weights
         """
 
@@ -251,8 +251,6 @@ class DecoderWithAttention(nn.Module):
             # Embed the target captions (output shape: (batch_size, max_caption_length, embed_dim))
             embedded_target_captions = self.embedding(target_captions)
 
-            # Decoding lengths are actual lengths - 1, as we don't decode at the <end> token position
-            decode_lengths = caption_lengths.squeeze(1) - 1
         else:
             decode_lengths = torch.full(
                 (batch_size,), self.max_caption_len, dtype=torch.int64, device=device
