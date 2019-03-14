@@ -19,6 +19,7 @@ IMAGENET_IMAGES_STD = [0.229, 0.224, 0.225]
 
 WORD_MAP_FILENAME = "word_map.json"
 IMAGES_FILENAME = "images.hdf5"
+BOTTOM_UP_FEATURES_FILENAME = "bottom_up_features.hdf5"
 CAPTIONS_FILENAME = "captions.json"
 CAPTION_LENGTHS_FILENAME = "caption_lengths.json"
 
@@ -161,12 +162,12 @@ def save_checkpoint(
     name,
     epoch,
     epochs_since_improvement,
-    encoder,
-    decoder,
-    encoder_optimizer,
-    decoder_optimizer,
     bleu4,
     is_best,
+    decoder,
+    encoder=None,
+    encoder_optimizer=None,
+    decoder_optimizer=None,
 ):
     """
     Save a model checkpoint.
