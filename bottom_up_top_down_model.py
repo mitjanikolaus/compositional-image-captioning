@@ -17,16 +17,18 @@ def one_hot(num_classes, index):
 class Decoder(nn.Module):
     def __init__(
         self,
-        image_features_size,
         word_map,
         teacher_forcing_ratio,
+        image_features_size=2048,
         embeddings_size=1000,
         attention_lstm_size=1000,
         attention_layer_size=512,
         language_lstm_size=1000,
+        max_caption_len=50,
     ):
         super(Decoder, self).__init__()
         self.vocab_size = len(word_map)
+        self.max_caption_len = max_caption_len
         self.image_feature_dim = image_features_size
         self.word_map = word_map
         self.teacher_forcing_ratio = teacher_forcing_ratio
@@ -51,32 +53,52 @@ class Decoder(nn.Module):
         self.h2 = torch.nn.Parameter(torch.zeros(1, language_lstm_size))
         self.c2 = torch.nn.Parameter(torch.zeros(1, language_lstm_size))
 
-    def forward(
-        self, image_features, target_sequences=None, decode_lengths=None, beam_size=1
-    ):
+    def forward(self, image_features, target_sequences=None, decode_lengths=None):
+        batch_size = image_features.size(0)
+
         if not self.training:
-            # TODO check that batch size is 1
-            return self.beam_search(image_features, beam_size)[0]
-
-        # TODO
-        number_timesteps = torch.max(decode_lengths)
-
-        batch_size, _, _ = image_features.size()
+            decode_lengths = torch.full(
+                (batch_size,), self.max_caption_len, dtype=torch.int64, device=device
+            )
 
         v_mean = image_features.mean(dim=1)
 
         state, prev_words = self.init_inference(batch_size)
-        y_out = torch.zeros(
-            (batch_size, number_timesteps, self.vocab_size), device=device
+        scores = torch.zeros(
+            (batch_size, max(decode_lengths), self.vocab_size), device=device
         )
 
-        for t in range(number_timesteps):
-            y, state = self.forward_step(state, prev_words, v_mean, image_features)
-            y_out[:, t, :] = y
+        for t in range(max(decode_lengths)):
+            # Find all sequences where an <end> token has been produced in the last timestep
+            ind_end_token = (
+                torch.nonzero(prev_words == self.word_map[TOKEN_END]).view(-1).tolist()
+            )
 
-            prev_words = self.update_previous_word(y, target_sequences, t)
+            # Update the decode lengths accordingly
+            decode_lengths[ind_end_token] = torch.min(
+                decode_lengths[ind_end_token],
+                torch.full_like(decode_lengths[ind_end_token], t, device=device),
+            )
 
-        return y_out
+            # Check if all sequences are finished:
+            indices_incomplete_sequences = torch.nonzero(decode_lengths > t).view(-1)
+            if len(indices_incomplete_sequences) == 0:
+                break
+
+            scores_for_timestep, state = self.forward_step(
+                state, prev_words, v_mean, image_features
+            )
+
+            prev_words = self.update_previous_word(
+                scores_for_timestep, target_sequences, t
+            )
+
+            scores[indices_incomplete_sequences, t, :] = scores_for_timestep[
+                indices_incomplete_sequences
+            ]
+
+        # TODO return alphas
+        return scores, None, decode_lengths
 
     def forward_step(self, state, prev_words, v_mean, image_feats):
         h1, c1, h2, c2 = state
@@ -84,9 +106,9 @@ class Decoder(nn.Module):
         h1, c1 = self.attention_lstm(h1, c1, h2, v_mean, prev_words_embedded)
         v_hat = self.attention(image_feats, h1)
         h2, c2 = self.language_lstm(h2, c2, h1, v_hat)
-        y = self.predict_word(h2)
+        scores = self.predict_word(h2)
         state = [h1, c1, h2, c2]
-        return y, state
+        return scores, state
 
     def update_previous_word(self, y, target_words, t):
         if self.training:
@@ -109,6 +131,7 @@ class Decoder(nn.Module):
             (batch_size,), self.word_map[TOKEN_START], device=device, dtype=torch.long
         )
 
+        # TODO: random initialization!
         h1 = self.h1.repeat(batch_size, 1)
         c1 = self.c1.repeat(batch_size, 1)
         h2 = self.h2.repeat(batch_size, 1)

@@ -5,7 +5,6 @@ import sys
 import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
-import torchvision.transforms as transforms
 from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence
 from models import Encoder, DecoderWithAttention
@@ -127,20 +126,15 @@ def main(
     )
 
     # Data loaders
-    normalize = transforms.Normalize(mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD)
     train_images_loader = torch.utils.data.DataLoader(
-        CaptionTrainDataset(
-            data_folder, train_images_split, transform=transforms.Compose([normalize])
-        ),
+        CaptionTrainDataset(data_folder, train_images_split),
         batch_size=batch_size,
         shuffle=True,
         num_workers=workers,
         pin_memory=True,
     )
     val_images_loader = torch.utils.data.DataLoader(
-        CaptionTestDataset(
-            data_folder, val_images_split, transform=transforms.Compose([normalize])
-        ),
+        CaptionTestDataset(data_folder, val_images_split),
         batch_size=batch_size,
         shuffle=True,
         num_workers=workers,
@@ -235,15 +229,22 @@ def train(
     top5accuracies = AverageMeter()
 
     # Loop over training batches
-    for i, (images, captions, caption_lengths) in enumerate(data_loader):
-        captions = captions.to(device)
+    for i, (images, target_captions, caption_lengths) in enumerate(data_loader):
+        target_captions = target_captions.to(device)
         caption_lengths = caption_lengths.to(device)
-        scores, alphas, decode_lengths = forward_prop(
-            images, captions, caption_lengths, encoder, decoder
+        images = images.to(device)
+
+        # Forward propagation
+        images = encoder(images)
+
+        # Decoding lengths are actual lengths - 1, as we don't decode at the <end> token position
+        decode_lengths = caption_lengths.squeeze(1) - 1
+        scores, alphas, decode_lengths = decoder(
+            images, target_captions, decode_lengths
         )
 
         # Since we decoded starting with <start>, the targets are all words after <start>, up to <end>
-        targets = captions[:, 1:]
+        targets = target_captions[:, 1:]
 
         # Remove timesteps that we didn't decode at, or are pads
         decode_lengths, sort_ind = decode_lengths.sort(dim=0, descending=True)
@@ -300,18 +301,6 @@ def train(
     )
 
 
-def forward_prop(images, captions, caption_lengths, encoder, decoder):
-    # Move data to GPU, if available
-    images = images.to(device)
-
-    # Forward propagation
-    images = encoder(images)
-
-    # Decoding lengths are actual lengths - 1, as we don't decode at the <end> token position
-    decode_lengths = caption_lengths.squeeze(1) - 1
-    return decoder(images, captions, decode_lengths)
-
-
 def validate(data_loader, encoder, decoder, word_map, print_freq):
     """
     Perform validation of one training epoch.
@@ -326,9 +315,13 @@ def validate(data_loader, encoder, decoder, word_map, print_freq):
 
     # Loop over batches
     for i, (images, all_captions_for_image, _) in enumerate(data_loader):
-        scores, alphas, decode_lengths = forward_prop(
-            images, None, None, encoder, decoder
-        )
+        # Move data to GPU, if available
+        images = images.to(device)
+
+        # Forward propagation
+        images = encoder(images)
+
+        scores, alphas, decode_lengths = decoder(images, all_captions_for_image)
 
         if i % print_freq == 0:
             print("Validation: [Batch {0}/{1}]\t".format(i, len(data_loader)))
@@ -342,12 +335,12 @@ def validate(data_loader, encoder, decoder, word_map, print_freq):
             target_captions.append(img_captions)
 
         # Generated captions
-        _, best_captions = torch.max(scores, dim=2)
-        best_captions = [
+        _, captions = torch.max(scores, dim=2)
+        captions = [
             get_caption_without_special_tokens(caption, word_map)
-            for caption in best_captions.tolist()
+            for caption in captions.tolist()
         ]
-        generated_captions.extend(best_captions)
+        generated_captions.extend(captions)
 
         assert len(target_captions) == len(generated_captions)
 

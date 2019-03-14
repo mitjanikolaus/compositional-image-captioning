@@ -1,5 +1,6 @@
 import torch
 from torch.utils.data import Dataset
+import torchvision.transforms as transforms
 import h5py
 import json
 import os
@@ -9,6 +10,8 @@ from utils import (
     CAPTIONS_FILENAME,
     CAPTION_LENGTHS_FILENAME,
     BOTTOM_UP_FEATURES_FILENAME,
+    IMAGENET_IMAGES_MEAN,
+    IMAGENET_IMAGES_STD,
 )
 
 
@@ -17,11 +20,10 @@ class CaptionDataset(Dataset):
     PyTorch Dataset that provides batches of images of a given split
     """
 
-    def __init__(self, data_folder, split, transform=None):
+    def __init__(self, data_folder, split):
         """
         :param data_folder: folder where data files are stored
         :param split: split, indices of images that should be included
-        :param transform: pytorch image transform pipeline
         """
         self.h5py_file = h5py.File(os.path.join(data_folder, IMAGES_FILENAME), "r")
 
@@ -41,7 +43,11 @@ class CaptionDataset(Dataset):
             self.caption_lengths = json.load(json_file)
 
         # Set pytorch transformation pipeline
-        self.transform = transform
+        normalize = transforms.Normalize(
+            mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD
+        )
+
+        self.transform = transforms.Compose([normalize])
 
         # Set size of the dataset
         self.dataset_size = len(self.split)

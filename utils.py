@@ -161,13 +161,13 @@ def clip_gradients(optimizer, grad_clip):
 def save_checkpoint(
     name,
     epoch,
-    epochs_since_improvement,
+    epochs_since_last_improvement,
+    encoder,
+    decoder,
+    encoder_optimizer,
+    decoder_optimizer,
     bleu4,
     is_best,
-    decoder,
-    encoder=None,
-    encoder_optimizer=None,
-    decoder_optimizer=None,
 ):
     """
     Save a model checkpoint.
@@ -183,7 +183,7 @@ def save_checkpoint(
     """
     state = {
         "epoch": epoch,
-        "epochs_since_improvement": epochs_since_improvement,
+        "epochs_since_improvement": epochs_since_last_improvement,
         "bleu-4": bleu4,
         "encoder": encoder,
         "decoder": decoder,
