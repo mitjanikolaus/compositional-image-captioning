@@ -300,15 +300,16 @@ def train(
     )
 
 
-def forward_prop(images, captions, caption_lengths, encoder, decoder):
+def forward_prop(images, captions, decode_lengths, encoder, decoder):
     # Move data to GPU, if available
     images = images.to(device)
 
     # Forward propagation
     images = encoder(images)
 
-    # Decoding lengths are actual lengths - 1, as we don't decode at the <end> token position
-    decode_lengths = caption_lengths.squeeze(1) - 1
+    if decode_lengths:
+        # Decoding lengths are actual lengths - 1, as we don't decode at the <end> token position
+        decode_lengths = decode_lengths.squeeze(1) - 1
     return decoder(images, captions, decode_lengths)
 
 
