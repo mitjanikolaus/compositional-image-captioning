@@ -202,15 +202,6 @@ class Decoder(nn.Module):
 
             prev_words = self.update_previous_word(scores, None, step)
 
-            # embeddings = self.embedding(top_k_sequences[:, step]).squeeze(
-            #     1
-            # )  # (k, embed_dim)
-
-            # predictions, alpha, decoder_hidden_state, decoder_cell_state = self.forward_step(
-            #     encoder_out, decoder_hidden_state, decoder_cell_state, embeddings
-            # )
-            # scores = F.log_softmax(predictions, dim=1)
-
             # Add the new scores
             scores = (
                 top_k_scores.unsqueeze(1).expand_as(scores) + scores

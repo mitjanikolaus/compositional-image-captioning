@@ -230,7 +230,7 @@ class DecoderWithAttention(nn.Module):
 
         return scores, alpha, decoder_hidden_state, decoder_cell_state
 
-    def forward(self, encoder_out, target_captions, decode_lengths):
+    def forward(self, encoder_out, target_captions=None, decode_lengths=None):
         """
         Forward propagation.
 

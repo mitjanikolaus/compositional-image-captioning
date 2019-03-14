@@ -27,14 +27,13 @@ class CaptionDataset(Dataset):
         """
         self.h5py_file = h5py.File(os.path.join(data_folder, IMAGES_FILENAME), "r")
 
-        self.captions_per_image = self.h5py_file.attrs["captions_per_image"]
-        self.max_caption_len = self.h5py_file.attrs["max_caption_len"]
-
         self.split = split
 
         # Load captions
         with open(os.path.join(data_folder, CAPTIONS_FILENAME), "r") as json_file:
             self.captions = json.load(json_file)
+
+        self.captions_per_image = len(next(iter(self.captions.values())))
 
         # Load caption lengths
         with open(
@@ -124,14 +123,13 @@ class BottomUpDataset(Dataset):
             os.path.join(data_folder, BOTTOM_UP_FEATURES_FILENAME), "r"
         )
 
-        self.captions_per_image = 5  # self.h5py_file.attrs["captions_per_image"]
-        self.max_caption_len = 50  # self.h5py_file.attrs["max_caption_len"]
-
         self.split = split
 
         # Load captions
         with open(os.path.join(data_folder, CAPTIONS_FILENAME), "r") as json_file:
             self.captions = json.load(json_file)
+
+        self.captions_per_image = len(next(iter(self.captions.values())))
 
         # Load caption lengths
         with open(
@@ -143,7 +141,7 @@ class BottomUpDataset(Dataset):
         self.transform = transform
 
         # Set size of the dataset
-        self.dataset_size = 64  ##len(self.split)
+        self.dataset_size = len(self.split)
 
     def get_image_data(self, coco_id):
         image_data = self.image_features_file[coco_id].value
@@ -180,7 +178,7 @@ class BottumUpTrainDataset(BottomUpDataset):
         return image, caption, caption_length
 
     def __len__(self):
-        return 64  # self.dataset_size * self.captions_per_image
+        return self.dataset_size * self.captions_per_image
 
 
 class BottomUpTestDataset(BottomUpDataset):
