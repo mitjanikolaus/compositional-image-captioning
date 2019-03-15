@@ -23,9 +23,6 @@ from utils import (
     get_splits_from_occurrences_data,
     WORD_MAP_FILENAME,
     get_caption_without_special_tokens,
-    TOKEN_START,
-    TOKEN_END,
-    TOKEN_PADDING,
     IMAGENET_IMAGES_MEAN,
     IMAGENET_IMAGES_STD,
     BOTTOM_UP_FEATURES_FILENAME,
@@ -60,7 +57,7 @@ def main(
     alpha_c=1.0,
     max_caption_len=50,
     fine_tune_encoder=False,
-    epochs_early_stopping=20,
+    epochs_early_stopping=10,
     epochs_adjust_learning_rate=8,
     rate_adjust_learning_rate=0.8,
     val_set_size=0.1,
@@ -79,7 +76,7 @@ def main(
         word_map = json.load(json_file)
 
     # Generate dataset splits
-    train_images_split, val_images_split, test_images_split = get_splits_from_occurrences_data(
+    train_images_split, val_images_split, _ = get_splits_from_occurrences_data(
         occurrences_data, val_set_size
     )
 

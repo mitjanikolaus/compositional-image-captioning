@@ -109,7 +109,7 @@ class TopDownDecoder(nn.Module):
         state = [h1, c1, h2, c2]
         return scores, state
 
-    def update_previous_word(self, y, target_words, t):
+    def update_previous_word(self, scores, target_words, t):
         if self.training:
             if random.random() < self.teacher_forcing_ratio:
                 use_teacher_forcing = True
@@ -121,7 +121,7 @@ class TopDownDecoder(nn.Module):
         if use_teacher_forcing:
             next_words = target_words[:, t + 1]
         else:
-            next_words = torch.argmax(y, dim=1)
+            next_words = torch.argmax(scores, dim=1)
 
         return next_words
 
@@ -144,10 +144,15 @@ class TopDownDecoder(nn.Module):
         image_features,
         beam_size,
         max_caption_len=50,
-        store_alphas=False,
+        store_alphas=False,  # TODO
         print_beam=False,
     ):
         """Generate and return the top k sequences using beam search."""
+
+        if store_alphas:
+            raise NotImplementedError(
+                "Storage of weight for this model is not supported"
+            )
 
         current_beam_width = beam_size
 
@@ -168,30 +173,18 @@ class TopDownDecoder(nn.Module):
         # Tensor to store top k sequences' scores; now they're just 0
         top_k_scores = torch.zeros(beam_size).to(device)  # (k)
 
-        if store_alphas:
-            # Tensor to store top k sequences' alphas; now they're just 1s
-            seqs_alpha = torch.ones(beam_size, 1, enc_image_size, enc_image_size).to(
-                device
-            )  # (k, 1, enc_image_size, enc_image_size)
-
         # Lists to store completed sequences, scores, and alphas
         complete_seqs = []
-        complete_seqs_alpha = []
         complete_seqs_scores = []
 
         # Start decoding
         states, prev_words = self.init_inference(beam_size)
         v_mean = image_features.mean(dim=1)
 
-        y_out = torch.zeros(
-            (beam_size, max_caption_len, self.vocab_size), device=device
-        )
-
         for step in range(0, max_caption_len - 1):
             scores, states = self.forward_step(
                 states, prev_words, v_mean, image_features
             )
-            y_out[:, step, :] = scores
 
             prev_words = self.update_previous_word(scores, None, step)
 
@@ -222,16 +215,6 @@ class TopDownDecoder(nn.Module):
             if print_beam:
                 print_current_beam(top_k_sequences, top_k_scores, self.word_map)
 
-            # Store the new alphas
-            if store_alphas:
-                alpha = alpha.view(
-                    -1, enc_image_size, enc_image_size
-                )  # (k, enc_image_size, enc_image_size)
-                seqs_alpha = torch.cat(
-                    (seqs_alpha[prev_seq_inds], alpha[prev_seq_inds].unsqueeze(1)),
-                    dim=1,
-                )  # (k, step+2, enc_image_size, enc_image_size)
-
             # Check for complete and incomplete sequences (based on the <end> token)
             incomplete_inds = (
                 torch.nonzero(next_words != self.word_map[TOKEN_END]).view(-1).tolist()
@@ -244,8 +227,6 @@ class TopDownDecoder(nn.Module):
             if len(complete_inds) > 0:
                 complete_seqs.extend(top_k_sequences[complete_inds].tolist())
                 complete_seqs_scores.extend(top_k_scores[complete_inds])
-                if store_alphas:
-                    complete_seqs_alpha.extend(seqs_alpha[complete_inds].tolist())
 
             # Stop if k captions have been completely generated
             current_beam_width = len(incomplete_inds)
@@ -256,16 +237,14 @@ class TopDownDecoder(nn.Module):
             top_k_sequences = top_k_sequences[incomplete_inds]
             for i in range(len(states)):
                 states[i] = states[i][prev_seq_inds[incomplete_inds]]
+            v_mean = v_mean[prev_seq_inds[incomplete_inds]]
             image_features = image_features[prev_seq_inds[incomplete_inds]]
             top_k_scores = top_k_scores[incomplete_inds]
-            if store_alphas:
-                seqs_alpha = seqs_alpha[incomplete_inds]
+            prev_words = prev_words[prev_seq_inds[incomplete_inds]]
 
         if len(complete_seqs) < beam_size:
             complete_seqs.extend(top_k_sequences[incomplete_inds].tolist())
             complete_seqs_scores.extend(top_k_scores[incomplete_inds])
-            if store_alphas:
-                complete_seqs_alpha.extend(seqs_alpha[incomplete_inds].tolist())
 
         sorted_sequences = [
             sequence
@@ -273,16 +252,7 @@ class TopDownDecoder(nn.Module):
                 zip(complete_seqs_scores, complete_seqs), reverse=True
             )
         ]
-        if not store_alphas:
-            return sorted_sequences
-        else:
-            sorted_alphas = [
-                alpha
-                for _, alpha in sorted(
-                    zip(complete_seqs_scores, complete_seqs_alpha), reverse=True
-                )
-            ]
-            return sorted_sequences, sorted_alphas
+        return sorted_sequences
 
 
 class AttentionLSTM(nn.Module):

@@ -323,8 +323,6 @@ class SATDecoder(nn.Module):
     def beam_search(
         self,
         encoder_out,
-        decoder,
-        word_map,
         beam_size=1,
         max_caption_len=50,
         store_alphas=False,
@@ -351,7 +349,7 @@ class SATDecoder(nn.Module):
 
         # Tensor to store top k sequences; now they're just <start>
         top_k_sequences = torch.full(
-            (beam_size, 1), word_map[TOKEN_START], dtype=torch.int64, device=device
+            (beam_size, 1), self.word_map[TOKEN_START], dtype=torch.int64, device=device
         )
 
         # Tensor to store top k sequences' scores; now they're just 0
@@ -369,16 +367,14 @@ class SATDecoder(nn.Module):
         complete_seqs_scores = []
 
         # Start decoding
-        decoder_hidden_state, decoder_cell_state = decoder.init_hidden_state(
-            encoder_out
-        )
+        decoder_hidden_state, decoder_cell_state = self.init_hidden_state(encoder_out)
 
         for step in range(0, max_caption_len - 1):
-            embeddings = decoder.embedding(top_k_sequences[:, step]).squeeze(
+            embeddings = self.embedding(top_k_sequences[:, step]).squeeze(
                 1
             )  # (k, embed_dim)
 
-            predictions, alpha, decoder_hidden_state, decoder_cell_state = decoder.forward_step(
+            predictions, alpha, decoder_hidden_state, decoder_cell_state = self.forward_step(
                 encoder_out, decoder_hidden_state, decoder_cell_state, embeddings
             )
             scores = F.log_softmax(predictions, dim=1)
@@ -408,7 +404,7 @@ class SATDecoder(nn.Module):
             )  # (k, step+2)
 
             if print_beam:
-                print_current_beam(top_k_sequences, top_k_scores, word_map)
+                print_current_beam(top_k_sequences, top_k_scores, self.word_map)
 
             # Store the new alphas
             if store_alphas:
@@ -422,10 +418,10 @@ class SATDecoder(nn.Module):
 
             # Check for complete and incomplete sequences (based on the <end> token)
             incomplete_inds = (
-                torch.nonzero(next_words != word_map[TOKEN_END]).view(-1).tolist()
+                torch.nonzero(next_words != self.word_map[TOKEN_END]).view(-1).tolist()
             )
             complete_inds = (
-                torch.nonzero(next_words == word_map[TOKEN_END]).view(-1).tolist()
+                torch.nonzero(next_words == self.word_map[TOKEN_END]).view(-1).tolist()
             )
 
             # Set aside complete sequences and reduce beam size accordingly
