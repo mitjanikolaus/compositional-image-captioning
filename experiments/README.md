@@ -28,8 +28,8 @@ Performance on held out test set ("brown dog"):
 
 Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
 ----------|--------| --------------| --------------| --------------| --------------| -------------
-1         |   
-5         | 
+1         | 0.274  | 0.003         | 0             | 0             | 0             | N/A
+5         | 0.270  | 0.007         | 0.011         | 0             | 0             | N/A
 10        | 
 50        | 
 100       | 
@@ -38,8 +38,8 @@ Performance on "white car" data:
 
 Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
 ----------|--------| --------------| --------------| --------------| --------------| -------------
-1         | 
-5         | 
+1         | 0.246  | 0.208         | 0.262         | 0.316         | 0.375         | N/A
+5         | 0.251  | 0.380         | 0.484         | 0.526         | 0.375         | N/A
 
 
 #### Model trained with held out "white car"
@@ -79,3 +79,38 @@ occurs early in the beam, but then disappears when it would be combined with the
 [white_car_3.md](white_car_3.md) we can see an example where the object has multiple colors, and the model describes
 only the color it has seen in relation to the object at training time.
 
+
+### Bottom Up and Top Down Attention
+
+#### Model trained with held out "brown dog"
+
+Performance on held out test set ("brown dog"):
+
+Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------|--------| --------------| --------------| --------------| --------------| -------------
+1         | 0.319  | 0             | 0             | 0             | 0             | N/A
+5         | 0.321  | 0.003         | 0.011         | 0             | 0             | N/A 
+
+Performance on "white car" data:
+
+Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------|--------| --------------| --------------| --------------| --------------| -------------
+1         | 0.262  | 0.227         | 0.302         |  0.395        | 0.5           | N/A 
+5         | 0.264  | 0.244         | 0.302         |  0.395        | 0.5           | N/A 
+
+
+#### Model trained with held out "white car"
+
+Performance on held out test set ("white car"):
+
+Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------|--------| --------------| --------------| --------------| --------------| -------------
+1         | 
+5         | 
+
+Performance on "brown dog" data:
+
+Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------|--------| --------------| --------------| --------------| --------------| -------------
+1         |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+5         | 
