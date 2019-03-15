@@ -4,60 +4,78 @@ import torch
 from torch import nn
 
 
-from utils import TOKEN_START, TOKEN_END, decode_caption
+from utils import TOKEN_START, TOKEN_END, decode_caption, update_params
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+DEFAULT_MODEL_PARAMS = {
+    "teacher_forcing_ratio": 0,
+    "image_features_size": 2048,
+    "embeddings_size": 1000,
+    "attention_lstm_size": 1000,
+    "attention_layer_size": 512,
+    "language_lstm_size": 1000,
+    "max_caption_len": 50,
+}
+
+DEFAULT_OPTIMIZER_PARAMS = {"decoder_learning_rate": 1e-4}
 
 
 def one_hot(num_classes, index):
     return torch.eye(num_classes, device=device, dtype=torch.long)[index]
 
 
-class TopDownDecoder(nn.Module):
-    def __init__(
-        self,
-        word_map,
-        teacher_forcing_ratio,
-        image_features_size=2048,
-        embeddings_size=1000,
-        attention_lstm_size=1000,
-        attention_layer_size=512,
-        language_lstm_size=1000,
-        max_caption_len=50,
-    ):
-        super(TopDownDecoder, self).__init__()
-        self.vocab_size = len(word_map)
-        self.max_caption_len = max_caption_len
-        self.image_feature_dim = image_features_size
-        self.word_map = word_map
-        self.teacher_forcing_ratio = teacher_forcing_ratio
+def create_top_down_decoder_optimizer(decoder, params):
+    optimizer_params = update_params(DEFAULT_OPTIMIZER_PARAMS, params)
+    optimizer = torch.optim.Adam(
+        params=filter(lambda p: p.requires_grad, decoder.parameters()),
+        lr=optimizer_params["decoder_learning_rate"],
+    )
+    return optimizer
 
-        self.embed_word = nn.Embedding(self.vocab_size, embeddings_size)
+
+class TopDownDecoder(nn.Module):
+    def __init__(self, word_map, params):
+        super(TopDownDecoder, self).__init__()
+        self.params = update_params(DEFAULT_MODEL_PARAMS, params)
+        self.vocab_size = len(word_map)
+        self.word_map = word_map
+
+        self.embed_word = nn.Embedding(self.vocab_size, self.params["embeddings_size"])
         self.attention_lstm = AttentionLSTM(
-            embeddings_size,
-            language_lstm_size,
-            image_features_size,
-            attention_lstm_size,
+            self.params["embeddings_size"],
+            self.params["language_lstm_size"],
+            self.params["image_features_size"],
+            self.params["attention_lstm_size"],
         )
         self.language_lstm = LanguageLSTM(
-            attention_lstm_size, image_features_size, language_lstm_size
+            self.params["attention_lstm_size"],
+            self.params["image_features_size"],
+            self.params["language_lstm_size"],
         )
         self.attention = VisualAttention(
-            image_features_size, attention_lstm_size, attention_layer_size
+            self.params["image_features_size"],
+            self.params["attention_lstm_size"],
+            self.params["attention_layer_size"],
         )
-        self.predict_word = PredictWord(language_lstm_size, self.vocab_size)
+        self.predict_word = PredictWord(
+            self.params["language_lstm_size"], self.vocab_size
+        )
 
-        self.h1 = torch.nn.Parameter(torch.zeros(1, attention_lstm_size))
-        self.c1 = torch.nn.Parameter(torch.zeros(1, attention_lstm_size))
-        self.h2 = torch.nn.Parameter(torch.zeros(1, language_lstm_size))
-        self.c2 = torch.nn.Parameter(torch.zeros(1, language_lstm_size))
+        self.h1 = torch.nn.Parameter(torch.zeros(1, self.params["attention_lstm_size"]))
+        self.c1 = torch.nn.Parameter(torch.zeros(1, self.params["attention_lstm_size"]))
+        self.h2 = torch.nn.Parameter(torch.zeros(1, self.params["language_lstm_size"]))
+        self.c2 = torch.nn.Parameter(torch.zeros(1, self.params["language_lstm_size"]))
 
     def forward(self, image_features, target_sequences=None, decode_lengths=None):
         batch_size = image_features.size(0)
 
         if not self.training:
             decode_lengths = torch.full(
-                (batch_size,), self.max_caption_len, dtype=torch.int64, device=device
+                (batch_size,),
+                self.params["max_caption_len"],
+                dtype=torch.int64,
+                device=device,
             )
 
         v_mean = image_features.mean(dim=1)
@@ -111,7 +129,7 @@ class TopDownDecoder(nn.Module):
 
     def update_previous_word(self, scores, target_words, t):
         if self.training:
-            if random.random() < self.teacher_forcing_ratio:
+            if random.random() < self.params["teacher_forcing_ratio"]:
                 use_teacher_forcing = True
             else:
                 use_teacher_forcing = False

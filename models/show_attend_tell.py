@@ -3,9 +3,42 @@ from torch import nn
 import torchvision
 import torch.nn.functional as F
 
-from utils import TOKEN_START, TOKEN_END, decode_caption
+from utils import TOKEN_START, TOKEN_END, decode_caption, update_params
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+DEFAULT_MODEL_PARAMS = {
+    "embed_dim": 512,
+    "attention_dim": 512,
+    "encoder_dim": 2048,
+    "decoder_dim": 512,
+    "dropout": 0.5,
+    "alpha_c": 1.0,
+    "max_caption_len": 50,
+}
+
+DEFAULT_OPTIMIZER_PARAMS = {
+    "decoder_learning_rate": 4e-4,
+    "encoder_learning_rate": 1e-4,
+}
+
+
+def create_sat_encoder_optimizer(encoder, params):
+    optimizer_params = update_params(DEFAULT_OPTIMIZER_PARAMS, params)
+    optimizer = torch.optim.Adam(
+        params=filter(lambda p: p.requires_grad, encoder.parameters()),
+        lr=optimizer_params["encoder_learning_rate"],
+    )
+    return optimizer
+
+
+def create_sat_decoder_optimizer(decoder, params):
+    optimizer_params = update_params(DEFAULT_OPTIMIZER_PARAMS, params)
+    optimizer = torch.optim.Adam(
+        params=filter(lambda p: p.requires_grad, decoder.parameters()),
+        lr=optimizer_params["decoder_learning_rate"],
+    )
+    return optimizer
 
 
 def print_current_beam(top_k_sequences, top_k_scores, word_map):
@@ -117,16 +150,7 @@ class AttentionModule(nn.Module):
 
 
 class SATDecoder(nn.Module):
-    def __init__(
-        self,
-        attention_dim,
-        embed_dim,
-        decoder_dim,
-        word_map,
-        max_caption_len,
-        encoder_dim=2048,
-        dropout=0.5,
-    ):
+    def __init__(self, word_map, params):
         """
         :param attention_dim: size of attention network
         :param embed_dim: embedding size
@@ -137,35 +161,35 @@ class SATDecoder(nn.Module):
         :param dropout: dropout rate
         """
         super(SATDecoder, self).__init__()
-
-        self.encoder_dim = encoder_dim
-        self.attention_dim = attention_dim
-        self.embed_dim = embed_dim
-        self.decoder_dim = decoder_dim
+        self.params = update_params(DEFAULT_MODEL_PARAMS, params)
         self.vocab_size = len(word_map)
         self.word_map = word_map
-        self.max_caption_len = max_caption_len
-        self.dropout = dropout
 
-        self.attention = AttentionModule(encoder_dim, decoder_dim, attention_dim)
+        self.attention = AttentionModule(
+            self.params["encoder_dim"],
+            self.params["decoder_dim"],
+            self.params["attention_dim"],
+        )
 
-        self.embedding = nn.Embedding(self.vocab_size, embed_dim)
-        self.dropout = nn.Dropout(p=self.dropout)
+        self.embedding = nn.Embedding(self.vocab_size, self.params["embed_dim"])
+        self.dropout = nn.Dropout(p=self.params["dropout"])
         self.decode_step = nn.LSTMCell(
-            embed_dim + encoder_dim, decoder_dim, bias=True
+            self.params["embed_dim"] + self.params["encoder_dim"],
+            self.params["decoder_dim"],
+            bias=True,
         )  # decoding LSTMCell
         self.init_h = nn.Linear(
-            encoder_dim, decoder_dim
+            self.params["encoder_dim"], self.params["decoder_dim"]
         )  # linear layer to find initial hidden state of LSTMCell
         self.init_c = nn.Linear(
-            encoder_dim, decoder_dim
+            self.params["encoder_dim"], self.params["decoder_dim"]
         )  # linear layer to find initial cell state of LSTMCell
         self.f_beta = nn.Linear(
-            decoder_dim, encoder_dim
+            self.params["decoder_dim"], self.params["encoder_dim"]
         )  # linear layer to create a sigmoid-activated gate
         self.sigmoid = nn.Sigmoid()
         self.fc = nn.Linear(
-            decoder_dim, self.vocab_size
+            self.params["decoder_dim"], self.vocab_size
         )  # linear layer to find scores over vocabulary
 
         self.init_weights()
@@ -258,7 +282,10 @@ class SATDecoder(nn.Module):
 
         else:
             decode_lengths = torch.full(
-                (batch_size,), self.max_caption_len, dtype=torch.int64, device=device
+                (batch_size,),
+                self.params["max_caption_len"],
+                dtype=torch.int64,
+                device=device,
             )
 
         # Initialize LSTM state (output shape: (batch_size, decoder_dim))

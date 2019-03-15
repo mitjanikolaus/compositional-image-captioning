@@ -9,8 +9,17 @@ from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence
 from torchvision.transforms import transforms
 
-from models.bottom_up_top_down import TopDownDecoder
-from models.show_attend_tell import Encoder, SATDecoder
+from models.bottom_up_top_down import (
+    TopDownDecoder,
+    DEFAULT_MODEL_PARAMS,
+    create_top_down_decoder_optimizer,
+)
+from models.show_attend_tell import (
+    Encoder,
+    SATDecoder,
+    create_sat_encoder_optimizer,
+    create_sat_decoder_optimizer,
+)
 from datasets import CaptionTrainDataset, CaptionTestDataset
 from nltk.translate.bleu_score import corpus_bleu
 
@@ -40,30 +49,23 @@ best_bleu4 = 0.0
 
 
 def main(
+    model_params,
+    model_name,
     data_folder,
     occurrences_data,
-    model_name,
-    emb_dim=512,
-    attention_dim=512,
-    decoder_dim=512,
-    dropout=0.5,
+    batch_size,
+    alpha_c,
+    fine_tune_encoder=False,
+    workers=1,
+    grad_clip=5.0,
     start_epoch=0,
     epochs=120,
-    batch_size=32,
-    workers=1,
-    encoder_lr=1e-4,
-    decoder_lr=4e-4,
-    grad_clip=5.0,
-    alpha_c=1.0,
-    max_caption_len=50,
-    fine_tune_encoder=False,
     epochs_early_stopping=10,
     epochs_adjust_learning_rate=8,
     rate_adjust_learning_rate=0.8,
     val_set_size=0.1,
     checkpoint=None,
     print_freq=100,
-    teacher_forcing=1,
 ):
 
     global best_bleu4, epochs_since_last_improvement
@@ -97,33 +99,17 @@ def main(
             encoder_optimizer = None
         if fine_tune_encoder and encoder_optimizer is None:
             encoder.set_fine_tuning_enabled(fine_tune_encoder)
-            encoder_optimizer = torch.optim.Adam(
-                params=filter(lambda p: p.requires_grad, encoder.parameters()),
-                lr=encoder_lr,
-            )
+            encoder_optimizer = create_sat_encoder_optimizer(encoder, model_params)
 
     # No checkpoint given, initialize the model
     else:
         if model_name == MODEL_SHOW_ATTEND_TELL:
-            decoder = SATDecoder(
-                attention_dim=attention_dim,
-                embed_dim=emb_dim,
-                decoder_dim=decoder_dim,
-                word_map=word_map,
-                max_caption_len=max_caption_len,
-                dropout=dropout,
-            )
-            decoder_optimizer = torch.optim.Adam(
-                params=filter(lambda p: p.requires_grad, decoder.parameters()),
-                lr=decoder_lr,
-            )
+            decoder = SATDecoder(word_map=word_map, params=model_params)
+            decoder_optimizer = create_sat_decoder_optimizer(decoder, model_params)
             encoder = Encoder()
             encoder.set_fine_tuning_enabled(fine_tune_encoder)
             encoder_optimizer = (
-                torch.optim.Adam(
-                    params=filter(lambda p: p.requires_grad, encoder.parameters()),
-                    lr=encoder_lr,
-                )
+                create_sat_encoder_optimizer(encoder, model_params)
                 if fine_tune_encoder
                 else None
             )
@@ -131,15 +117,8 @@ def main(
         elif model_name == MODEL_BOTTOM_UP_TOP_DOWN:
             encoder = None
             encoder_optimizer = None
-            decoder = TopDownDecoder(
-                word_map=word_map,
-                teacher_forcing_ratio=teacher_forcing,
-                max_caption_len=max_caption_len,
-            )
-            decoder_optimizer = torch.optim.Adam(
-                params=filter(lambda p: p.requires_grad, decoder.parameters()),
-                lr=decoder_lr,
-            )
+            decoder = TopDownDecoder(word_map=word_map, params=model_params)
+            decoder_optimizer = create_top_down_decoder_optimizer(decoder, model_params)
         else:
             raise RuntimeError("Unknown model name: {}".format(model_name))
 
@@ -196,6 +175,10 @@ def main(
             num_workers=workers,
             pin_memory=True,
         )
+
+    # Print configuration
+    print("Decoder params: {}".format(decoder.params))
+    print("Decoder optimizer params: {}".format(decoder_optimizer.defaults))
 
     # Move to GPU, if available
     decoder = decoder.to(device)
@@ -448,17 +431,21 @@ def check_args(args):
         help="File containing occurrences statistics about adjective noun pairs",
         default="data/brown_dog.json",
     )
+    parser.add_argument("--batch-size", help="Batch size", type=int, default=32)
+    parser.add_argument(
+        "--teacher-forcing",
+        help="Teacher forcing rate (used in the decoder)",
+        type=float,
+    )
     parser.add_argument(
         "--encoder-learning-rate",
         help="Initial learning rate for the encoder (used only if fine-tuning is enabled)",
         type=float,
-        default=1e-4,
     )
     parser.add_argument(
         "--decoder-learning-rate",
         help="Initial learning rate for the decoder",
         type=float,
-        default=4e-4,
     )
     parser.add_argument(
         "--fine-tune-encoder", help="Fine tune the encoder", action="store_true"
@@ -486,13 +473,12 @@ def check_args(args):
 if __name__ == "__main__":
     parsed_args = check_args(sys.argv[1:])
     main(
+        model_params=vars(parsed_args),
         model_name=parsed_args.model,
         data_folder=parsed_args.data_folder,
         occurrences_data=parsed_args.occurrences_data,
-        encoder_lr=parsed_args.encoder_learning_rate,
-        decoder_lr=parsed_args.decoder_learning_rate,
+        batch_size=parsed_args.batch_size,
         alpha_c=parsed_args.alpha_c,
-        fine_tune_encoder=parsed_args.fine_tune_encoder,
         checkpoint=parsed_args.checkpoint,
         epochs=parsed_args.epochs,
     )

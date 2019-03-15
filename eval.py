@@ -111,7 +111,6 @@ def evaluate(
         if encoder:
             encoded_features = encoder(image_features)
 
-        # TODO
         if visualize:
             top_k_generated_captions, alphas = decoder.beam_search(
                 encoded_features,
