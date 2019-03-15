@@ -18,13 +18,9 @@ Notes on how to interpret the results:
 - "Recall (n>=1)" stands for the recall of the respective adjective noun pair,
 where n of the target captions contain the adjective noun pair.
 - For a beam size of n, the top n sentences are produced. If at least one of the sentences contains the target
-adjective-noun pair, the sample is counted as true positive
+adjective-noun pair, the sample is counted as true positive (i.e. we are calculating the recall@n)
 
 ### Show, Attend and Tell
-
-#### Baseline Performance
-
-BLEU-4: 0.278
 
 #### Model trained with held out "brown dog"
 
@@ -32,18 +28,19 @@ Performance on held out test set ("brown dog"):
 
 Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
 ----------|--------| --------------| --------------| --------------| --------------| -------------
-1         | 0.256  | 0             | 0             | 0             | 0             | N/A  
-5         | 0.299  | 0.024         | 0.011         | 0             | 0             | N/A
-10        | 0.296  | 0.028         | 0.011         | 0.067         | 0             | N/A
-50        | 0.300  | 0.076         | 0.08          | 0.2           | 0             | N/A
-100       | 0.300  | 0.131         | 0.138         | 0.2           | 0             | N/A
+1         |   
+5         | 
+10        | 
+50        | 
+100       | 
 
 Performance on "white car" data:
 
 Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
 ----------|--------| --------------| --------------| --------------| --------------| -------------
-1         | 0.271  | 0.134         | 0.247         | 0.348         | 0.5           | N/A
-5         | 0.299  | 0.362         | 0.493         | 0.783         | 1             | N/A
+1         | 
+5         | 
+
 
 #### Model trained with held out "white car"
 
@@ -51,15 +48,15 @@ Performance on held out test set ("white car"):
 
 Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
 ----------|--------| --------------| --------------| --------------| --------------| -------------
-1         | 0.251  | 0.031         | 0.041         | 0.087         | 0             | N/A
-5         | 0.230  | 0.085         | 0.109         | 0.174         | 0             | N/A
+1         | 0.224  | 0.022         | 0.024         | 0.026         | 0             | N/A
+5         | 0.234  | 0.014         | 0.032         | 0.026         | 0             | N/A
 
 Performance on "brown dog" data:
 
 Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
 ----------|--------| --------------| --------------| --------------| --------------| -------------
-1         | 0.266  | 0.035         | 0.046         | 0.133         | 0             | N/A
-5         | 0.311  | 0.377         | 0.552         | 0.8           | 1             | N/A
+1         | 0.273  | 0.014         |  0.011        | 0.067         | 0             | N/A                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+5         | 0.331  | 0.345         |  0.437        | 0.8           | 1             | N/A
 
 The results suggest that the model does not generalise to unseen adjective-noun pairs. The recall for adjective-noun
 pairs of a model that was trained on data excluding the pairs is in all cases significantly lower compared to the recall of models that
@@ -75,12 +72,6 @@ samples:
 - [brown_dog_1.md](brown_dog_1.md)
 - [brown_dog_2.md](brown_dog_2.md)
 - [brown_dog_3.md](brown_dog_3.md)
-- [white_car_1.md](white_car_1.md)
-- [white_car_2.md](white_car_2.md)
-- [white_car_3.md](white_car_3.md)
-- [white_car_4.md](white_car_4.md)
-- [white_car_5.md](white_car_5.md)
-- [white_car_6.md](white_car_6.md)
 
 The only case where the adjective-noun pair occurs in the generated sentences in [white_car_6.md](white_car_6.md). In
 this example, the car is very prominent in the image and has only one color. In some other examples, the adjective
