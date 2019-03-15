@@ -2,7 +2,6 @@ import random
 
 import torch
 from torch import nn
-import torch.nn.functional as F
 
 
 from utils import TOKEN_START, TOKEN_END, decode_caption
@@ -156,10 +155,6 @@ class TopDownDecoder(nn.Module):
         enc_image_size = image_features.size(1)
         encoder_dim = image_features.size(2)
 
-        # Flatten encoding
-        # encoder_out = encoder_out.view(1, -1, encoder_dim)  # (1, num_pixels, encoder_dim)
-        # num_pixels = encoder_out.size(1)
-
         # We'll treat the problem as having a batch size of k
         image_features = image_features.expand(
             beam_size, image_features.size(1), encoder_dim
@@ -290,9 +285,6 @@ class TopDownDecoder(nn.Module):
             return sorted_sequences, sorted_alphas
 
 
-#####################################################
-#               LANGUAGE SUB-MODULES                #
-#####################################################
 class AttentionLSTM(nn.Module):
     def __init__(self, dim_word_emb, dim_lang_lstm, dim_image_feats, hidden_size):
         super(AttentionLSTM, self).__init__()
