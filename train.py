@@ -112,10 +112,7 @@ def main(
                 attention_dim=attention_dim,
                 embed_dim=emb_dim,
                 decoder_dim=decoder_dim,
-                vocab_size=len(word_map),
-                start_token=word_map[TOKEN_START],
-                end_token=word_map[TOKEN_END],
-                padding_token=word_map[TOKEN_PADDING],
+                word_map=word_map,
                 max_caption_len=max_caption_len,
                 dropout=dropout,
             )
