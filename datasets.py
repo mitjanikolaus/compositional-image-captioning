@@ -68,7 +68,7 @@ class CaptionDataset(Dataset):
         raise NotImplementedError
 
     def __len__(self):
-        return 64  # self.dataset_size
+        return self.dataset_size
 
 
 class CaptionTrainDataset(CaptionDataset):
@@ -90,7 +90,7 @@ class CaptionTrainDataset(CaptionDataset):
         return image, caption, caption_length
 
     def __len__(self):
-        return 64  # self.dataset_size * self.captions_per_image
+        return self.dataset_size * self.captions_per_image
 
 
 class CaptionTestDataset(CaptionDataset):
