@@ -143,6 +143,7 @@ class SATDecoder(nn.Module):
         self.embed_dim = embed_dim
         self.decoder_dim = decoder_dim
         self.vocab_size = len(word_map)
+        self.word_map = word_map
         self.max_caption_len = max_caption_len
         self.dropout = dropout
 
