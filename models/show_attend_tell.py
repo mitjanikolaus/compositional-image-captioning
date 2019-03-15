@@ -103,7 +103,7 @@ class AttentionModule(nn.Module):
         return attention_weighted_encoding, alpha
 
 
-class DecoderWithAttention(nn.Module):
+class SATDecoder(nn.Module):
     def __init__(
         self,
         attention_dim,
@@ -129,7 +129,7 @@ class DecoderWithAttention(nn.Module):
         :param encoder_dim: feature size of encoded images
         :param dropout: dropout rate
         """
-        super(DecoderWithAttention, self).__init__()
+        super(SATDecoder, self).__init__()
 
         self.encoder_dim = encoder_dim
         self.attention_dim = attention_dim

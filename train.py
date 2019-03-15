@@ -7,15 +7,11 @@ import torch.optim
 import torch.utils.data
 from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence
+from torchvision.transforms import transforms
 
-from models.bottom_up_top_down import Decoder
-from models.show_attend_tell import Encoder, DecoderWithAttention
-from datasets import (
-    CaptionTrainDataset,
-    CaptionTestDataset,
-    BottumUpTrainDataset,
-    BottomUpTestDataset,
-)
+from models.bottom_up_top_down import TopDownDecoder
+from models.show_attend_tell import Encoder, SATDecoder
+from datasets import CaptionTrainDataset, CaptionTestDataset
 from nltk.translate.bleu_score import corpus_bleu
 
 from utils import (
@@ -30,6 +26,10 @@ from utils import (
     TOKEN_START,
     TOKEN_END,
     TOKEN_PADDING,
+    IMAGENET_IMAGES_MEAN,
+    IMAGENET_IMAGES_STD,
+    BOTTOM_UP_FEATURES_FILENAME,
+    IMAGES_FILENAME,
 )
 
 MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
@@ -91,6 +91,7 @@ def main(
         best_bleu4 = checkpoint["bleu-4"]
         decoder = checkpoint["decoder"]
         decoder_optimizer = checkpoint["decoder_optimizer"]
+        model_name = checkpoint["model_name"]
         if "encoder" in checkpoint:
             encoder = checkpoint["encoder"]
             encoder_optimizer = checkpoint["encoder_optimizer"]
@@ -107,7 +108,7 @@ def main(
     # No checkpoint given, initialize the model
     else:
         if model_name == MODEL_SHOW_ATTEND_TELL:
-            decoder = DecoderWithAttention(
+            decoder = SATDecoder(
                 attention_dim=attention_dim,
                 embed_dim=emb_dim,
                 decoder_dim=decoder_dim,
@@ -133,26 +134,10 @@ def main(
                 else None
             )
 
-            # Data loaders
-            train_images_loader = torch.utils.data.DataLoader(
-                CaptionTrainDataset(data_folder, train_images_split),
-                batch_size=batch_size,
-                shuffle=True,
-                num_workers=workers,
-                pin_memory=True,
-            )
-            val_images_loader = torch.utils.data.DataLoader(
-                CaptionTestDataset(data_folder, val_images_split),
-                batch_size=batch_size,
-                shuffle=True,
-                num_workers=workers,
-                pin_memory=True,
-            )
-
         elif model_name == MODEL_BOTTOM_UP_TOP_DOWN:
             encoder = None
             encoder_optimizer = None
-            decoder = Decoder(
+            decoder = TopDownDecoder(
                 word_map=word_map,
                 teacher_forcing_ratio=teacher_forcing,
                 max_caption_len=max_caption_len,
@@ -161,22 +146,62 @@ def main(
                 params=filter(lambda p: p.requires_grad, decoder.parameters()),
                 lr=decoder_lr,
             )
+        else:
+            raise RuntimeError("Unknown model name: {}".format(model_name))
 
-            # Data loaders
-            train_images_loader = torch.utils.data.DataLoader(
-                BottumUpTrainDataset(data_folder, train_images_split),
-                batch_size=batch_size,
-                shuffle=True,
-                num_workers=workers,
-                pin_memory=True,
-            )
-            val_images_loader = torch.utils.data.DataLoader(
-                BottomUpTestDataset(data_folder, val_images_split),
-                batch_size=batch_size,
-                shuffle=True,
-                num_workers=workers,
-                pin_memory=True,
-            )
+    if model_name == MODEL_SHOW_ATTEND_TELL:
+        # Data loaders
+        normalize = transforms.Normalize(
+            mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD
+        )
+        train_images_loader = torch.utils.data.DataLoader(
+            CaptionTrainDataset(
+                data_folder,
+                IMAGES_FILENAME,
+                train_images_split,
+                transforms.Compose([normalize]),
+                features_scale_factor=255.0,
+            ),
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=workers,
+            pin_memory=True,
+        )
+        val_images_loader = torch.utils.data.DataLoader(
+            CaptionTestDataset(
+                data_folder,
+                IMAGES_FILENAME,
+                val_images_split,
+                transforms.Compose([normalize]),
+                features_scale_factor=255.0,
+            ),
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=workers,
+            pin_memory=True,
+        )
+
+    elif model_name == MODEL_BOTTOM_UP_TOP_DOWN:
+
+        # Data loaders
+        train_images_loader = torch.utils.data.DataLoader(
+            CaptionTrainDataset(
+                data_folder, BOTTOM_UP_FEATURES_FILENAME, train_images_split
+            ),
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=workers,
+            pin_memory=True,
+        )
+        val_images_loader = torch.utils.data.DataLoader(
+            CaptionTestDataset(
+                data_folder, BOTTOM_UP_FEATURES_FILENAME, val_images_split
+            ),
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=workers,
+            pin_memory=True,
+        )
 
     # Move to GPU, if available
     decoder = decoder.to(device)
@@ -237,6 +262,7 @@ def main(
         # Save checkpoint
         name = os.path.basename(occurrences_data).split(".")[0]
         save_checkpoint(
+            model_name,
             name,
             epoch,
             epochs_since_last_improvement,
@@ -419,7 +445,6 @@ def check_args(args):
         choices=[MODEL_SHOW_ATTEND_TELL, MODEL_BOTTOM_UP_TOP_DOWN],
     )
     parser.add_argument(
-        "-D",
         "--data-folder",
         help="Folder where the preprocessed data is located",
         default=os.path.expanduser("../datasets/coco2014_preprocessed/"),
@@ -430,31 +455,27 @@ def check_args(args):
         default="data/brown_dog.json",
     )
     parser.add_argument(
-        "-E",
         "--encoder-learning-rate",
         help="Initial learning rate for the encoder (used only if fine-tuning is enabled)",
         type=float,
         default=1e-4,
     )
     parser.add_argument(
-        "-L",
         "--decoder-learning-rate",
         help="Initial learning rate for the decoder",
         type=float,
         default=4e-4,
     )
     parser.add_argument(
-        "-F", "--fine-tune-encoder", help="Fine tune the encoder", action="store_true"
+        "--fine-tune-encoder", help="Fine tune the encoder", action="store_true"
     )
     parser.add_argument(
-        "-A",
         "--alpha-c",
         help="regularization parameter for doubly stochastic attention",
         type=float,
         default=1.0,
     )
     parser.add_argument(
-        "-C",
         "--checkpoint",
         help="Path to checkpoint of previously trained model",
         default=None,

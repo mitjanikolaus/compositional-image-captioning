@@ -14,7 +14,7 @@ def one_hot(num_classes, index):
     return torch.eye(num_classes, device=device, dtype=torch.long)[index]
 
 
-class Decoder(nn.Module):
+class TopDownDecoder(nn.Module):
     def __init__(
         self,
         word_map,
@@ -26,7 +26,7 @@ class Decoder(nn.Module):
         language_lstm_size=1000,
         max_caption_len=50,
     ):
-        super(Decoder, self).__init__()
+        super(TopDownDecoder, self).__init__()
         self.vocab_size = len(word_map)
         self.max_caption_len = max_caption_len
         self.image_feature_dim = image_features_size
@@ -185,8 +185,6 @@ class Decoder(nn.Module):
         complete_seqs_scores = []
 
         # Start decoding
-        # decoder_hidden_state, decoder_cell_state = self.init_hidden_state(encoder_out)
-
         states, prev_words = self.init_inference(beam_size)
         v_mean = image_features.mean(dim=1)
 
@@ -263,8 +261,6 @@ class Decoder(nn.Module):
             top_k_sequences = top_k_sequences[incomplete_inds]
             for i in range(len(states)):
                 states[i] = states[i][prev_seq_inds[incomplete_inds]]
-            # decoder_hidden_state = decoder_hidden_state[prev_seq_inds[incomplete_inds]]
-            # decoder_cell_state = decoder_cell_state[prev_seq_inds[incomplete_inds]]
             image_features = image_features[prev_seq_inds[incomplete_inds]]
             top_k_scores = top_k_scores[incomplete_inds]
             if store_alphas:
@@ -338,7 +334,6 @@ class VisualAttention(nn.Module):
         image_features_embedded = self.linear_image_features(image_features)
         att_lstm_embedded = self.linear_att_lstm(h1).unsqueeze(1)
 
-        # TODO ?
         all_feats_emb = image_features_embedded + att_lstm_embedded.repeat(
             1, image_features.size()[1], 1
         )
