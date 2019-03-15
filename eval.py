@@ -69,7 +69,7 @@ def evaluate(
                 IMAGES_FILENAME,
                 test_images_split,
                 transforms.Compose([normalize]),
-                features_scale_factor=255.0,
+                features_scale_factor=1 / 255.0,
             ),
             batch_size=1,
             shuffle=True,
@@ -107,14 +107,14 @@ def evaluate(
         )
 
         # Generate captions
-        image_features = image_features.to(device)
+        encoded_features = image_features.to(device)
         if encoder:
-            image_features = encoder(image_features)
+            encoded_features = encoder(image_features)
 
         # TODO
         if visualize:
             top_k_generated_captions, alphas = decoder.beam_search(
-                image_features,
+                encoded_features,
                 beam_size,
                 max_caption_len,
                 store_alphas=True,
@@ -127,7 +127,7 @@ def evaluate(
                 )
         else:
             top_k_generated_captions = decoder.beam_search(
-                image_features, beam_size, max_caption_len, print_beam=print_beam
+                encoded_features, beam_size, max_caption_len, print_beam=print_beam
             )
 
         generated_captions.append(top_k_generated_captions)
