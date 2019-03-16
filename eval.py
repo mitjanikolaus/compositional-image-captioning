@@ -109,7 +109,7 @@ def evaluate(
         # Generate captions
         encoded_features = image_features.to(device)
         if encoder:
-            encoded_features = encoder(image_features)
+            encoded_features = encoder(encoded_features)
 
         if visualize:
             top_k_generated_captions, alphas = decoder.beam_search(
