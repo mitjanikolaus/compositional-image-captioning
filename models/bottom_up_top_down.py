@@ -9,7 +9,7 @@ from utils import TOKEN_START, TOKEN_END, decode_caption, update_params
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 DEFAULT_MODEL_PARAMS = {
-    "teacher_forcing_ratio": 0,
+    "teacher_forcing_ratio": 1,
     "image_features_size": 2048,
     "embeddings_size": 1000,
     "attention_lstm_size": 1000,
