@@ -62,10 +62,36 @@ class TopDownDecoder(nn.Module):
             self.params["language_lstm_size"], self.vocab_size
         )
 
-        self.h1 = torch.nn.Parameter(torch.zeros(1, self.params["attention_lstm_size"]))
-        self.c1 = torch.nn.Parameter(torch.zeros(1, self.params["attention_lstm_size"]))
-        self.h2 = torch.nn.Parameter(torch.zeros(1, self.params["language_lstm_size"]))
-        self.c2 = torch.nn.Parameter(torch.zeros(1, self.params["language_lstm_size"]))
+        # linear layers to find initial states of LSTMs
+        self.init_h1 = nn.Linear(
+            self.params["image_features_size"],
+            self.attention_lstm.lstm_cell.hidden_size,
+        )
+        self.init_c1 = nn.Linear(
+            self.params["image_features_size"],
+            self.attention_lstm.lstm_cell.hidden_size,
+        )
+        self.init_h2 = nn.Linear(
+            self.params["image_features_size"], self.language_lstm.lstm_cell.hidden_size
+        )
+        self.init_c2 = nn.Linear(
+            self.params["image_features_size"], self.language_lstm.lstm_cell.hidden_size
+        )
+
+    def init_inference(self, batch_size, v_mean):
+        start_word = torch.full(
+            (batch_size,), self.word_map[TOKEN_START], device=device, dtype=torch.long
+        )
+
+        h1 = self.init_h1(v_mean)
+        c1 = self.init_c1(v_mean)
+
+        # TODO initialize with combination of attended image features and attention LSTM output
+        h2 = self.init_h2(v_mean)
+        c2 = self.init_c2(v_mean)
+        state = [h1, c1, h2, c2]
+
+        return state, start_word
 
     def forward(self, image_features, target_sequences=None, decode_lengths=None):
         batch_size = image_features.size(0)
@@ -80,7 +106,7 @@ class TopDownDecoder(nn.Module):
 
         v_mean = image_features.mean(dim=1)
 
-        state, prev_words = self.init_inference(batch_size)
+        state, prev_words = self.init_inference(batch_size, v_mean)
         scores = torch.zeros(
             (batch_size, max(decode_lengths), self.vocab_size), device=device
         )
@@ -143,20 +169,6 @@ class TopDownDecoder(nn.Module):
 
         return next_words
 
-    def init_inference(self, batch_size):
-        start_word = torch.full(
-            (batch_size,), self.word_map[TOKEN_START], device=device, dtype=torch.long
-        )
-
-        # TODO: random initialization!
-        h1 = self.h1.repeat(batch_size, 1)
-        c1 = self.c1.repeat(batch_size, 1)
-        h2 = self.h2.repeat(batch_size, 1)
-        c2 = self.c2.repeat(batch_size, 1)
-        state = [h1, c1, h2, c2]
-
-        return state, start_word
-
     def beam_search(
         self,
         image_features,
@@ -196,8 +208,8 @@ class TopDownDecoder(nn.Module):
         complete_seqs_scores = []
 
         # Start decoding
-        states, prev_words = self.init_inference(beam_size)
         v_mean = image_features.mean(dim=1)
+        states, prev_words = self.init_inference(beam_size, v_mean)
 
         for step in range(0, max_caption_len - 1):
             scores, states = self.forward_step(
