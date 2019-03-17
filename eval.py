@@ -138,23 +138,13 @@ def evaluate(
     # Calculate metric scores
     for metric in metrics:
         metric_score = calculate_metric(
-            metric,
-            target_captions,
-            generated_captions,
-            coco_ids,
-            word_map,
-            occurrences_data,
+            metric, target_captions, generated_captions, coco_ids, word_map
         )
         print("\n{} score @ beam size {} is {}".format(metric, beam_size, metric_score))
 
 
 def calculate_metric(
-    metric_name,
-    target_captions,
-    generated_captions,
-    coco_ids,
-    word_map,
-    occurrences_data,
+    metric_name, target_captions, generated_captions, coco_ids, word_map
 ):
     if metric_name == "bleu4":
         generated_captions = [
@@ -163,9 +153,7 @@ def calculate_metric(
         ]
         return corpus_bleu(target_captions, generated_captions)
     elif metric_name == "recall":
-        return recall_adjective_noun_pairs(
-            generated_captions, coco_ids, word_map, occurrences_data
-        )
+        raise NotImplementedError()
 
 
 def check_args(args):
