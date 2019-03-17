@@ -168,7 +168,9 @@ def calculate_metric(
         bleu_3 = corpus_bleu(
             target_captions, generated_captions, weights=(0.33, 0.33, 0.33, 0)
         )
-        bleu_4 = corpus_bleu(target_captions, generated_captions, weights=(1, 0, 0, 0))
+        bleu_4 = corpus_bleu(
+            target_captions, generated_captions, weights=(0.25, 0.25, 0.25, 0.25)
+        )
         return [bleu_1, bleu_2, bleu_3, bleu_4]
     elif metric_name == "recall":
         return recall_adjective_noun_pairs(
