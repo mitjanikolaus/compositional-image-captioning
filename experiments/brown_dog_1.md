@@ -1,129 +1,102 @@
-# Attention
+# Case study
+Image COCO ID: 537955
+
+## Attention
 ![Visualized Attention](brown_dog_attention_1.png)
 
-# Decoding Beam (k=5)
+## Decoding Beam (k=5)
 ```
-['<start>', 'a'] 				 Score: -0.2508106231689453
-['<start>', 'two'] 				 Score: -2.636340856552124
-['<start>', 'the'] 				 Score: -3.119985342025757
-['<start>', 'an'] 				 Score: -3.89092755317688
-['<start>', 'there'] 				 Score: -4.057015419006348
+['<start>', 'a'] 				 Score: -0.17604684829711914
+['<start>', 'the'] 				 Score: -3.1701157093048096
+['<start>', 'two'] 				 Score: -3.6444098949432373
+['<start>', 'an'] 				 Score: -3.7512166500091553
+['<start>', 'there'] 				 Score: -4.348722457885742
 
 
-['<start>', 'a', 'dog'] 				 Score: -1.1863794326782227
-['<start>', 'a', 'large'] 				 Score: -2.6081817150115967
-['<start>', 'two', 'dogs'] 				 Score: -3.0159242153167725
-['<start>', 'a', 'man'] 				 Score: -3.2897279262542725
-['<start>', 'a', 'cat'] 				 Score: -3.3055665493011475
+['<start>', 'a', 'dog'] 				 Score: -0.6014971733093262
+['<start>', 'a', 'large'] 				 Score: -3.196495294570923
+['<start>', 'a', 'small'] 				 Score: -3.397876262664795
+['<start>', 'the', 'dog'] 				 Score: -3.641566514968872
+['<start>', 'two', 'dogs'] 				 Score: -3.712994337081909
 
 
-['<start>', 'a', 'dog', 'laying'] 				 Score: -2.586754322052002
-['<start>', 'a', 'dog', 'is'] 				 Score: -2.5990467071533203
-['<start>', 'a', 'large', 'dog'] 				 Score: -3.1143267154693604
-['<start>', 'a', 'dog', 'that'] 				 Score: -4.071582794189453
-['<start>', 'a', 'dog', 'lying'] 				 Score: -4.244071960449219
+['<start>', 'a', 'dog', 'laying'] 				 Score: -1.9677605628967285
+['<start>', 'a', 'dog', 'is'] 				 Score: -2.216230869293213
+['<start>', 'a', 'dog', 'sitting'] 				 Score: -3.299713134765625
+['<start>', 'a', 'dog', 'that'] 				 Score: -3.369974374771118
+['<start>', 'a', 'small', 'dog'] 				 Score: -3.4425692558288574
 
 
-['<start>', 'a', 'dog', 'laying', 'on'] 				 Score: -2.9354562759399414
-['<start>', 'a', 'dog', 'is', 'laying'] 				 Score: -3.708754539489746
-['<start>', 'a', 'dog', 'is', 'sleeping'] 				 Score: -3.7770915031433105
-['<start>', 'a', 'dog', 'that', 'is'] 				 Score: -4.178783416748047
-['<start>', 'a', 'large', 'dog', 'laying'] 				 Score: -4.44429874420166
+['<start>', 'a', 'dog', 'laying', 'on'] 				 Score: -2.231490135192871
+['<start>', 'a', 'dog', 'is', 'laying'] 				 Score: -3.1427464485168457
+['<start>', 'a', 'dog', 'that', 'is'] 				 Score: -3.4603168964385986
+['<start>', 'a', 'dog', 'sitting', 'on'] 				 Score: -3.6427736282348633
+['<start>', 'a', 'dog', 'is', 'sitting'] 				 Score: -4.049251079559326
 
 
-['<start>', 'a', 'dog', 'laying', 'on', 'a'] 				 Score: -3.263472557067871
-['<start>', 'a', 'dog', 'is', 'laying', 'on'] 				 Score: -4.071772575378418
-['<start>', 'a', 'dog', 'is', 'sleeping', 'on'] 				 Score: -4.122726917266846
-['<start>', 'a', 'dog', 'that', 'is', 'laying'] 				 Score: -4.6383442878723145
-['<start>', 'a', 'large', 'dog', 'laying', 'on'] 				 Score: -4.660996437072754
+['<start>', 'a', 'dog', 'laying', 'on', 'a'] 				 Score: -2.826462745666504
+['<start>', 'a', 'dog', 'laying', 'on', 'the'] 				 Score: -3.5578770637512207
+['<start>', 'a', 'dog', 'is', 'laying', 'on'] 				 Score: -3.678433895111084
+['<start>', 'a', 'dog', 'that', 'is', 'laying'] 				 Score: -3.8408052921295166
+['<start>', 'a', 'dog', 'sitting', 'on', 'a'] 				 Score: -4.154476642608643
 
 
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'bed'] 				 Score: -4.308787822723389
-['<start>', 'a', 'dog', 'is', 'laying', 'on', 'a'] 				 Score: -4.379254341125488
-['<start>', 'a', 'dog', 'is', 'sleeping', 'on', 'a'] 				 Score: -4.438618183135986
-['<start>', 'a', 'large', 'dog', 'laying', 'on', 'a'] 				 Score: -5.074457168579102
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'couch'] 				 Score: -5.144595146179199
+['<start>', 'a', 'dog', 'laying', 'on', 'the', 'floor'] 				 Score: -3.71290922164917
+['<start>', 'a', 'dog', 'that', 'is', 'laying', 'down'] 				 Score: -4.212189674377441
+['<start>', 'a', 'dog', 'is', 'laying', 'on', 'a'] 				 Score: -4.339470863342285
+['<start>', 'a', 'dog', 'laying', 'on', 'a', 'wooden'] 				 Score: -4.375129699707031
+['<start>', 'a', 'dog', 'is', 'laying', 'on', 'the'] 				 Score: -4.687376499176025
 
 
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'bed', 'with'] 				 Score: -5.299993515014648
-['<start>', 'a', 'dog', 'is', 'laying', 'on', 'a', 'bed'] 				 Score: -5.846863269805908
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'bed', 'next'] 				 Score: -5.923713684082031
-['<start>', 'a', 'dog', 'is', 'sleeping', 'on', 'a', 'bed'] 				 Score: -6.105772972106934
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'couch', 'with'] 				 Score: -6.205914497375488
+['<start>', 'a', 'dog', 'laying', 'on', 'a', 'wooden', 'floor'] 				 Score: -4.460048675537109
+['<start>', 'a', 'dog', 'that', 'is', 'laying', 'down', 'on'] 				 Score: -4.831249713897705
+['<start>', 'a', 'dog', 'is', 'laying', 'on', 'the', 'floor'] 				 Score: -4.846985340118408
+['<start>', 'a', 'dog', 'laying', 'on', 'the', 'floor', 'next'] 				 Score: -5.172623157501221
+['<start>', 'a', 'dog', 'laying', 'on', 'the', 'floor', 'in'] 				 Score: -5.453830718994141
 
 
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'bed', 'with', 'a'] 				 Score: -5.815547466278076
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'bed', 'next', 'to'] 				 Score: -5.924084663391113
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'couch', 'with', 'a'] 				 Score: -6.8227763175964355
-['<start>', 'a', 'dog', 'is', 'laying', 'on', 'a', 'bed', 'with'] 				 Score: -6.829896926879883
-['<start>', 'a', 'dog', 'is', 'sleeping', 'on', 'a', 'bed', 'with'] 				 Score: -6.950482368469238
+['<start>', 'a', 'dog', 'that', 'is', 'laying', 'down', 'on', 'a'] 				 Score: -5.112282752990723
+['<start>', 'a', 'dog', 'laying', 'on', 'the', 'floor', 'next', 'to'] 				 Score: -5.173093318939209
+['<start>', 'a', 'dog', 'laying', 'on', 'a', 'wooden', 'floor', 'next'] 				 Score: -5.895857334136963
+['<start>', 'a', 'dog', 'laying', 'on', 'a', 'wooden', 'floor', 'in'] 				 Score: -6.0718865394592285
+['<start>', 'a', 'dog', 'laying', 'on', 'the', 'floor', 'in', 'a'] 				 Score: -6.2036590576171875
 
 
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'bed', 'next', 'to', 'a'] 				 Score: -6.094372272491455
-['<start>', 'a', 'dog', 'is', 'laying', 'on', 'a', 'bed', 'with', 'a'] 				 Score: -7.5180206298828125
-['<start>', 'a', 'dog', 'is', 'sleeping', 'on', 'a', 'bed', 'with', 'a'] 				 Score: -7.586177825927734
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'bed', 'with', 'a', 'red'] 				 Score: -7.66477632522583
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'bed', 'with', 'a', 'blanket'] 				 Score: -8.341280937194824
+['<start>', 'a', 'dog', 'laying', 'on', 'the', 'floor', 'next', 'to', 'a'] 				 Score: -5.244523525238037
+['<start>', 'a', 'dog', 'laying', 'on', 'a', 'wooden', 'floor', 'next', 'to'] 				 Score: -5.896351337432861
+['<start>', 'a', 'dog', 'laying', 'on', 'a', 'wooden', 'floor', 'in', 'a'] 				 Score: -6.666940689086914
+['<start>', 'a', 'dog', 'that', 'is', 'laying', 'down', 'on', 'a', 'rug'] 				 Score: -6.7408552169799805
+['<start>', 'a', 'dog', 'that', 'is', 'laying', 'down', 'on', 'a', 'floor'] 				 Score: -7.008491039276123
 
 
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'bed', 'next', 'to', 'a', 'dog'] 				 Score: -8.633465766906738
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'bed', 'with', 'a', 'red', 'blanket'] 				 Score: -8.685956954956055
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'bed', 'next', 'to', 'a', 'pillow'] 				 Score: -8.753364562988281
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'bed', 'with', 'a', 'blanket', '<end>'] 				 Score: -9.059595108032227
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'bed', 'next', 'to', 'a', 'large'] 				 Score: -9.079294204711914
+['<start>', 'a', 'dog', 'laying', 'on', 'a', 'wooden', 'floor', 'next', 'to', 'a'] 				 Score: -5.997666835784912
+['<start>', 'a', 'dog', 'that', 'is', 'laying', 'down', 'on', 'a', 'rug', '<end>'] 				 Score: -6.830450057983398
+['<start>', 'a', 'dog', 'that', 'is', 'laying', 'down', 'on', 'a', 'floor', '<end>'] 				 Score: -7.129322528839111
+['<start>', 'a', 'dog', 'laying', 'on', 'the', 'floor', 'next', 'to', 'a', 'wooden'] 				 Score: -7.245656490325928
+['<start>', 'a', 'dog', 'laying', 'on', 'a', 'wooden', 'floor', 'in', 'a', 'kitchen'] 				 Score: -7.775879383087158
 
 
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'bed', 'next', 'to', 'a', 'dog', '<end>'] 				 Score: -8.734222412109375
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'bed', 'next', 'to', 'a', 'pillow', '<end>'] 				 Score: -8.82579231262207
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'bed', 'with', 'a', 'red', 'blanket', '<end>'] 				 Score: -8.893169403076172
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'bed', 'next', 'to', 'a', 'large', 'dog'] 				 Score: -10.577775955200195
+['<start>', 'a', 'dog', 'laying', 'on', 'a', 'wooden', 'floor', 'in', 'a', 'kitchen', '<end>'] 				 Score: -7.879330635070801
+['<start>', 'a', 'dog', 'laying', 'on', 'a', 'wooden', 'floor', 'next', 'to', 'a', 'wooden'] 				 Score: -8.050020217895508
+['<start>', 'a', 'dog', 'laying', 'on', 'the', 'floor', 'next', 'to', 'a', 'wooden', 'floor'] 				 Score: -8.07992172241211
 
 
-['<start>', 'a', 'dog', 'laying', 'on', 'a', 'bed', 'next', 'to', 'a', 'large', 'dog', '<end>'] 				 Score: -10.77614688873291
+['<start>', 'a', 'dog', 'laying', 'on', 'the', 'floor', 'next', 'to', 'a', 'wooden', 'floor', '<end>'] 				 Score: -8.155442237854004
+['<start>', 'a', 'dog', 'laying', 'on', 'a', 'wooden', 'floor', 'next', 'to', 'a', 'wooden', 'floor'] 				 Score: -8.760151863098145
+
+
+['<start>', 'a', 'dog', 'laying', 'on', 'a', 'wooden', 'floor', 'next', 'to', 'a', 'wooden', 'floor', '<end>'] 				 Score: -8.78670883178711
 ```
 
-# Scores for alternatives of the top 5 sentences
+## Scores for alternatives of the top 5 sentences
 
 These examples show the scores for artificially created sentences that incorporate descriptions of colour. 
 
 ```
-a dog laying on a bed with a blanket 	    Score: -9.05959701538086
-a brown dog laying on a bed with a blanket 	Score: -11.476841926574707
-a black dog laying on a bed with a blanket 	Score: -11.563711166381836
-a blue dog laying on a bed with a blanket 	Score: -15.399979591369629
-a white dog laying on a bed with a blanket 	Score: -14.829680442810059
-a grey dog laying on a bed with a blanket 	Score: -15.881896018981934
-a green dog laying on a bed with a blanket 	Score: -14.015592575073242
-
-a dog laying on a bed next to a dog 	    Score: -8.734220504760742
-a brown dog laying on a bed next to a dog 	Score: -11.877744674682617
-a black dog laying on a bed next to a dog 	Score: -11.634078979492188
-a blue dog laying on a bed next to a dog 	Score: -14.087688446044922
-a white dog laying on a bed next to a dog 	Score: -14.918807983398438
-a grey dog laying on a bed next to a dog 	Score: -15.778400421142578
-a green dog laying on a bed next to a dog 	Score: -14.039535522460938
-
-a dog laying on a bed next to a pillow 	        Score: -8.82579231262207
-a brown dog laying on a bed next to a pillow 	Score: -11.157829284667969
-a black dog laying on a bed next to a pillow 	Score: -11.538373947143555
-a blue dog laying on a bed next to a pillow 	Score: -15.310003280639648
-a white dog laying on a bed next to a pillow 	Score: -14.751129150390625
-a grey dog laying on a bed next to a pillow 	Score: -15.897743225097656
-a green dog laying on a bed next to a pillow 	Score: -14.07583999633789
-
-a dog laying on a bed with a red blanket 	    Score: -8.893169403076172
-a brown dog laying on a bed with a red blanket 	Score: -11.271944999694824
-a black dog laying on a bed with a red blanket 	Score: -11.556838989257812
-a blue dog laying on a bed with a red blanket 	Score: -14.83508014678955
-a white dog laying on a bed with a red blanket 	Score: -14.641864776611328
-a grey dog laying on a bed with a red blanket 	Score: -15.70083999633789
-a green dog laying on a bed with a red blanket 	Score: -13.989049911499023
-
-a dog laying on a bed next to a large dog 	        Score: -10.776144027709961
-a brown dog laying on a bed next to a large dog 	Score: -14.340839385986328
-a black dog laying on a bed next to a large dog 	Score: -13.913240432739258
-a blue dog laying on a bed next to a large dog 	    Score: -16.135845184326172
-a white dog laying on a bed next to a large dog 	Score: -17.19634246826172
-a grey dog laying on a bed next to a large dog 	    Score: -17.981155395507812
-a green dog laying on a bed next to a large dog 	Score: -16.31243896484375
+a dog that is laying down on a rug 	        Score: -6.83044958114624
+a brown dog that is laying down on a rug 	Score: -12.176456451416016
+a black dog that is laying down on a rug 	Score: -11.864744186401367
+a white dog that is laying down on a rug 	Score: -14.034316062927246
+a blue dog that is laying down on a rug 	Score: -17.353790283203125
+a red dog that is laying down on a rug 	    Score: -14.830488204956055
 ```
