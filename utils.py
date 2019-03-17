@@ -18,10 +18,10 @@ IMAGENET_IMAGES_STD = [0.229, 0.224, 0.225]
 
 
 WORD_MAP_FILENAME = "word_map.json"
-IMAGES_FILENAME = "images.hdf5"
-BOTTOM_UP_FEATURES_FILENAME = "bottom_up_features.hdf5"
-CAPTIONS_FILENAME = "captions.json"
-CAPTION_LENGTHS_FILENAME = "caption_lengths.json"
+IMAGES_FILENAME = "images_merged.hdf5"
+BOTTOM_UP_FEATURES_FILENAME = "bottom_up_features_merged.hdf5"
+CAPTIONS_FILENAME = "captions_merged.json"
+CAPTION_LENGTHS_FILENAME = "caption_lengths_merged.json"
 
 NOUNS = "nouns"
 ADJECTIVES = "adjectives"
@@ -128,6 +128,25 @@ def get_splits_from_occurrences_data(occurrences_data_file, val_set_size=0):
     train_val_split = int((1 - val_set_size) * len(indices_without_test))
     train_images_split = indices_without_test[:train_val_split]
     val_images_split = indices_without_test[train_val_split:]
+
+    return train_images_split, val_images_split, test_images_split
+
+
+def get_splits_from_karpathy_json(karpathy_json):
+    with open(karpathy_json, "r") as json_file:
+        images_data = json.load(json_file)["images"]
+
+    train_images_split = [
+        data["cocoid"] for data in images_data if data["split"] == "train"
+    ]
+
+    val_images_split = [
+        data["cocoid"] for data in images_data if data["split"] == "val"
+    ]
+
+    test_images_split = [
+        data["cocoid"] for data in images_data if data["split"] == "test"
+    ]
 
     return train_images_split, val_images_split, test_images_split
 

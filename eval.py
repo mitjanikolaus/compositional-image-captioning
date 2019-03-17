@@ -16,9 +16,9 @@ from utils import (
     IMAGENET_IMAGES_MEAN,
     WORD_MAP_FILENAME,
     IMAGENET_IMAGES_STD,
-    get_splits_from_occurrences_data,
     IMAGES_FILENAME,
     BOTTOM_UP_FEATURES_FILENAME,
+    get_splits_from_karpathy_json,
 )
 from visualize_attention import visualize_attention
 
@@ -28,7 +28,7 @@ cudnn.benchmark = True  # improve performance if inputs to model are fixed size
 
 def evaluate(
     data_folder,
-    occurrences_data,
+    karpathy_json,
     checkpoint,
     metrics,
     beam_size,
@@ -54,7 +54,7 @@ def evaluate(
     with open(word_map_path, "r") as json_file:
         word_map = json.load(json_file)
 
-    _, _, test_images_split = get_splits_from_occurrences_data(occurrences_data)
+    _, _, test_images_split = get_splits_from_karpathy_json(karpathy_json)
 
     if model_name == MODEL_SHOW_ATTEND_TELL:
         # Normalization
@@ -176,9 +176,9 @@ def check_args(args):
         default=os.path.expanduser("../datasets/coco2014_preprocessed/"),
     )
     parser.add_argument(
-        "--occurrences-data",
-        help="File containing occurrences statistics about adjective noun pairs",
-        default="data/brown_dog.json",
+        "--karpathy-json",
+        help="File containing train/val/test split information",
+        default="data/karpathy-splits.json",
     )
     parser.add_argument(
         "--checkpoint", help="Path to checkpoint of trained model", required=True
@@ -219,7 +219,7 @@ if __name__ == "__main__":
     parsed_args = check_args(sys.argv[1:])
     evaluate(
         data_folder=parsed_args.data_folder,
-        occurrences_data=parsed_args.occurrences_data,
+        karpathy_json=parsed_args.karpathy_json,
         checkpoint=parsed_args.checkpoint,
         metrics=parsed_args.metrics,
         beam_size=parsed_args.beam_size,

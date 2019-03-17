@@ -32,6 +32,7 @@ from utils import (
     IMAGENET_IMAGES_STD,
     BOTTOM_UP_FEATURES_FILENAME,
     IMAGES_FILENAME,
+    get_splits_from_karpathy_json,
 )
 
 MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
@@ -48,7 +49,7 @@ def main(
     model_params,
     model_name,
     data_folder,
-    occurrences_data,
+    karpathy_json,
     batch_size,
     alpha_c,
     fine_tune_encoder=False,
@@ -74,8 +75,8 @@ def main(
         word_map = json.load(json_file)
 
     # Generate dataset splits
-    train_images_split, val_images_split, _ = get_splits_from_occurrences_data(
-        occurrences_data, val_set_size
+    train_images_split, val_images_split, _ = get_splits_from_karpathy_json(
+        karpathy_json
     )
 
     # Load checkpoint
@@ -423,9 +424,9 @@ def check_args(args):
         default=os.path.expanduser("../datasets/coco2014_preprocessed/"),
     )
     parser.add_argument(
-        "--occurrences-data",
-        help="File containing occurrences statistics about adjective noun pairs",
-        default="data/brown_dog.json",
+        "--karpathy-json",
+        help="File containing train/val/test split information",
+        default="data/karpathy-splits.json",
     )
     parser.add_argument("--batch-size", help="Batch size", type=int, default=32)
     parser.add_argument(
@@ -472,7 +473,7 @@ if __name__ == "__main__":
         model_params=vars(parsed_args),
         model_name=parsed_args.model,
         data_folder=parsed_args.data_folder,
-        occurrences_data=parsed_args.occurrences_data,
+        karpathy_json=parsed_args.karpathy_json,
         batch_size=parsed_args.batch_size,
         alpha_c=parsed_args.alpha_c,
         checkpoint=parsed_args.checkpoint,
