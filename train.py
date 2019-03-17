@@ -426,7 +426,7 @@ def check_args(args):
     parser.add_argument(
         "--karpathy-json",
         help="File containing train/val/test split information",
-        default="data/karpathy-splits.json",
+        default="../datasets/karpathy-splits.json",
     )
     parser.add_argument("--batch-size", help="Batch size", type=int, default=32)
     parser.add_argument(

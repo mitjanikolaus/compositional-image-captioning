@@ -137,15 +137,15 @@ def get_splits_from_karpathy_json(karpathy_json):
         images_data = json.load(json_file)["images"]
 
     train_images_split = [
-        data["cocoid"] for data in images_data if data["split"] == "train"
+        str(data["cocoid"]) for data in images_data if data["split"] == "train"
     ]
 
     val_images_split = [
-        data["cocoid"] for data in images_data if data["split"] == "val"
+        str(data["cocoid"]) for data in images_data if data["split"] == "val"
     ]
 
     test_images_split = [
-        data["cocoid"] for data in images_data if data["split"] == "test"
+        str(data["cocoid"]) for data in images_data if data["split"] == "test"
     ]
 
     return train_images_split, val_images_split, test_images_split
