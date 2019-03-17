@@ -53,7 +53,7 @@ class CaptionDataset(Dataset):
         self.dataset_size = len(self.split)
 
     def get_image_features(self, coco_id):
-        image_data = self.image_features[coco_id].value
+        image_data = self.image_features[coco_id][()]
 
         # scale the features with given factor
         image_data = image_data * self.features_scale_factor

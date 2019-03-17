@@ -9,11 +9,7 @@ from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence
 from torchvision.transforms import transforms
 
-from models.bottom_up_top_down import (
-    TopDownDecoder,
-    DEFAULT_MODEL_PARAMS,
-    create_top_down_decoder_optimizer,
-)
+from models.bottom_up_top_down import TopDownDecoder, create_top_down_decoder_optimizer
 from models.show_attend_tell import (
     Encoder,
     SATDecoder,
