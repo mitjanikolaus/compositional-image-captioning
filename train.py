@@ -57,7 +57,7 @@ def main(
     alpha_c,
     fine_tune_encoder=False,
     workers=1,
-    grad_clip=5.0,
+    grad_clip=10.0,
     start_epoch=0,
     epochs=120,
     epochs_early_stopping=10,
