@@ -156,12 +156,20 @@ def calculate_metric(
     word_map,
     occurrences_data,
 ):
-    if metric_name == "bleu4":
+    if metric_name == "bleu":
         generated_captions = [
             get_caption_without_special_tokens(top_k_captions[0], word_map)
             for top_k_captions in generated_captions
         ]
-        return corpus_bleu(target_captions, generated_captions)
+        bleu_1 = corpus_bleu(target_captions, generated_captions, weights=(1, 0, 0, 0))
+        bleu_2 = corpus_bleu(
+            target_captions, generated_captions, weights=(0.5, 0.5, 0, 0)
+        )
+        bleu_3 = corpus_bleu(
+            target_captions, generated_captions, weights=(0.33, 0.33, 0.33, 0)
+        )
+        bleu_4 = corpus_bleu(target_captions, generated_captions, weights=(1, 0, 0, 0))
+        return [bleu_1, bleu_2, bleu_3, bleu_4]
     elif metric_name == "recall":
         return recall_adjective_noun_pairs(
             generated_captions, coco_ids, word_map, occurrences_data
@@ -187,8 +195,8 @@ def check_args(args):
         "--metrics",
         help="Evaluation metrics",
         nargs="+",
-        default=["bleu4"],
-        choices=["bleu4", "recall"],
+        default=["bleu"],
+        choices=["bleu", "recall"],
     )
 
     parser.add_argument(
