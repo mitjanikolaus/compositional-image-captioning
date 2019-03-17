@@ -219,13 +219,11 @@ def save_checkpoint(
         "encoder_optimizer": encoder_optimizer,
         "decoder_optimizer": decoder_optimizer,
     }
-    torch.save(state, "checkpoint_karpathy_" + model_name + "_" + name + ".pth.tar")
+    torch.save(state, "checkpoint_" + model_name + "_" + name + ".pth.tar")
 
     # If this checkpoint is the best so far, store a copy so it doesn't get overwritten by a worse checkpoint
     if is_best:
-        torch.save(
-            state, "checkpoint_karpathy_" + model_name + "_" + name + "_best.pth.tar"
-        )
+        torch.save(state, "checkpoint_" + model_name + "_" + name + "_best.pth.tar")
 
 
 class AverageMeter(object):

@@ -234,7 +234,7 @@ def main(
             )
 
         # Save checkpoint
-        name = os.path.basename(occurrences_data).split(".")[0]
+        name = "karpathy_splits"
         save_checkpoint(
             model_name,
             name,
