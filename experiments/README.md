@@ -68,6 +68,9 @@ We analyse samples where the agreement among the target captions is very high (n
 
 The following files contain the visualized attention and the full decoding beam for every timestep for different
 samples:
+- [brown_dog_1.md](brown_dog_1.md)
+- [brown_dog_2.md](brown_dog_2.md)
+- [brown_dog_3.md](brown_dog_3.md)
 - [white_car_1.md](white_car_1.md)
 - [white_car_2.md](white_car_2.md)
 - [white_car_3.md](white_car_3.md)
