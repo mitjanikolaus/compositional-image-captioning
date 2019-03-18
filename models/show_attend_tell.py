@@ -8,7 +8,7 @@ from utils import TOKEN_START, TOKEN_END, decode_caption, update_params
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 DEFAULT_MODEL_PARAMS = {
-    "embed_dim": 512,
+    "embeddings_size": 512,
     "attention_dim": 512,
     "encoder_dim": 2048,
     "decoder_dim": 512,
@@ -150,16 +150,7 @@ class AttentionModule(nn.Module):
 
 
 class SATDecoder(nn.Module):
-    def __init__(self, word_map, params):
-        """
-        :param attention_dim: size of attention network
-        :param embed_dim: embedding size
-        :param decoder_dim: size of decoder's RNN
-        :param word_map: vocabulary word map
-        :param max_caption_len: maximum caption length (for decoding in evaluation mode)
-        :param encoder_dim: feature size of encoded images
-        :param dropout: dropout rate
-        """
+    def __init__(self, word_map, params, pretrained_embeddings=None):
         super(SATDecoder, self).__init__()
         self.params = update_params(DEFAULT_MODEL_PARAMS, params)
         self.vocab_size = len(word_map)
@@ -171,10 +162,13 @@ class SATDecoder(nn.Module):
             self.params["attention_dim"],
         )
 
-        self.embedding = nn.Embedding(self.vocab_size, self.params["embed_dim"])
+        self.embedding = nn.Embedding(self.vocab_size, self.params["embeddings_size"])
+        if pretrained_embeddings is not None:
+            self.embedding.weight = nn.Parameter(pretrained_embeddings)
+
         self.dropout = nn.Dropout(p=self.params["dropout"])
         self.decode_step = nn.LSTMCell(
-            self.params["embed_dim"] + self.params["encoder_dim"],
+            self.params["embeddings_size"] + self.params["encoder_dim"],
             self.params["decoder_dim"],
             bias=True,
         )  # decoding LSTMCell
@@ -201,14 +195,6 @@ class SATDecoder(nn.Module):
         self.embedding.weight.data.uniform_(-0.1, 0.1)
         self.fc.bias.data.fill_(0)
         self.fc.weight.data.uniform_(-0.1, 0.1)
-
-    def load_pretrained_embeddings(self, embeddings):
-        """
-        Load an embedding layer with pre-trained embeddings.
-
-        :param embeddings: pre-trained embeddings
-        """
-        self.embedding.weight = nn.Parameter(embeddings)
 
     def fine_tune_embeddings(self, fine_tune=True):
         """
@@ -277,7 +263,7 @@ class SATDecoder(nn.Module):
         encoder_out = encoder_out.view(batch_size, -1, encoder_dim)
 
         if self.training:
-            # Embed the target captions (output shape: (batch_size, max_caption_length, embed_dim))
+            # Embed the target captions (output shape: (batch_size, max_caption_length, embeddings_size))
             embedded_target_captions = self.embedding(target_captions)
 
         else:
@@ -403,7 +389,7 @@ class SATDecoder(nn.Module):
         for step in range(0, max_caption_len - 1):
             embeddings = self.embedding(top_k_sequences[:, step]).squeeze(
                 1
-            )  # (k, embed_dim)
+            )  # (k, embeddings_size)
 
             predictions, alpha, decoder_hidden_state, decoder_cell_state = self.forward_step(
                 encoder_out, decoder_hidden_state, decoder_cell_state, embeddings

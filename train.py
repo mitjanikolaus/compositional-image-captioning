@@ -32,6 +32,7 @@ from utils import (
     IMAGENET_IMAGES_STD,
     BOTTOM_UP_FEATURES_FILENAME,
     IMAGES_FILENAME,
+    load_embeddings,
 )
 
 MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
@@ -51,6 +52,7 @@ def main(
     occurrences_data,
     batch_size,
     alpha_c,
+    embeddings_file,
     fine_tune_encoder=False,
     workers=1,
     grad_clip=10.0,
@@ -72,6 +74,18 @@ def main(
     word_map_file = os.path.join(data_folder, WORD_MAP_FILENAME)
     with open(word_map_file, "r") as json_file:
         word_map = json.load(json_file)
+
+    # Read pretrained word embeddings
+    embeddings = None
+    if embeddings_file:
+        embeddings, model_params["embeddings_size"] = load_embeddings(
+            embeddings_file, word_map
+        )
+        print(
+            "Set embedding layer dimension to {}".format(
+                model_params["embeddings_size"]
+            )
+        )
 
     # Generate dataset splits
     train_images_split, val_images_split, _ = get_splits_from_occurrences_data(
@@ -100,7 +114,7 @@ def main(
     # No checkpoint given, initialize the model
     else:
         if model_name == MODEL_SHOW_ATTEND_TELL:
-            decoder = SATDecoder(word_map=word_map, params=model_params)
+            decoder = SATDecoder(word_map, model_params, embeddings)
             decoder_optimizer = create_sat_decoder_optimizer(decoder, model_params)
             encoder = Encoder()
             encoder.set_fine_tuning_enabled(fine_tune_encoder)
@@ -113,7 +127,7 @@ def main(
         elif model_name == MODEL_BOTTOM_UP_TOP_DOWN:
             encoder = None
             encoder_optimizer = None
-            decoder = TopDownDecoder(word_map=word_map, params=model_params)
+            decoder = TopDownDecoder(word_map, model_params, embeddings)
             decoder_optimizer = create_top_down_decoder_optimizer(decoder, model_params)
         else:
             raise RuntimeError("Unknown model name: {}".format(model_name))
@@ -460,6 +474,11 @@ def check_args(args):
     parser.add_argument(
         "--epochs", help="Maximum number of training epochs", type=int, default=120
     )
+    parser.add_argument(
+        "--embeddings",
+        help="Path to a word GloVe embeddings file to be used to initialize the decoder word embeddings",
+        default=None,
+    )
 
     parsed_args = parser.parse_args(args)
     print(parsed_args)
@@ -475,6 +494,7 @@ if __name__ == "__main__":
         occurrences_data=parsed_args.occurrences_data,
         batch_size=parsed_args.batch_size,
         alpha_c=parsed_args.alpha_c,
+        embeddings_file=parsed_args.embeddings,
         checkpoint=parsed_args.checkpoint,
         epochs=parsed_args.epochs,
     )

@@ -6,6 +6,7 @@ from scipy.misc import imread, imresize
 import matplotlib.pyplot as plt
 import numpy as np
 from torchvision.transforms import transforms
+from tqdm import tqdm
 
 TOKEN_UNKNOWN = "<unk>"
 TOKEN_START = "<start>"
@@ -34,6 +35,8 @@ ADJECTIVE_OCCURRENCES = "adjective_occurrences"
 RELATION_NOMINAL_SUBJECT = "nsubj"
 RELATION_ADJECTIVAL_MODIFIER = "amod"
 RELATION_CONJUNCT = "conj"
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def update_params(defaults, params):
@@ -255,3 +258,37 @@ def top_k_accuracy(scores, targets, k):
     correct = ind.eq(targets.view(-1, 1).expand_as(ind))
     correct_total = correct.view(-1).float().sum()
     return correct_total.item() * (100.0 / batch_size)
+
+
+def load_embeddings(emb_file, word_map):
+    """Return an embedding for the specified word map from the a GloVe embedding file"""
+
+    print("\nLoading embeddings: {}".format(emb_file))
+    with open(emb_file, "r") as f:
+        emb_dim = len(f.readline().split(" ")) - 1
+
+    vocab = set(word_map.keys())
+
+    embeddings = torch.FloatTensor(len(vocab), emb_dim, device=device)
+    # Initialize the weights with random values (these will stay only for cases where a word in the vocabulary does not
+    # exist in the loaded embeddings' vocabulary
+    torch.nn.init.normal_(embeddings, 0, 1)
+
+    tokens_found = set()
+    for line in tqdm(open(emb_file, "r")):
+        line_split = line.split(" ")
+        emb_word = line_split[0]
+        if emb_word in vocab:
+            embedding = [float(t) for t in line_split[1:] if not t.isspace()]
+            embeddings[word_map[emb_word]] = torch.FloatTensor(embedding, device=device)
+            tokens_found.add(emb_word)
+
+    missed_tokens = vocab - tokens_found
+    if missed_tokens:
+        print(
+            "\nThe loaded embeddings did not contain an embedding for the following tokens: {}".format(
+                missed_tokens
+            )
+        )
+
+    return embeddings, emb_dim

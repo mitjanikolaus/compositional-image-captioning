@@ -36,13 +36,16 @@ def create_top_down_decoder_optimizer(decoder, params):
 
 
 class TopDownDecoder(nn.Module):
-    def __init__(self, word_map, params):
+    def __init__(self, word_map, params, pretrained_embeddings=None):
         super(TopDownDecoder, self).__init__()
         self.params = update_params(DEFAULT_MODEL_PARAMS, params)
         self.vocab_size = len(word_map)
         self.word_map = word_map
 
         self.embed_word = nn.Embedding(self.vocab_size, self.params["embeddings_size"])
+        if pretrained_embeddings is not None:
+            self.embed_word.weight = nn.Parameter(pretrained_embeddings)
+
         self.attention_lstm = AttentionLSTM(
             self.params["embeddings_size"],
             self.params["language_lstm_size"],
