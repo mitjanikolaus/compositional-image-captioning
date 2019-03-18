@@ -57,6 +57,30 @@ Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=
 1         | 0.269  | 0.014         | 0.034         | 0.067         | 0             | N/A
 5         | 0.317  | 0.328         | 0.471         | 0.8           | 1             | N/A
 
+#### Model trained with held out "big car"
+
+Performance on held out test set ("big car"):
+
+Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------|--------| --------------| --------------| --------------| --------------| -------------
+1         | 0.217  | 0.012         | 0.016         | 0.038         | 0             | N/A
+5         | 0.247  | 0.002         | 0.008         | 0             | 0             | N/A
+
+Performance on "brown dog" data:
+
+Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------|--------| --------------| --------------| --------------| --------------| -------------
+1         | 0.268  | 0.017         | 0.023         | 0.067         | 0             | N/A
+5         | 0.303  | 0.328         | 0.414         | 0.667         | 1             | N/A
+
+Performance on "white car" data:
+
+Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------|--------| --------------| --------------| --------------| --------------| -------------
+1         | 0.205  | 0.069         | 0.087         | 0.105         | 0.125         | N/A
+5         | 0.220  | 0.196         | 0.254         | 0.395         | 0.5           | N/A
+
+
 The results suggest that the model does not generalise to unseen adjective-noun pairs. The recall for adjective-noun
 pairs of a model that was trained on data excluding the pairs is in all cases significantly lower compared to the recall of models that
 were trained without the pairs being excluded from the training set.
