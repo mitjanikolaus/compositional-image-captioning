@@ -2,6 +2,7 @@ import random
 
 import torch
 from torch import nn
+import torch.nn.functional as F
 
 
 from utils import TOKEN_START, TOKEN_END, decode_caption, update_params
@@ -187,7 +188,6 @@ class TopDownDecoder(nn.Module):
         current_beam_width = beam_size
 
         # Encode
-        enc_image_size = image_features.size(1)
         encoder_dim = image_features.size(2)
 
         # We'll treat the problem as having a batch size of k
@@ -216,14 +216,15 @@ class TopDownDecoder(nn.Module):
             scores, states = self.forward_step(
                 states, prev_words, v_mean, image_features
             )
+            scores = F.log_softmax(scores, dim=1)
 
             # Add the new scores
             scores = (
                 top_k_scores.unsqueeze(1).expand_as(scores) + scores
             )  # (k, vocab_size)
 
-            # For the first timestep, the scores from previous decoding are all the same, so in order to create 5 different
-            # sequences, we should only look at one branch
+            # For the first timestep, the scores from previous decoding are all the same, so in order to create 5
+            # different sequences, we should only look at one branch
             if step == 0:
                 scores = scores[0]
 
