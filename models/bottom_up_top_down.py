@@ -174,7 +174,7 @@ class TopDownDecoder(nn.Module):
         image_features,
         beam_size,
         max_caption_len=50,
-        store_alphas=False,  # TODO
+        store_alphas=False,
         print_beam=False,
     ):
         """Generate and return the top k sequences using beam search."""
@@ -212,11 +212,10 @@ class TopDownDecoder(nn.Module):
         states, prev_words = self.init_inference(beam_size, v_mean)
 
         for step in range(0, max_caption_len - 1):
+            prev_words = top_k_sequences[:, step]
             scores, states = self.forward_step(
                 states, prev_words, v_mean, image_features
             )
-
-            prev_words = self.update_previous_word(scores, None, step)
 
             # Add the new scores
             scores = (
@@ -270,7 +269,6 @@ class TopDownDecoder(nn.Module):
             v_mean = v_mean[prev_seq_inds[incomplete_inds]]
             image_features = image_features[prev_seq_inds[incomplete_inds]]
             top_k_scores = top_k_scores[incomplete_inds]
-            prev_words = prev_words[prev_seq_inds[incomplete_inds]]
 
         if len(complete_seqs) < beam_size:
             complete_seqs.extend(top_k_sequences[incomplete_inds].tolist())
