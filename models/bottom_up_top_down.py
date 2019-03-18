@@ -86,8 +86,6 @@ class TopDownDecoder(nn.Module):
 
         h1 = self.init_h1(v_mean)
         c1 = self.init_c1(v_mean)
-
-        # TODO initialize with combination of attended image features and attention LSTM output
         h2 = self.init_h2(v_mean)
         c2 = self.init_c2(v_mean)
         state = [h1, c1, h2, c2]
@@ -182,7 +180,7 @@ class TopDownDecoder(nn.Module):
 
         if store_alphas:
             raise NotImplementedError(
-                "Storage of weight for this model is not supported"
+                "Storage of alphas for this model is not supported"
             )
 
         current_beam_width = beam_size
