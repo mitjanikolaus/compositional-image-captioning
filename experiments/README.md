@@ -125,6 +125,12 @@ Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=
 1         | 0.266  | 0.187         | 0.262         | 0.342         | 0.375         | N/A
 5         | 0.264  | 0.380         | 0.476         | 0.632         | 0.75          | N/A
 
+Performance on "big car" data:
+
+Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------|--------| --------------| --------------| --------------| --------------| -------------
+1         | 0.283  | 0.055         | 0.144         | 0.231         | 0.5           | N/A
+5         | 0.321  | 0.154         | 0.304         | 0.538         | 0.5           | N/A
 
 #### Model trained with held out "white car"
 
@@ -142,3 +148,32 @@ Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=
 1         | 0.308  | 0.0724        | 0.115         | 0.267         | 0             | N/A                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
 5         | 0.359  | 0.334         | 0.402         | 0.533         | 0             | N/A
 
+Performance on "big car" data:
+
+Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------|--------| --------------| --------------| --------------| --------------| -------------
+1         | 0.282  | 0.093         | 0.168         | 0.15384615    | 0             | N/A
+5         | 0.299  | 0.136         | 0.256         | 0.346         | 1             | N/A
+
+#### Model trained with held out "big car"
+
+Performance on held out test set ("big car"):
+
+Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------|--------| --------------| --------------| --------------| --------------| -------------
+1         | 0.264  | 0.002         | 0.008         | 0.038         | 0             | N/A
+5         | 0.311  | 0             | 0             | 0             | 0             | N/A
+
+Performance on "brown dog" data:
+
+Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------|--------| --------------| --------------| --------------| --------------| -------------
+1         | 0.329  | 0.031         | 0.023         | 0             | 0             | N/A
+5         | 0.357  | 0.341         | 0.414         | 0.6           | 0             | N/A
+
+Performance on "white car" data:
+
+Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------|--------| --------------| --------------| --------------| --------------| -------------
+1         | 0.282  | 0.222         | 0.302         | 0.316         | 0.375         | N/A
+5         | 0.303  | 0.380         | 0.516         | 0.605         | 0.625         | N/A
