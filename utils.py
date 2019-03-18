@@ -19,6 +19,7 @@ IMAGENET_IMAGES_STD = [0.229, 0.224, 0.225]
 
 WORD_MAP_FILENAME = "word_map.json"
 IMAGES_FILENAME = "images.hdf5"
+BOTTOM_UP_FEATURES_FILENAME = "bottom_up_features.hdf5"
 CAPTIONS_FILENAME = "captions.json"
 CAPTION_LENGTHS_FILENAME = "caption_lengths.json"
 
@@ -33,6 +34,14 @@ ADJECTIVE_OCCURRENCES = "adjective_occurrences"
 RELATION_NOMINAL_SUBJECT = "nsubj"
 RELATION_ADJECTIVAL_MODIFIER = "amod"
 RELATION_CONJUNCT = "conj"
+
+
+def update_params(defaults, params):
+    updated = defaults.copy()
+    for key, value in defaults.items():
+        if key in params and params[key]:
+            updated[key] = params[key]
+    return updated
 
 
 def contains_adjective_noun_pair(nlp_pipeline, caption, nouns, adjectives):
@@ -158,9 +167,10 @@ def clip_gradients(optimizer, grad_clip):
 
 
 def save_checkpoint(
+    model_name,
     name,
     epoch,
-    epochs_since_improvement,
+    epochs_since_last_improvement,
     encoder,
     decoder,
     encoder_optimizer,
@@ -181,19 +191,20 @@ def save_checkpoint(
     :param is_best: True, if this is the best checkpoint so far (will save the model to a dedicated file)
     """
     state = {
+        "model_name": model_name,
         "epoch": epoch,
-        "epochs_since_improvement": epochs_since_improvement,
+        "epochs_since_improvement": epochs_since_last_improvement,
         "bleu-4": bleu4,
         "encoder": encoder,
         "decoder": decoder,
         "encoder_optimizer": encoder_optimizer,
         "decoder_optimizer": decoder_optimizer,
     }
-    torch.save(state, "checkpoint_" + name + ".pth.tar")
+    torch.save(state, "checkpoint_" + model_name + "_" + name + ".pth.tar")
 
     # If this checkpoint is the best so far, store a copy so it doesn't get overwritten by a worse checkpoint
     if is_best:
-        torch.save(state, "checkpoint_" + name + "_best.pth.tar")
+        torch.save(state, "checkpoint_" + model_name + "_" + name + "_best.pth.tar")
 
 
 class AverageMeter(object):

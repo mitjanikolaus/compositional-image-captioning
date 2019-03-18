@@ -5,10 +5,17 @@ import sys
 import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
-import torchvision.transforms as transforms
 from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence
-from models import Encoder, DecoderWithAttention
+from torchvision.transforms import transforms
+
+from models.bottom_up_top_down import TopDownDecoder, create_top_down_decoder_optimizer
+from models.show_attend_tell import (
+    Encoder,
+    SATDecoder,
+    create_sat_encoder_optimizer,
+    create_sat_decoder_optimizer,
+)
 from datasets import CaptionTrainDataset, CaptionTestDataset
 from nltk.translate.bleu_score import corpus_bleu
 
@@ -19,14 +26,16 @@ from utils import (
     clip_gradients,
     top_k_accuracy,
     get_splits_from_occurrences_data,
-    IMAGENET_IMAGES_MEAN,
-    IMAGENET_IMAGES_STD,
     WORD_MAP_FILENAME,
     get_caption_without_special_tokens,
-    TOKEN_START,
-    TOKEN_END,
-    TOKEN_PADDING,
+    IMAGENET_IMAGES_MEAN,
+    IMAGENET_IMAGES_STD,
+    BOTTOM_UP_FEATURES_FILENAME,
+    IMAGES_FILENAME,
 )
+
+MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
+MODEL_BOTTOM_UP_TOP_DOWN = "BOTTOM_UP_TOP_DOWN"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True  # improve performance if inputs to model are fixed size
@@ -36,23 +45,18 @@ best_bleu4 = 0.0
 
 
 def main(
+    model_params,
+    model_name,
     data_folder,
     occurrences_data,
-    emb_dim=512,
-    attention_dim=512,
-    decoder_dim=512,
-    dropout=0.5,
+    batch_size,
+    alpha_c,
+    fine_tune_encoder=False,
+    workers=1,
+    grad_clip=10.0,
     start_epoch=0,
     epochs=120,
-    batch_size=32,
-    workers=1,
-    encoder_lr=1e-4,
-    decoder_lr=4e-4,
-    grad_clip=5.0,
-    alpha_c=1.0,
-    max_caption_len=50,
-    fine_tune_encoder=False,
-    epochs_early_stopping=20,
+    epochs_early_stopping=10,
     epochs_adjust_learning_rate=8,
     rate_adjust_learning_rate=0.8,
     val_set_size=0.1,
@@ -69,6 +73,11 @@ def main(
     with open(word_map_file, "r") as json_file:
         word_map = json.load(json_file)
 
+    # Generate dataset splits
+    train_images_split, val_images_split, _ = get_splits_from_occurrences_data(
+        occurrences_data, val_set_size
+    )
+
     # Load checkpoint
     if checkpoint:
         checkpoint = torch.load(checkpoint, map_location=device)
@@ -77,75 +86,103 @@ def main(
         best_bleu4 = checkpoint["bleu-4"]
         decoder = checkpoint["decoder"]
         decoder_optimizer = checkpoint["decoder_optimizer"]
-        encoder = checkpoint["encoder"]
-        encoder_optimizer = checkpoint["encoder_optimizer"]
+        model_name = checkpoint["model_name"]
+        if "encoder" in checkpoint:
+            encoder = checkpoint["encoder"]
+            encoder_optimizer = checkpoint["encoder_optimizer"]
+        else:
+            encoder = None
+            encoder_optimizer = None
         if fine_tune_encoder and encoder_optimizer is None:
             encoder.set_fine_tuning_enabled(fine_tune_encoder)
-            encoder_optimizer = torch.optim.Adam(
-                params=filter(lambda p: p.requires_grad, encoder.parameters()),
-                lr=encoder_lr,
-            )
+            encoder_optimizer = create_sat_encoder_optimizer(encoder, model_params)
 
     # No checkpoint given, initialize the model
     else:
-        decoder = DecoderWithAttention(
-            attention_dim=attention_dim,
-            embed_dim=emb_dim,
-            decoder_dim=decoder_dim,
-            vocab_size=len(word_map),
-            start_token=word_map[TOKEN_START],
-            end_token=word_map[TOKEN_END],
-            padding_token=word_map[TOKEN_PADDING],
-            max_caption_len=max_caption_len,
-            dropout=dropout,
-        )
-        decoder_optimizer = torch.optim.Adam(
-            params=filter(lambda p: p.requires_grad, decoder.parameters()),
-            lr=decoder_lr,
-        )
-        encoder = Encoder()
-        encoder.set_fine_tuning_enabled(fine_tune_encoder)
-        encoder_optimizer = (
-            torch.optim.Adam(
-                params=filter(lambda p: p.requires_grad, encoder.parameters()),
-                lr=encoder_lr,
+        if model_name == MODEL_SHOW_ATTEND_TELL:
+            decoder = SATDecoder(word_map=word_map, params=model_params)
+            decoder_optimizer = create_sat_decoder_optimizer(decoder, model_params)
+            encoder = Encoder()
+            encoder.set_fine_tuning_enabled(fine_tune_encoder)
+            encoder_optimizer = (
+                create_sat_encoder_optimizer(encoder, model_params)
+                if fine_tune_encoder
+                else None
             )
-            if fine_tune_encoder
-            else None
+
+        elif model_name == MODEL_BOTTOM_UP_TOP_DOWN:
+            encoder = None
+            encoder_optimizer = None
+            decoder = TopDownDecoder(word_map=word_map, params=model_params)
+            decoder_optimizer = create_top_down_decoder_optimizer(decoder, model_params)
+        else:
+            raise RuntimeError("Unknown model name: {}".format(model_name))
+
+    if model_name == MODEL_SHOW_ATTEND_TELL:
+        # Data loaders
+        normalize = transforms.Normalize(
+            mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD
         )
+        train_images_loader = torch.utils.data.DataLoader(
+            CaptionTrainDataset(
+                data_folder,
+                IMAGES_FILENAME,
+                train_images_split,
+                transforms.Compose([normalize]),
+                features_scale_factor=1 / 255.0,
+            ),
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=workers,
+            pin_memory=True,
+        )
+        val_images_loader = torch.utils.data.DataLoader(
+            CaptionTestDataset(
+                data_folder,
+                IMAGES_FILENAME,
+                val_images_split,
+                transforms.Compose([normalize]),
+                features_scale_factor=1 / 255.0,
+            ),
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=workers,
+            pin_memory=True,
+        )
+
+    elif model_name == MODEL_BOTTOM_UP_TOP_DOWN:
+
+        # Data loaders
+        train_images_loader = torch.utils.data.DataLoader(
+            CaptionTrainDataset(
+                data_folder, BOTTOM_UP_FEATURES_FILENAME, train_images_split
+            ),
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=workers,
+            pin_memory=True,
+        )
+        val_images_loader = torch.utils.data.DataLoader(
+            CaptionTestDataset(
+                data_folder, BOTTOM_UP_FEATURES_FILENAME, val_images_split
+            ),
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=workers,
+            pin_memory=True,
+        )
+
+    # Print configuration
+    print("Decoder params: {}".format(decoder.params))
+    print("Decoder optimizer params: {}".format(decoder_optimizer.defaults))
 
     # Move to GPU, if available
     decoder = decoder.to(device)
-    encoder = encoder.to(device)
+    if encoder:
+        encoder.to(device)
 
     # Loss function
     loss_function = nn.CrossEntropyLoss().to(device)
-
-    # Generate dataset splits
-    train_images_split, val_images_split, test_images_split = get_splits_from_occurrences_data(
-        occurrences_data, val_set_size
-    )
-
-    # Data loaders
-    normalize = transforms.Normalize(mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD)
-    train_images_loader = torch.utils.data.DataLoader(
-        CaptionTrainDataset(
-            data_folder, train_images_split, transform=transforms.Compose([normalize])
-        ),
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=workers,
-        pin_memory=True,
-    )
-    val_images_loader = torch.utils.data.DataLoader(
-        CaptionTestDataset(
-            data_folder, val_images_split, transform=transforms.Compose([normalize])
-        ),
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=workers,
-        pin_memory=True,
-    )
 
     for epoch in range(start_epoch, epochs):
         if epochs_since_last_improvement >= epochs_early_stopping:
@@ -165,12 +202,13 @@ def main(
 
         # One epoch's training
         train(
+            model_name,
             train_images_loader,
             encoder,
             decoder,
-            loss_function,
             encoder_optimizer,
             decoder_optimizer,
+            loss_function,
             epoch,
             grad_clip,
             alpha_c,
@@ -197,6 +235,7 @@ def main(
         # Save checkpoint
         name = os.path.basename(occurrences_data).split(".")[0]
         save_checkpoint(
+            model_name,
             name,
             epoch,
             epochs_since_last_improvement,
@@ -211,13 +250,28 @@ def main(
     print("\n\nFinished training.")
 
 
+def calculate_loss(
+    model_name, loss_function, packed_scores, packed_targets, alphas, alpha_c
+):
+    if model_name == MODEL_BOTTOM_UP_TOP_DOWN:
+        return loss_function(packed_scores, packed_targets)
+
+    elif model_name == MODEL_SHOW_ATTEND_TELL:
+        loss = loss_function(packed_scores, packed_targets)
+
+        # Add doubly stochastic attention regularization
+        loss += alpha_c * ((1.0 - alphas.sum(dim=1)) ** 2).mean()
+        return loss
+
+
 def train(
+    model_name,
     data_loader,
     encoder,
     decoder,
-    loss_function,
     encoder_optimizer,
     decoder_optimizer,
+    loss_function,
     epoch,
     grad_clip,
     alpha_c,
@@ -229,21 +283,28 @@ def train(
     """
 
     decoder.train()
-    encoder.train()
+    if encoder:
+        encoder.train()
 
     losses = AverageMeter()  # losses (per decoded word)
     top5accuracies = AverageMeter()
 
     # Loop over training batches
-    for i, (images, captions, caption_lengths) in enumerate(data_loader):
-        captions = captions.to(device)
+    for i, (images, target_captions, caption_lengths) in enumerate(data_loader):
+        target_captions = target_captions.to(device)
         caption_lengths = caption_lengths.to(device)
-        scores, alphas, decode_lengths = forward_prop(
-            images, captions, caption_lengths, encoder, decoder
+        images = images.to(device)
+
+        # Forward propagation
+        if encoder:
+            images = encoder(images)
+        decode_lengths = caption_lengths.squeeze(1) - 1
+        scores, alphas, decode_lengths = decoder(
+            images, target_captions, decode_lengths
         )
 
         # Since we decoded starting with <start>, the targets are all words after <start>, up to <end>
-        targets = captions[:, 1:]
+        target_captions = target_captions[:, 1:]
 
         # Remove timesteps that we didn't decode at, or are pads
         decode_lengths, sort_ind = decode_lengths.sort(dim=0, descending=True)
@@ -251,19 +312,18 @@ def train(
             scores[sort_ind], decode_lengths, batch_first=True
         )
         packed_targets, _ = pack_padded_sequence(
-            targets[sort_ind], decode_lengths, batch_first=True
+            target_captions[sort_ind], decode_lengths, batch_first=True
         )
 
         # Calculate loss
-        loss = loss_function(packed_scores, packed_targets)
-
-        # Add doubly stochastic attention regularization
-        loss += alpha_c * ((1.0 - alphas.sum(dim=1)) ** 2).mean()
+        loss = calculate_loss(
+            model_name, loss_function, packed_scores, packed_targets, alphas, alpha_c
+        )
 
         top5accuracy = top_k_accuracy(packed_scores, packed_targets, 5)
 
         # Back propagation
-        decoder_optimizer.zero_grad()
+        decoder.zero_grad()
         if encoder_optimizer:
             encoder_optimizer.zero_grad()
         loss.backward()
@@ -300,19 +360,6 @@ def train(
     )
 
 
-def forward_prop(images, captions, decode_lengths, encoder, decoder):
-    # Move data to GPU, if available
-    images = images.to(device)
-
-    # Forward propagation
-    images = encoder(images)
-
-    if decode_lengths:
-        # Decoding lengths are actual lengths - 1, as we don't decode at the <end> token position
-        decode_lengths = decode_lengths.squeeze(1) - 1
-    return decoder(images, captions, decode_lengths)
-
-
 def validate(data_loader, encoder, decoder, word_map, print_freq):
     """
     Perform validation of one training epoch.
@@ -327,9 +374,12 @@ def validate(data_loader, encoder, decoder, word_map, print_freq):
 
     # Loop over batches
     for i, (images, all_captions_for_image, _) in enumerate(data_loader):
-        scores, alphas, decode_lengths = forward_prop(
-            images, None, None, encoder, decoder
-        )
+        images = images.to(device)
+
+        # Forward propagation
+        if encoder:
+            images = encoder(images)
+        scores, alphas, decode_lengths = decoder(images)
 
         if i % print_freq == 0:
             print("Validation: [Batch {0}/{1}]\t".format(i, len(data_loader)))
@@ -343,12 +393,12 @@ def validate(data_loader, encoder, decoder, word_map, print_freq):
             target_captions.append(img_captions)
 
         # Generated captions
-        _, best_captions = torch.max(scores, dim=2)
-        best_captions = [
+        _, captions = torch.max(scores, dim=2)
+        captions = [
             get_caption_without_special_tokens(caption, word_map)
-            for caption in best_captions.tolist()
+            for caption in captions.tolist()
         ]
-        generated_captions.extend(best_captions)
+        generated_captions.extend(captions)
 
         assert len(target_captions) == len(generated_captions)
 
@@ -362,7 +412,12 @@ def validate(data_loader, encoder, decoder, word_map, print_freq):
 def check_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-D",
+        "--model",
+        help="Name of the model to be used",
+        default=MODEL_SHOW_ATTEND_TELL,
+        choices=[MODEL_SHOW_ATTEND_TELL, MODEL_BOTTOM_UP_TOP_DOWN],
+    )
+    parser.add_argument(
         "--data-folder",
         help="Folder where the preprocessed data is located",
         default=os.path.expanduser("../datasets/coco2014_preprocessed/"),
@@ -372,32 +427,32 @@ def check_args(args):
         help="File containing occurrences statistics about adjective noun pairs",
         default="data/brown_dog.json",
     )
+    parser.add_argument("--batch-size", help="Batch size", type=int, default=32)
     parser.add_argument(
-        "-E",
+        "--teacher-forcing",
+        help="Teacher forcing rate (used in the decoder)",
+        type=float,
+    )
+    parser.add_argument(
         "--encoder-learning-rate",
         help="Initial learning rate for the encoder (used only if fine-tuning is enabled)",
         type=float,
-        default=1e-4,
     )
     parser.add_argument(
-        "-L",
         "--decoder-learning-rate",
         help="Initial learning rate for the decoder",
         type=float,
-        default=4e-4,
     )
     parser.add_argument(
-        "-F", "--fine-tune-encoder", help="Fine tune the encoder", action="store_true"
+        "--fine-tune-encoder", help="Fine tune the encoder", action="store_true"
     )
     parser.add_argument(
-        "-A",
         "--alpha-c",
         help="regularization parameter for doubly stochastic attention",
         type=float,
         default=1.0,
     )
     parser.add_argument(
-        "-C",
         "--checkpoint",
         help="Path to checkpoint of previously trained model",
         default=None,
@@ -414,12 +469,12 @@ def check_args(args):
 if __name__ == "__main__":
     parsed_args = check_args(sys.argv[1:])
     main(
+        model_params=vars(parsed_args),
+        model_name=parsed_args.model,
         data_folder=parsed_args.data_folder,
         occurrences_data=parsed_args.occurrences_data,
-        encoder_lr=parsed_args.encoder_learning_rate,
-        decoder_lr=parsed_args.decoder_learning_rate,
+        batch_size=parsed_args.batch_size,
         alpha_c=parsed_args.alpha_c,
-        fine_tune_encoder=parsed_args.fine_tune_encoder,
         checkpoint=parsed_args.checkpoint,
         epochs=parsed_args.epochs,
     )

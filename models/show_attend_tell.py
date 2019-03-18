@@ -1,8 +1,54 @@
 import torch
 from torch import nn
 import torchvision
+import torch.nn.functional as F
+
+from utils import TOKEN_START, TOKEN_END, decode_caption, update_params
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+DEFAULT_MODEL_PARAMS = {
+    "embed_dim": 512,
+    "attention_dim": 512,
+    "encoder_dim": 2048,
+    "decoder_dim": 512,
+    "dropout": 0.5,
+    "alpha_c": 1.0,
+    "max_caption_len": 50,
+}
+
+DEFAULT_OPTIMIZER_PARAMS = {
+    "decoder_learning_rate": 4e-4,
+    "encoder_learning_rate": 1e-4,
+}
+
+
+def create_sat_encoder_optimizer(encoder, params):
+    optimizer_params = update_params(DEFAULT_OPTIMIZER_PARAMS, params)
+    optimizer = torch.optim.Adam(
+        params=filter(lambda p: p.requires_grad, encoder.parameters()),
+        lr=optimizer_params["encoder_learning_rate"],
+    )
+    return optimizer
+
+
+def create_sat_decoder_optimizer(decoder, params):
+    optimizer_params = update_params(DEFAULT_OPTIMIZER_PARAMS, params)
+    optimizer = torch.optim.Adam(
+        params=filter(lambda p: p.requires_grad, decoder.parameters()),
+        lr=optimizer_params["decoder_learning_rate"],
+    )
+    return optimizer
+
+
+def print_current_beam(top_k_sequences, top_k_scores, word_map):
+    print("\n")
+    for sequence, score in zip(top_k_sequences, top_k_scores):
+        print(
+            "{} \t\t\t\t Score: {}".format(
+                decode_caption(sequence.numpy(), word_map), score
+            )
+        )
 
 
 class Encoder(nn.Module):
@@ -103,64 +149,47 @@ class AttentionModule(nn.Module):
         return attention_weighted_encoding, alpha
 
 
-class DecoderWithAttention(nn.Module):
-    def __init__(
-        self,
-        attention_dim,
-        embed_dim,
-        decoder_dim,
-        vocab_size,
-        start_token,
-        end_token,
-        padding_token,
-        max_caption_len,
-        encoder_dim=2048,
-        dropout=0.5,
-    ):
+class SATDecoder(nn.Module):
+    def __init__(self, word_map, params):
         """
         :param attention_dim: size of attention network
         :param embed_dim: embedding size
         :param decoder_dim: size of decoder's RNN
-        :param vocab_size: size of vocabulary
-        :param start_token: word map value of the sentence <start> token
-        :param end_token: word map value of the sentence <end> token
-        :param padding_token: word map value of the sentence <pad> token
+        :param word_map: vocabulary word map
         :param max_caption_len: maximum caption length (for decoding in evaluation mode)
         :param encoder_dim: feature size of encoded images
         :param dropout: dropout rate
         """
-        super(DecoderWithAttention, self).__init__()
+        super(SATDecoder, self).__init__()
+        self.params = update_params(DEFAULT_MODEL_PARAMS, params)
+        self.vocab_size = len(word_map)
+        self.word_map = word_map
 
-        self.encoder_dim = encoder_dim
-        self.attention_dim = attention_dim
-        self.embed_dim = embed_dim
-        self.decoder_dim = decoder_dim
-        self.vocab_size = vocab_size
-        self.start_token = start_token
-        self.end_token = end_token
-        self.padding_token = padding_token
-        self.max_caption_len = max_caption_len
-        self.dropout = dropout
+        self.attention = AttentionModule(
+            self.params["encoder_dim"],
+            self.params["decoder_dim"],
+            self.params["attention_dim"],
+        )
 
-        self.attention = AttentionModule(encoder_dim, decoder_dim, attention_dim)
-
-        self.embedding = nn.Embedding(vocab_size, embed_dim)
-        self.dropout = nn.Dropout(p=self.dropout)
+        self.embedding = nn.Embedding(self.vocab_size, self.params["embed_dim"])
+        self.dropout = nn.Dropout(p=self.params["dropout"])
         self.decode_step = nn.LSTMCell(
-            embed_dim + encoder_dim, decoder_dim, bias=True
+            self.params["embed_dim"] + self.params["encoder_dim"],
+            self.params["decoder_dim"],
+            bias=True,
         )  # decoding LSTMCell
         self.init_h = nn.Linear(
-            encoder_dim, decoder_dim
+            self.params["encoder_dim"], self.params["decoder_dim"]
         )  # linear layer to find initial hidden state of LSTMCell
         self.init_c = nn.Linear(
-            encoder_dim, decoder_dim
+            self.params["encoder_dim"], self.params["decoder_dim"]
         )  # linear layer to find initial cell state of LSTMCell
         self.f_beta = nn.Linear(
-            decoder_dim, encoder_dim
+            self.params["decoder_dim"], self.params["encoder_dim"]
         )  # linear layer to create a sigmoid-activated gate
         self.sigmoid = nn.Sigmoid()
         self.fc = nn.Linear(
-            decoder_dim, vocab_size
+            self.params["decoder_dim"], self.vocab_size
         )  # linear layer to find scores over vocabulary
 
         self.init_weights()
@@ -230,7 +259,7 @@ class DecoderWithAttention(nn.Module):
 
         return scores, alpha, decoder_hidden_state, decoder_cell_state
 
-    def forward(self, encoder_out, target_captions, decode_lengths):
+    def forward(self, encoder_out, target_captions=None, decode_lengths=None):
         """
         Forward propagation.
 
@@ -253,7 +282,10 @@ class DecoderWithAttention(nn.Module):
 
         else:
             decode_lengths = torch.full(
-                (batch_size,), self.max_caption_len, dtype=torch.int64, device=device
+                (batch_size,),
+                self.params["max_caption_len"],
+                dtype=torch.int64,
+                device=device,
             )
 
         # Initialize LSTM state (output shape: (batch_size, decoder_dim))
@@ -269,7 +301,7 @@ class DecoderWithAttention(nn.Module):
 
         # At the start, all 'previous words' are the <start> token
         prev_predicted_words = torch.full(
-            (batch_size,), self.start_token, dtype=torch.int64, device=device
+            (batch_size,), self.word_map[TOKEN_START], dtype=torch.int64, device=device
         )
 
         for t in range(max(decode_lengths)):
@@ -278,7 +310,7 @@ class DecoderWithAttention(nn.Module):
             else:
                 # Find all sequences where an <end> token has been produced in the last timestep
                 ind_end_token = (
-                    torch.nonzero(prev_predicted_words == self.end_token)
+                    torch.nonzero(prev_predicted_words == self.word_map[TOKEN_END])
                     .view(-1)
                     .tolist()
                 )
@@ -314,3 +346,145 @@ class DecoderWithAttention(nn.Module):
             ]
 
         return scores, alphas, decode_lengths
+
+    def beam_search(
+        self,
+        encoder_out,
+        beam_size=1,
+        max_caption_len=50,
+        store_alphas=False,
+        print_beam=False,
+    ):
+        """Generate and return the top k sequences using beam search."""
+
+        current_beam_width = beam_size
+
+        # Encode
+        enc_image_size = encoder_out.size(1)
+        encoder_dim = encoder_out.size(3)
+
+        # Flatten encoding
+        encoder_out = encoder_out.view(
+            1, -1, encoder_dim
+        )  # (1, num_pixels, encoder_dim)
+        num_pixels = encoder_out.size(1)
+
+        # We'll treat the problem as having a batch size of k
+        encoder_out = encoder_out.expand(
+            beam_size, num_pixels, encoder_dim
+        )  # (k, num_pixels, encoder_dim)
+
+        # Tensor to store top k sequences; now they're just <start>
+        top_k_sequences = torch.full(
+            (beam_size, 1), self.word_map[TOKEN_START], dtype=torch.int64, device=device
+        )
+
+        # Tensor to store top k sequences' scores; now they're just 0
+        top_k_scores = torch.zeros(beam_size).to(device)  # (k)
+
+        if store_alphas:
+            # Tensor to store top k sequences' alphas; now they're just 1s
+            seqs_alpha = torch.ones(beam_size, 1, enc_image_size, enc_image_size).to(
+                device
+            )  # (k, 1, enc_image_size, enc_image_size)
+
+        # Lists to store completed sequences, scores, and alphas
+        complete_seqs = []
+        complete_seqs_alpha = []
+        complete_seqs_scores = []
+
+        # Start decoding
+        decoder_hidden_state, decoder_cell_state = self.init_hidden_state(encoder_out)
+
+        for step in range(0, max_caption_len - 1):
+            embeddings = self.embedding(top_k_sequences[:, step]).squeeze(
+                1
+            )  # (k, embed_dim)
+
+            predictions, alpha, decoder_hidden_state, decoder_cell_state = self.forward_step(
+                encoder_out, decoder_hidden_state, decoder_cell_state, embeddings
+            )
+            scores = F.log_softmax(predictions, dim=1)
+
+            # Add the new scores
+            scores = (
+                top_k_scores.unsqueeze(1).expand_as(scores) + scores
+            )  # (k, vocab_size)
+
+            # For the first timestep, the scores from previous decoding are all the same, so in order to create 5 different
+            # sequences, we should only look at one branch
+            if step == 0:
+                scores = scores[0]
+
+            # Find the top k of the flattened scores
+            top_k_scores, top_k_words = scores.view(-1).topk(
+                current_beam_width, 0, largest=True, sorted=True
+            )  # (k)
+
+            # Convert flattened indices to actual indices of scores
+            prev_seq_inds = top_k_words / self.vocab_size  # (k)
+            next_words = top_k_words % self.vocab_size  # (k)
+
+            # Add new words to sequences
+            top_k_sequences = torch.cat(
+                (top_k_sequences[prev_seq_inds], next_words.unsqueeze(1)), dim=1
+            )  # (k, step+2)
+
+            if print_beam:
+                print_current_beam(top_k_sequences, top_k_scores, self.word_map)
+
+            # Store the new alphas
+            if store_alphas:
+                alpha = alpha.view(
+                    -1, enc_image_size, enc_image_size
+                )  # (k, enc_image_size, enc_image_size)
+                seqs_alpha = torch.cat(
+                    (seqs_alpha[prev_seq_inds], alpha[prev_seq_inds].unsqueeze(1)),
+                    dim=1,
+                )  # (k, step+2, enc_image_size, enc_image_size)
+
+            # Check for complete and incomplete sequences (based on the <end> token)
+            incomplete_inds = (
+                torch.nonzero(next_words != self.word_map[TOKEN_END]).view(-1).tolist()
+            )
+            complete_inds = (
+                torch.nonzero(next_words == self.word_map[TOKEN_END]).view(-1).tolist()
+            )
+
+            # Set aside complete sequences and reduce beam size accordingly
+            if len(complete_inds) > 0:
+                complete_seqs.extend(top_k_sequences[complete_inds].tolist())
+                complete_seqs_scores.extend(top_k_scores[complete_inds])
+                if store_alphas:
+                    complete_seqs_alpha.extend(seqs_alpha[complete_inds].tolist())
+
+            # Stop if k captions have been completely generated
+            current_beam_width = len(incomplete_inds)
+            if current_beam_width == 0:
+                break
+
+            # Proceed with incomplete sequences
+            top_k_sequences = top_k_sequences[incomplete_inds]
+            decoder_hidden_state = decoder_hidden_state[prev_seq_inds[incomplete_inds]]
+            decoder_cell_state = decoder_cell_state[prev_seq_inds[incomplete_inds]]
+            encoder_out = encoder_out[prev_seq_inds[incomplete_inds]]
+            top_k_scores = top_k_scores[incomplete_inds]
+            if store_alphas:
+                seqs_alpha = seqs_alpha[incomplete_inds]
+
+        sorted_sequences = [
+            sequence
+            for _, sequence in sorted(
+                zip(complete_seqs_scores, complete_seqs), reverse=True
+            )
+        ]
+        if not store_alphas:
+            return sorted_sequences
+        else:
+            sorted_alphas = [
+                alpha
+                for _, alpha in sorted(
+                    zip(complete_seqs_scores, complete_seqs_alpha), reverse=True
+                )
+            ]
+            return sorted_sequences, sorted_alphas
