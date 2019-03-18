@@ -174,6 +174,7 @@ class TopDownDecoder(nn.Module):
         beam_size,
         max_caption_len=50,
         store_alphas=False,
+        store_beam=False,
         print_beam=False,
     ):
         """Generate and return the top k sequences using beam search."""
@@ -201,9 +202,12 @@ class TopDownDecoder(nn.Module):
         # Tensor to store top k sequences' scores; now they're just 0
         top_k_scores = torch.zeros(beam_size).to(device)  # (k)
 
-        # Lists to store completed sequences, scores, and alphas
+        # Lists to store completed sequences and scores
         complete_seqs = []
         complete_seqs_scores = []
+
+        # List to store the decoding beam if store_beam=True
+        beam = []
 
         # Start decoding
         v_mean = image_features.mean(dim=1)
@@ -242,6 +246,8 @@ class TopDownDecoder(nn.Module):
 
             if print_beam:
                 print_current_beam(top_k_sequences, top_k_scores, self.word_map)
+            if store_beam:
+                beam.append(top_k_sequences)
 
             # Check for complete and incomplete sequences (based on the <end> token)
             incomplete_inds = (
@@ -279,7 +285,7 @@ class TopDownDecoder(nn.Module):
                 zip(complete_seqs_scores, complete_seqs), reverse=True
             )
         ]
-        return sorted_sequences
+        return sorted_sequences, None, beam
 
 
 class AttentionLSTM(nn.Module):

@@ -6,7 +6,7 @@ import torch.optim
 import torch.utils.data
 import torchvision.transforms as transforms
 from datasets import *
-from metrics import recall_adjective_noun_pairs
+from metrics import recall_adjective_noun_pairs, beam_occurrences
 from nltk.translate.bleu_score import corpus_bleu
 from tqdm import tqdm
 
@@ -24,6 +24,10 @@ from visualize_attention import visualize_attention
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True  # improve performance if inputs to model are fixed size
+
+METRIC_BLEU = "bleu"
+METRIC_RECALL = "recall"
+METRIC_BEAM_OCCURRENCES = "beam-occurrences"
 
 
 def evaluate(
@@ -92,6 +96,7 @@ def evaluate(
     # Lists for target captions and generated captions for each image
     target_captions = []
     generated_captions = []
+    generated_beams = []
     coco_ids = []
 
     for i, (image_features, all_captions_for_image, coco_id) in enumerate(
@@ -111,25 +116,25 @@ def evaluate(
         if encoder:
             encoded_features = encoder(encoded_features)
 
+        store_beam = True if METRIC_BEAM_OCCURRENCES in metrics else False
+
+        top_k_generated_captions, alphas, beam = decoder.beam_search(
+            encoded_features,
+            beam_size,
+            max_caption_len,
+            store_alphas=visualize,
+            store_beam=store_beam,
+            print_beam=print_beam,
+        )
         if visualize:
-            top_k_generated_captions, alphas = decoder.beam_search(
-                encoded_features,
-                beam_size,
-                max_caption_len,
-                store_alphas=True,
-                print_beam=print_beam,
-            )
             print("Image COCO ID: {}".format(coco_id[0]))
             for caption, alpha in zip(top_k_generated_captions, alphas):
                 visualize_attention(
                     image_features.squeeze(0), caption, alpha, word_map, smoothen=True
                 )
-        else:
-            top_k_generated_captions = decoder.beam_search(
-                encoded_features, beam_size, max_caption_len, print_beam=print_beam
-            )
 
         generated_captions.append(top_k_generated_captions)
+        generated_beams.append(beam)
 
         coco_ids.append(coco_id[0])
 
@@ -141,9 +146,11 @@ def evaluate(
             metric,
             target_captions,
             generated_captions,
+            generated_beams,
             coco_ids,
             word_map,
             occurrences_data,
+            beam_size,
         )
         print("\n{} score @ beam size {} is {}".format(metric, beam_size, metric_score))
 
@@ -152,11 +159,13 @@ def calculate_metric(
     metric_name,
     target_captions,
     generated_captions,
+    generated_beams,
     coco_ids,
     word_map,
     occurrences_data,
+    beam_size,
 ):
-    if metric_name == "bleu":
+    if metric_name == METRIC_BLEU:
         generated_captions = [
             get_caption_without_special_tokens(top_k_captions[0], word_map)
             for top_k_captions in generated_captions
@@ -172,10 +181,12 @@ def calculate_metric(
             target_captions, generated_captions, weights=(0.25, 0.25, 0.25, 0.25)
         )
         return [bleu_1, bleu_2, bleu_3, bleu_4]
-    elif metric_name == "recall":
+    elif metric_name == METRIC_RECALL:
         return recall_adjective_noun_pairs(
             generated_captions, coco_ids, word_map, occurrences_data
         )
+    elif metric_name == METRIC_BEAM_OCCURRENCES:
+        return beam_occurrences(generated_beams, beam_size, word_map, occurrences_data)
 
 
 def check_args(args):
@@ -197,8 +208,8 @@ def check_args(args):
         "--metrics",
         help="Evaluation metrics",
         nargs="+",
-        default=["bleu"],
-        choices=["bleu", "recall"],
+        default=[METRIC_BLEU],
+        choices=[METRIC_BLEU, METRIC_RECALL, METRIC_BEAM_OCCURRENCES],
     )
 
     parser.add_argument(

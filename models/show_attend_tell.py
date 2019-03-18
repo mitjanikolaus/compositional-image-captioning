@@ -353,6 +353,7 @@ class SATDecoder(nn.Module):
         beam_size=1,
         max_caption_len=50,
         store_alphas=False,
+        store_beam=False,
         print_beam=False,
     ):
         """Generate and return the top k sequences using beam search."""
@@ -393,6 +394,9 @@ class SATDecoder(nn.Module):
         complete_seqs_alpha = []
         complete_seqs_scores = []
 
+        # List to store the decoding beam if store_beam=True
+        beam = []
+
         # Start decoding
         decoder_hidden_state, decoder_cell_state = self.init_hidden_state(encoder_out)
 
@@ -432,6 +436,8 @@ class SATDecoder(nn.Module):
 
             if print_beam:
                 print_current_beam(top_k_sequences, top_k_scores, self.word_map)
+            if store_beam:
+                beam.append(top_k_sequences)
 
             # Store the new alphas
             if store_alphas:
@@ -478,13 +484,12 @@ class SATDecoder(nn.Module):
                 zip(complete_seqs_scores, complete_seqs), reverse=True
             )
         ]
-        if not store_alphas:
-            return sorted_sequences
-        else:
+        sorted_alphas = None
+        if store_alphas:
             sorted_alphas = [
                 alpha
                 for _, alpha in sorted(
                     zip(complete_seqs_scores, complete_seqs_alpha), reverse=True
                 )
             ]
-            return sorted_sequences, sorted_alphas
+        return sorted_sequences, sorted_alphas, beam
