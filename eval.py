@@ -176,7 +176,7 @@ def check_args(args):
     parser.add_argument(
         "--karpathy-json",
         help="File containing train/val/test split information",
-        default="data/karpathy-splits.json",
+        default="../datasets/karpathy-splits.json",
     )
     parser.add_argument(
         "--checkpoint", help="Path to checkpoint of trained model", required=True
