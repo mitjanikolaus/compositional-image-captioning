@@ -286,8 +286,7 @@ Model trained with heldout brown dog:
 
 ## 4. Alternative architectures
 
-**Research Question: If MNLMs fail to generalise, what model architecture would generalise for genera-
-tion?**
+**Research Question: If MNLMs fail to generalise, what model architecture would generalise for generation?**
 
 ### Pretrained Embeddings
 
