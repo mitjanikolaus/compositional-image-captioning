@@ -104,6 +104,25 @@ occurs early in the beam, but then disappears when it would be combined with the
 [white_car_1.md](white_car_1.md) we can see an example where the object has multiple colors, and the model describes
 only the color it has seen in relation to the object at training time.
 
+#### Beam Occurrences
+
+**Occurrences of "brown dog"**
+
+Model trained with heldout brown dog:
+![Beam Occurrences](beam_occurrences_sat_brown_dog_brown_dog.png)
+
+Model trained with heldout white car:
+![Beam Occurrences](beam_occurrences_sat_white_car_brown_dog.png)
+
+
+**Occurrences of "white car"**
+
+Model trained with heldout white car:
+![Beam Occurrences](beam_occurrences_sat_white_car_white_car.png)
+
+Model trained with heldout brown dog:
+![Beam Occurrences](beam_occurrences_sat_brown_dog_white_car.png)
+
 
 ### Bottom Up and Top Down Attention
 
@@ -177,3 +196,23 @@ Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=
 ----------|--------| --------------| --------------| --------------| --------------| -------------
 1         | 0.282  | 0.222         | 0.302         | 0.316         | 0.375         | N/A
 5         | 0.303  | 0.380         | 0.516         | 0.605         | 0.625         | N/A
+
+
+#### Beam Occurrences
+
+**Occurrences of "brown dog"**
+
+Model trained with heldout brown dog:
+![Beam Occurrences](beam_occurrences_butd_brown_dog_brown_dog.png)
+
+Model trained with heldout white car:
+![Beam Occurrences](beam_occurrences_butd_white_car_brown_dog.png)
+
+
+**Occurrences of "white car"**
+
+Model trained with heldout white car:
+![Beam Occurrences](beam_occurrences_butd_white_car_white_car.png)
+
+Model trained with heldout brown dog:
+![Beam Occurrences](beam_occurrences_butd_brown_dog_white_car.png)
