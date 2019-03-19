@@ -194,7 +194,6 @@ class SATDecoder(nn.Module):
         """
         Initialize some parameters with values from a uniform distribution
         """
-        self.embedding.weight.data.uniform_(-0.1, 0.1)
         self.fc.bias.data.fill_(0)
         self.fc.weight.data.uniform_(-0.1, 0.1)
 
