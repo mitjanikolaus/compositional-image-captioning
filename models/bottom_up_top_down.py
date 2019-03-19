@@ -17,6 +17,7 @@ DEFAULT_MODEL_PARAMS = {
     "attention_layer_size": 512,
     "language_lstm_size": 1000,
     "max_caption_len": 50,
+    "fine_tune_decoder_embeddings": True,
 }
 
 DEFAULT_OPTIMIZER_PARAMS = {"decoder_learning_rate": 1e-4}
@@ -45,6 +46,7 @@ class TopDownDecoder(nn.Module):
         self.embed_word = nn.Embedding(self.vocab_size, self.params["embeddings_size"])
         if pretrained_embeddings is not None:
             self.embed_word.weight = nn.Parameter(pretrained_embeddings)
+        self.set_fine_tune_embeddings(self.params["fine_tune_decoder_embeddings"])
 
         self.attention_lstm = AttentionLSTM(
             self.params["embeddings_size"],
@@ -81,6 +83,15 @@ class TopDownDecoder(nn.Module):
         self.init_c2 = nn.Linear(
             self.params["image_features_size"], self.language_lstm.lstm_cell.hidden_size
         )
+
+    def set_fine_tune_embeddings(self, fine_tune=True):
+        """
+        Allow fine-tuning of the embedding layer.
+
+        :param fine_tune: Set to True to allow fine tuning
+        """
+        for p in self.embedding.parameters():
+            p.requires_grad = fine_tune
 
     def init_inference(self, batch_size, v_mean):
         start_word = torch.full(

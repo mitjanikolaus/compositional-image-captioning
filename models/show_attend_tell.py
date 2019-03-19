@@ -15,6 +15,7 @@ DEFAULT_MODEL_PARAMS = {
     "dropout": 0.5,
     "alpha_c": 1.0,
     "max_caption_len": 50,
+    "fine_tune_decoder_embeddings": True,
 }
 
 DEFAULT_OPTIMIZER_PARAMS = {
@@ -165,6 +166,7 @@ class SATDecoder(nn.Module):
         self.embedding = nn.Embedding(self.vocab_size, self.params["embeddings_size"])
         if pretrained_embeddings is not None:
             self.embedding.weight = nn.Parameter(pretrained_embeddings)
+        self.set_fine_tune_embeddings(self.params["fine_tune_decoder_embeddings"])
 
         self.dropout = nn.Dropout(p=self.params["dropout"])
         self.decode_step = nn.LSTMCell(
@@ -196,7 +198,7 @@ class SATDecoder(nn.Module):
         self.fc.bias.data.fill_(0)
         self.fc.weight.data.uniform_(-0.1, 0.1)
 
-    def fine_tune_embeddings(self, fine_tune=True):
+    def set_fine_tune_embeddings(self, fine_tune=True):
         """
         Allow fine-tuning of the embedding layer.
 

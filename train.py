@@ -479,6 +479,12 @@ def check_args(args):
         help="Path to a word GloVe embeddings file to be used to initialize the decoder word embeddings",
         default=None,
     )
+    parser.add_argument(
+        "--dont-fine-tune-embeddings",
+        help="Do not fine tune the decoder embeddings",
+        dest="fine_tune_decoder_embeddings",
+        action="store_false",
+    )
 
     parsed_args = parser.parse_args(args)
     print(parsed_args)
