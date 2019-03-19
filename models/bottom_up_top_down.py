@@ -90,7 +90,7 @@ class TopDownDecoder(nn.Module):
 
         :param fine_tune: Set to True to allow fine tuning
         """
-        for p in self.embedding.parameters():
+        for p in self.embed_word.parameters():
             p.requires_grad = fine_tune
 
     def init_inference(self, batch_size, v_mean):
