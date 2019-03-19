@@ -104,6 +104,72 @@ occurs early in the beam, but then disappears when it would be combined with the
 [white_car_1.md](white_car_1.md) we can see an example where the object has multiple colors, and the model describes
 only the color it has seen in relation to the object at training time.
 
+#### Case studies with grayscale images
+
+**Model trained with heldout "white car"**
+
+Captions generated for RGB image:
+![RGB Image](brown_dog_rgb_1.png)
+```
+['a', 'large', 'brown', 'dog', 'sitting', 'on', 'top', 'of', 'a', 'bed']
+['a', 'large', 'brown', 'dog', 'laying', 'on', 'a', 'bed']
+['a', 'large', 'brown', 'dog', 'sitting', 'on', 'a', 'bed']
+['a', 'brown', 'dog', 'laying', 'on', 'a', 'bed', 'in', 'a', 'room']
+['a', 'white', 'dog', 'laying', 'on', 'a', 'bed', 'in', 'a', 'room']
+```
+
+Captions generated for the same image in grayscale:
+![Grayscale Image](brown_dog_gray_1.png)
+```
+['a', 'dog', 'laying', 'on', 'a', 'bed', 'in', 'a', 'room']
+['a', 'dog', 'laying', 'on', 'a', 'bed', 'in', 'a', 'bedroom']
+['a', 'dog', 'laying', 'on', 'a', 'bed', 'in', 'a', 'bathroom']
+['a', 'dog', 'laying', 'on', 'a', 'bed', 'next', 'to', 'a', 'window']
+['a', 'dog', 'is', 'laying', 'on', 'a', 'bed', 'in', 'a', 'room']
+```
+
+**Model trained with heldout "brown dog"**
+
+Captions generated for RGB image:
+![RGB Image](white_car_rgb_1.png)
+```
+['a', 'red', 'truck', 'parked', 'in', 'a', 'parking', 'lot']
+['a', 'red', 'truck', 'is', 'parked', 'in', 'a', 'parking', 'lot']
+['a', 'red', 'truck', 'parked', 'on', 'the', 'side', 'of', 'the', 'road']
+['a', 'red', 'truck', 'is', 'parked', 'on', 'the', 'side', 'of', 'the', 'road']
+['a', 'red', 'truck', 'parked', 'on', 'the', 'side', 'of', 'a', 'road']
+```
+
+Captions generated for the same image in grayscale:
+![Grayscale Image](white_car_gray_1.png)
+```
+['a', 'black', 'and', 'white', 'photo', 'of', 'an', 'old', 'truck']
+['a', 'black', 'and', 'white', 'photo', 'of', 'a', 'man', 'on', 'a', 'truck']
+['a', 'black', 'and', 'white', 'photo', 'of', 'a', 'truck', 'on', 'a', 'street']
+['a', 'black', 'and', 'white', 'photo', 'of', 'a', 'man', 'in', 'a', 'truck']
+['a', 'black', 'and', 'white', 'photo', 'of', 'a', 'truck', 'on', 'a', 'road']
+```
+
+Captions generated for RGB image:
+![RGB Image](white_car_rgb_2.png)
+```
+['a', 'white', 'truck', 'is', 'driving', 'down', 'the', 'road']
+['a', 'white', 'truck', 'driving', 'down', 'a', 'street', 'next', 'to', 'a', 'forest']
+['a', 'white', 'truck', 'driving', 'down', 'a', 'street', 'next', 'to', 'a', 'building']
+['a', 'white', 'truck', 'driving', 'down', 'a', 'street', 'next', 'to', 'a', 'car']
+['a', 'large', 'white', 'truck', 'driving', 'down', 'a', 'street', 'next', 'to', 'a', 'forest']
+```
+
+Captions generated for the same image in grayscale:
+![Grayscale Image](white_car_gray_2.png)
+```
+['a', 'black', 'and', 'white', 'photo', 'of', 'a', 'man', 'on', 'a', 'truck']
+['a', 'black', 'and', 'white', 'photo', 'of', 'a', 'man', 'and', 'a', 'truck']
+['a', 'black', 'and', 'white', 'photo', 'of', 'a', 'truck', 'and', 'a', 'truck']
+['a', 'black', 'and', 'white', 'photo', 'of', 'a', 'man', 'in', 'a', 'truck']
+['a', 'black', 'and', 'white', 'photo', 'of', 'a', 'man', 'on', 'a', 'truck', 'with', 'a', 'truck']
+```
+
 #### Beam Occurrences
 
 **Occurrences of "brown dog"**
@@ -216,3 +282,5 @@ Model trained with heldout white car:
 
 Model trained with heldout brown dog:
 ![Beam Occurrences](beam_occurrences_butd_brown_dog_white_car.png)
+
+
