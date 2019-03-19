@@ -101,7 +101,7 @@ def main(
         decoder = checkpoint["decoder"]
         decoder_optimizer = checkpoint["decoder_optimizer"]
         model_name = checkpoint["model_name"]
-        if "encoder" in checkpoint:
+        if "encoder" in checkpoint and checkpoint["encoder"]:
             encoder = checkpoint["encoder"]
             encoder_optimizer = checkpoint["encoder_optimizer"]
         else:

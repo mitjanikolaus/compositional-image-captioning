@@ -10,6 +10,7 @@ import matplotlib.cm as cm
 import skimage.transform
 import argparse
 
+from train import MODEL_SHOW_ATTEND_TELL
 from utils import (
     decode_caption,
     WORD_MAP_FILENAME,
@@ -66,15 +67,21 @@ def visualize_attention(image, encoded_caption, alphas, word_map, smoothen):
     plt.show()
 
 
-def generate_and_visualize(checkpoint, data_folder, image_id, beam_size, smoothen):
+def generate_and_visualize(
+    checkpoint, data_folder, image_id, beam_size, print_beam, smoothen
+):
     # Load model
     checkpoint = torch.load(checkpoint, map_location=device)
+    model_name = checkpoint["model_name"]
     decoder = checkpoint["decoder"]
     decoder = decoder.to(device)
     decoder.eval()
-    encoder = checkpoint["encoder"]
-    encoder = encoder.to(device)
-    encoder.eval()
+    if "encoder" in checkpoint and checkpoint["encoder"]:
+        encoder = checkpoint["encoder"]
+        encoder = encoder.to(device)
+        encoder.eval()
+    else:
+        encoder = None
 
     # Load word map
     word_map_path = os.path.join(data_folder, WORD_MAP_FILENAME)
@@ -85,35 +92,42 @@ def generate_and_visualize(checkpoint, data_folder, image_id, beam_size, smoothe
     h5py_file = h5py.File(os.path.join(data_folder, IMAGES_FILENAME), "r")
     image_data = h5py_file[image_id].value
 
-    # image = read_image(img_path)
-    image = torch.FloatTensor(image_data / 255.0)
-    image = image.unsqueeze(0).to(device)
+    if model_name == MODEL_SHOW_ATTEND_TELL:
+        image_data = image_data / 255.0
 
-    encoder_out = encoder(image)
-    seq, alphas = decoder.beam_search(
-        encoder_out, decoder, word_map, beam_size, store_alphas=True
+    image_data = torch.FloatTensor(image_data)
+    image_features = image_data.unsqueeze(0)
+    image_features = image_features.to(device)
+    if encoder:
+        image_features = encoder(image_features)
+    generated_sequences, alphas, beam = decoder.beam_search(
+        image_features, beam_size, store_alphas=True, print_beam=print_beam
     )
 
     # Visualize caption and attention of best sequence
-    visualize_attention(image.squeeze(0), seq[0], alphas[0], word_map, smoothen)
+    visualize_attention(
+        image_data, generated_sequences[0], alphas[0], word_map, smoothen
+    )
 
 
 def check_args(args):
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--image", help="COCO ID of the image", required=True)
-    parser.add_argument(
-        "--checkpoint",
-        help="Path to checkpoint of trained model",
-        default="best_checkpoint.pth.tar",
-    )
+    parser.add_argument("--checkpoint", help="Path to checkpoint of trained model")
     parser.add_argument(
         "--data-folder",
         help="Folder where the preprocessed data is located",
-        default=os.path.expanduser("~/datasets/coco2014_preprocessed/"),
+        default="../datasets/coco2014_preprocessed/",
     )
     parser.add_argument(
         "--beam-size", default=5, type=int, help="beam size for beam search"
+    )
+    parser.add_argument(
+        "--print-beam",
+        help="Print the decoding beam for every sample",
+        default=False,
+        action="store_true",
     )
     parser.add_argument(
         "--smoothen",
@@ -134,5 +148,6 @@ if __name__ == "__main__":
         parsed_args.data_folder,
         parsed_args.image,
         parsed_args.beam_size,
+        parsed_args.print_beam,
         parsed_args.smoothen,
     )
