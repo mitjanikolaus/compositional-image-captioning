@@ -269,7 +269,7 @@ def load_embeddings(emb_file, word_map):
 
     vocab = set(word_map.keys())
 
-    embeddings = torch.FloatTensor(len(vocab), emb_dim, device=device)
+    embeddings = torch.FloatTensor(len(vocab), emb_dim)
     # Initialize the weights with random values (these will stay only for cases where a word in the vocabulary does not
     # exist in the loaded embeddings' vocabulary
     torch.nn.init.normal_(embeddings, 0, 1)
@@ -280,7 +280,7 @@ def load_embeddings(emb_file, word_map):
         emb_word = line_split[0]
         if emb_word in vocab:
             embedding = [float(t) for t in line_split[1:] if not t.isspace()]
-            embeddings[word_map[emb_word]] = torch.FloatTensor(embedding, device=device)
+            embeddings[word_map[emb_word]] = torch.FloatTensor(embedding)
             tokens_found.add(emb_word)
 
     missed_tokens = vocab - tokens_found
