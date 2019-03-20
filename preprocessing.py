@@ -20,7 +20,11 @@ from utils import (
     WORD_MAP_FILENAME,
     IMAGES_FILENAME,
     IMAGES_META_FILENAME,
+    DATA_COCO_SPLIT,
+    DATA_CAPTIONS,
+    DATA_CAPTION_LENGTHS,
     POS_TAGS_MAP_FILENAME,
+    DATA_CAPTIONS_POS,
 )
 
 import stanfordnlp
@@ -88,7 +92,7 @@ def preprocess_images_and_captions(
     image_paths = {}
     image_metas = {}
 
-    for coco_split in ["train2014", "val2014"]:
+    for coco_split in ["val2014"]:
         annFile = "{}/annotations/captions_{}.json".format(dataset_folder, coco_split)
         coco = COCO(annFile)
 
@@ -97,7 +101,7 @@ def preprocess_images_and_captions(
         word_freq = Counter()
         max_caption_len = 0
 
-        for img in tqdm(images):
+        for img in tqdm(images[:10]):
             captions = []
             pos_tags = []
 
@@ -130,9 +134,9 @@ def preprocess_images_and_captions(
             coco_id = img["id"]
             image_paths[coco_id] = path
             image_metas[coco_id] = {
-                "captions": captions,
-                "coco_split": coco_split,
-                "captions_pos": pos_tags,
+                DATA_CAPTIONS: captions,
+                DATA_COCO_SPLIT: coco_split,
+                DATA_CAPTIONS_POS: pos_tags,
             }
 
     if not os.path.exists(output_folder):
@@ -202,9 +206,9 @@ def preprocess_images_and_captions(
                 # Encode POS tags
                 encoded_pos_tags.append(encode_pos_tags(pos_tags_image, pos_tags_map))
 
-            image_metas[coco_id]["captions"] = encoded_captions
-            image_metas[coco_id]["caption_lengths"] = encoded_caption_lengths
-            image_metas[coco_id]["captions_pos"] = encoded_pos_tags
+            image_metas[coco_id][DATA_CAPTIONS] = encoded_captions
+            image_metas[coco_id][DATA_CAPTION_LENGTHS] = encoded_caption_lengths
+            image_metas[coco_id][DATA_CAPTIONS_POS] = encoded_pos_tags
 
         # Sanity check
         assert len(h5py_file.keys()) == len(image_metas)

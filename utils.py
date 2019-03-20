@@ -24,6 +24,12 @@ IMAGES_FILENAME = "images.hdf5"
 BOTTOM_UP_FEATURES_FILENAME = "bottom_up_features.hdf5"
 IMAGES_META_FILENAME = "images_meta.json"
 
+DATA_CAPTIONS = "captions"
+DATA_CAPTION_LENGTHS = "caption_lengths"
+DATA_COCO_SPLIT = "coco_split"
+DATA_CAPTIONS_POS = "captions_pos"
+
+
 NOUNS = "nouns"
 ADJECTIVES = "adjectives"
 

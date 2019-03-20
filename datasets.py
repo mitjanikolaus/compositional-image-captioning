@@ -4,7 +4,7 @@ import h5py
 import json
 import os
 
-from utils import CAPTIONS_FILENAME, CAPTION_LENGTHS_FILENAME
+from utils import IMAGES_META_FILENAME, DATA_CAPTIONS, DATA_CAPTION_LENGTHS
 
 
 class CaptionDataset(Dataset):
@@ -34,17 +34,13 @@ class CaptionDataset(Dataset):
         self.split = split
         self.features_scale_factor = features_scale_factor
 
-        # Load captions
-        with open(os.path.join(data_folder, CAPTIONS_FILENAME), "r") as json_file:
-            self.captions = json.load(json_file)
+        # Load image meta data, including captions
+        with open(os.path.join(data_folder, IMAGES_META_FILENAME), "r") as json_file:
+            self.images_meta = json.load(json_file)
 
-        self.captions_per_image = len(next(iter(self.captions.values())))
-
-        # Load caption lengths
-        with open(
-            os.path.join(data_folder, CAPTION_LENGTHS_FILENAME), "r"
-        ) as json_file:
-            self.caption_lengths = json.load(json_file)
+        self.captions_per_image = len(
+            next(iter(self.images_meta.values()))[DATA_CAPTIONS]
+        )
 
         # Set pytorch transformation pipeline
         self.transform = normalize
@@ -82,9 +78,11 @@ class CaptionTrainDataset(CaptionDataset):
         caption_index = i % self.captions_per_image
 
         image = self.get_image_features(coco_id)
-        caption = torch.LongTensor(self.captions[coco_id][caption_index])
+        caption = torch.LongTensor(
+            self.images_meta[coco_id][DATA_CAPTIONS][caption_index]
+        )
         caption_length = torch.LongTensor(
-            [self.caption_lengths[coco_id][caption_index]]
+            [self.images_meta[coco_id][DATA_CAPTION_LENGTHS][caption_index]]
         )
 
         return image, caption, caption_length
@@ -104,6 +102,8 @@ class CaptionTestDataset(CaptionDataset):
         coco_id = self.split[i]
 
         image = self.get_image_features(coco_id)
-        all_captions_for_image = torch.LongTensor(self.captions[coco_id])
+        all_captions_for_image = torch.LongTensor(
+            self.images_meta[coco_id][DATA_CAPTIONS]
+        )
 
         return image, all_captions_for_image, coco_id
