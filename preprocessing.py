@@ -96,6 +96,9 @@ def preprocess_images_and_captions(
 
             image_metas[coco_id] = {"captions": captions, "coco_split": coco_split}
 
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
     if existing_word_map_path:
         print("Loading existing word mapping from {}".format(existing_word_map_path))
         with open(existing_word_map_path, "r") as json_file:
