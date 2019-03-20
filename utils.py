@@ -21,8 +21,7 @@ IMAGENET_IMAGES_STD = [0.229, 0.224, 0.225]
 WORD_MAP_FILENAME = "word_map.json"
 IMAGES_FILENAME = "images.hdf5"
 BOTTOM_UP_FEATURES_FILENAME = "bottom_up_features.hdf5"
-CAPTIONS_FILENAME = "captions.json"
-CAPTION_LENGTHS_FILENAME = "caption_lengths.json"
+IMAGES_META_FILENAME = "images_meta.json"
 
 NOUNS = "nouns"
 ADJECTIVES = "adjectives"

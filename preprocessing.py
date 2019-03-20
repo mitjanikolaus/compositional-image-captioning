@@ -20,8 +20,7 @@ from utils import (
     read_image,
     WORD_MAP_FILENAME,
     IMAGES_FILENAME,
-    CAPTIONS_FILENAME,
-    CAPTION_LENGTHS_FILENAME,
+    IMAGES_META_FILENAME,
 )
 
 
@@ -47,54 +46,58 @@ def encode_caption(caption, word_map, max_caption_len):
 
 def preprocess_images_and_captions(
     dataset_folder,
-    coco_split,
     output_folder,
     vocabulary_size,
     captions_per_image,
     existing_word_map_path,
 ):
+    image_paths = {}
+    image_metas = {}
 
-    annFile = "{}/annotations/captions_{}.json".format(dataset_folder, coco_split)
-    coco = COCO(annFile)
+    for coco_split in ["train2014", "val2014"]:
+        annFile = "{}/annotations/captions_{}.json".format(dataset_folder, coco_split)
+        coco = COCO(annFile)
 
-    images = coco.loadImgs(coco.getImgIds())
+        images = coco.loadImgs(coco.getImgIds())
 
-    image_paths = []
-    image_captions = []
+        word_freq = Counter()
+        max_caption_len = 0
 
-    image_coco_ids = []
+        for img in images[:10]:
+            captions = []
 
-    word_freq = Counter()
-    max_caption_len = 0
+            annIds = coco.getAnnIds(imgIds=[img["id"]])
+            anns = coco.loadAnns(annIds)
+            for ann in anns:
+                caption = ann["caption"].lower()
 
-    for img in images:
-        captions = []
+                # Remove special chars and punctuation
+                caption = caption.replace("\n", "").replace('"', "")
+                caption = caption.translate(
+                    str.maketrans(dict.fromkeys(string.punctuation))
+                )
 
-        annIds = coco.getAnnIds(imgIds=[img["id"]])
-        anns = coco.loadAnns(annIds)
-        for ann in anns:
-            caption = ann["caption"].lower()
+                # Tokenize the caption
+                caption = word_tokenize(caption)
 
-            # Remove special chars and punctuation
-            caption = caption.replace("\n", "").replace('"', "")
-            caption = caption.translate(
-                str.maketrans(dict.fromkeys(string.punctuation))
-            )
+                word_freq.update(caption)
+                captions.append(caption)
 
-            # Tokenize the caption
-            caption = word_tokenize(caption)
+                if len(caption) > max_caption_len:
+                    max_caption_len = len(caption)
 
-            word_freq.update(caption)
-            captions.append(caption)
+            path = os.path.join(dataset_folder, coco_split, img["file_name"])
 
-            if len(caption) > max_caption_len:
-                max_caption_len = len(caption)
+            coco_id = img["id"]
+            image_paths[coco_id] = path
 
-        path = os.path.join(dataset_folder, coco_split, img["file_name"])
+            image_metas[coco_id] = {"captions": captions, "coco_split": coco_split}
 
-        image_paths.append(path)
-        image_captions.append(captions)
-        image_coco_ids.append(img["id"])
+    # Save meta data to JSON file
+    captions_path = os.path.join(output_folder, IMAGES_META_FILENAME)
+    print("Saving image meta data to {}".format(captions_path))
+    with open(captions_path, "w") as json_file:
+        json.dump(image_metas, json_file)
 
     if existing_word_map_path:
         print("Loading existing word mapping from {}".format(existing_word_map_path))
@@ -122,20 +125,15 @@ def preprocess_images_and_captions(
         h5py_file.attrs["captions_per_image"] = captions_per_image
         h5py_file.attrs["max_caption_len"] = max_caption_len
 
-        encoded_captions = {}
-        caption_lengths = {}
-
-        for i, (path, coco_id) in enumerate(
-            tqdm(zip(image_paths, image_coco_ids), total=len(image_paths))
-        ):
+        for coco_id, image_path in tqdm(image_paths.items()):
 
             # Discard any additional captions
-            captions = image_captions[i][:captions_per_image]
+            captions = image_metas[coco_id]["captions"][:captions_per_image]
 
             assert len(captions) == captions_per_image
 
             # Read image and save it to hdf5 file
-            img = read_image(path)
+            img = read_image(image_path)
             h5py_file.create_dataset(
                 str(coco_id), (3, 256, 256), dtype="uint8", data=img
             )
@@ -151,21 +149,17 @@ def preprocess_images_and_captions(
                 caption_length = len(caption) + 2
                 encoded_caption_lengths_for_image.append(caption_length)
 
-            encoded_captions[coco_id] = encoded_captions_for_image
-            caption_lengths[coco_id] = encoded_caption_lengths_for_image
+            image_metas[coco_id]["captions"] = encoded_captions_for_image
+            image_metas[coco_id]["caption_lengths"] = encoded_caption_lengths_for_image
 
         # Sanity check
-        assert len(h5py_file.keys()) == len(encoded_captions) == len(caption_lengths)
+        assert len(h5py_file.keys()) == len(image_metas)
 
-        # Save encoded captions and their lengths to JSON files
-        captions_path = os.path.join(output_folder, CAPTIONS_FILENAME)
-        print("Saving encoded captions to {}".format(captions_path))
+        # Save meta data to JSON file
+        captions_path = os.path.join(output_folder, IMAGES_META_FILENAME)
+        print("Saving image meta data to {}".format(captions_path))
         with open(captions_path, "w") as json_file:
-            json.dump(encoded_captions, json_file)
-        caption_lengths_path = os.path.join(output_folder, CAPTION_LENGTHS_FILENAME)
-        print("Saving caption lengths to {}".format(caption_lengths_path))
-        with open(caption_lengths_path, "w") as json_file:
-            json.dump(caption_lengths, json_file)
+            json.dump(image_metas, json_file)
 
 
 def check_args(args):
@@ -174,12 +168,6 @@ def check_args(args):
         "--dataset-folder",
         help="Folder where the coco dataset is located",
         default=os.path.expanduser("../datasets/coco2014/"),
-    )
-    parser.add_argument(
-        "--coco-split",
-        help="Split of the COCO dataset that should be used",
-        choices=["train2014", "val2014", "test2014"],
-        default="train2014",
     )
     parser.add_argument(
         "--output-folder",
@@ -212,7 +200,6 @@ if __name__ == "__main__":
     parsed_args = check_args(sys.argv[1:])
     preprocess_images_and_captions(
         parsed_args.dataset_folder,
-        parsed_args.coco_split,
         parsed_args.output_folder,
         parsed_args.vocabulary_size,
         parsed_args.captions_per_image,
