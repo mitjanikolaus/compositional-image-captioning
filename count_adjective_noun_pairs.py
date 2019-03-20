@@ -3,14 +3,11 @@ import json
 import os
 import sys
 
-import h5py
 import stanfordnlp
-import nltk
 from tqdm import tqdm
 
 from utils import (
     WORD_MAP_FILENAME,
-    CAPTIONS_FILENAME,
     decode_caption,
     get_caption_without_special_tokens,
     PAIR_OCCURENCES,
@@ -20,15 +17,17 @@ from utils import (
     ADJECTIVES,
     contains_adjective_noun_pair,
     OCCURRENCE_DATA,
-    IMAGES_FILENAME,
+    IMAGES_META_FILENAME,
+    DATA_CAPTIONS,
+    DATA_COCO_SPLIT,
 )
-
-nltk.download("wordnet", quiet=True)
 
 # stanfordnlp.download('en', confirm_if_exists=True)
 
 
-def count_adjective_noun_pairs(nouns_file, adjectives_file, preprocessed_data_folder):
+def count_adjective_noun_pairs(
+    nouns_file, adjectives_file, preprocessed_data_folder, coco_split
+):
     nlp_pipeline = stanfordnlp.Pipeline()
 
     with open(nouns_file, "r") as json_file:
@@ -41,11 +40,9 @@ def count_adjective_noun_pairs(nouns_file, adjectives_file, preprocessed_data_fo
         word_map = json.load(json_file)
 
     with open(
-        os.path.join(preprocessed_data_folder, CAPTIONS_FILENAME), "r"
+        os.path.join(preprocessed_data_folder, IMAGES_META_FILENAME), "r"
     ) as json_file:
-        all_captions = json.load(json_file)
-
-    images = h5py.File(os.path.join(preprocessed_data_folder, IMAGES_FILENAME), "r")
+        images_meta = json.load(json_file)
 
     print("Looking for pairs: {} - {}".format(adjectives, nouns))
 
@@ -61,39 +58,39 @@ def count_adjective_noun_pairs(nouns_file, adjectives_file, preprocessed_data_fo
 
     occurrence_data = {}
 
-    for coco_id, image in tqdm(images.items()):
-        encoded_captions = all_captions[str(coco_id)]
+    for coco_id, image_meta in tqdm(images_meta.items()):
+        if image_meta[DATA_COCO_SPLIT] == coco_split:
+            encoded_captions = image_meta[DATA_CAPTIONS]
 
-        # TODO is join with spaces good enough?
-        decoded_captions = [
-            " ".join(
-                decode_caption(
-                    get_caption_without_special_tokens(caption, word_map), word_map
+            decoded_captions = [
+                " ".join(
+                    decode_caption(
+                        get_caption_without_special_tokens(caption, word_map), word_map
+                    )
                 )
-            )
-            for caption in encoded_captions
-        ]
+                for caption in encoded_captions
+            ]
 
-        occurrence_data[coco_id] = {}
-        occurrence_data[coco_id][PAIR_OCCURENCES] = 0
-        occurrence_data[coco_id][ADJECTIVE_OCCURRENCES] = 0
-        occurrence_data[coco_id][NOUN_OCCURRENCES] = 0
+            occurrence_data[coco_id] = {}
+            occurrence_data[coco_id][PAIR_OCCURENCES] = 0
+            occurrence_data[coco_id][ADJECTIVE_OCCURRENCES] = 0
+            occurrence_data[coco_id][NOUN_OCCURRENCES] = 0
 
-        for caption in decoded_captions:
-            noun_is_present, adjective_is_present, combination_is_present = contains_adjective_noun_pair(
-                nlp_pipeline, caption, nouns, adjectives
-            )
-            if combination_is_present:
-                print(caption)
-                occurrence_data[coco_id][PAIR_OCCURENCES] += 1
-            if adjective_is_present:
-                occurrence_data[coco_id][ADJECTIVE_OCCURRENCES] += 1
-            if noun_is_present:
-                occurrence_data[coco_id][NOUN_OCCURRENCES] += 1
+            for caption in decoded_captions:
+                noun_is_present, adjective_is_present, combination_is_present = contains_adjective_noun_pair(
+                    nlp_pipeline, caption, nouns, adjectives
+                )
+                if combination_is_present:
+                    print(caption)
+                    occurrence_data[coco_id][PAIR_OCCURENCES] += 1
+                if adjective_is_present:
+                    occurrence_data[coco_id][ADJECTIVE_OCCURRENCES] += 1
+                if noun_is_present:
+                    occurrence_data[coco_id][NOUN_OCCURRENCES] += 1
 
     data[OCCURRENCE_DATA] = occurrence_data
 
-    data_path = "{}_{}.json".format(first_adjective, first_noun)
+    data_path = "{}_{}_{}.json".format(first_adjective, first_noun, coco_split)
     print("\nSaving results to {}".format(data_path))
     with open(data_path, "w") as json_file:
         json.dump(data, json_file)
@@ -129,14 +126,12 @@ def count_adjective_noun_pairs(nouns_file, adjectives_file, preprocessed_data_fo
 def check_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-N",
         "--nouns",
         help="Path to file containing JSON-serialized list of nouns. "
         "The first element needs to be a name of a COCO object type.",
         required=True,
     )
     parser.add_argument(
-        "-A",
         "--adjectives",
         help="Path to file containing JSON-serialized list of adjectives",
         required=True,
@@ -145,6 +140,12 @@ def check_args(args):
         "--preprocessed-data-folder",
         help="Folder where the preprocessed data is located (only the word map file is read)",
         default="../datasets/coco2014_preprocessed/",
+    )
+    parser.add_argument(
+        "--coco-split",
+        help="COCO split of which the data should be analyzed",
+        choices=["train2014", "val2014"],
+        required=True,
     )
 
     parsed_args = parser.parse_args(args)
@@ -155,5 +156,8 @@ def check_args(args):
 if __name__ == "__main__":
     parsed_args = check_args(sys.argv[1:])
     count_adjective_noun_pairs(
-        parsed_args.nouns, parsed_args.adjectives, parsed_args.preprocessed_data_folder
+        parsed_args.nouns,
+        parsed_args.adjectives,
+        parsed_args.preprocessed_data_folder,
+        parsed_args.coco_split,
     )
