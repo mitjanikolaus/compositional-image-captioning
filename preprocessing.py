@@ -98,7 +98,7 @@ def preprocess_images_and_captions(
         word_freq = Counter()
         max_caption_len = 0
 
-        for img in images:
+        for img in tqdm(images):
             captions = []
             pos_tags = []
 
