@@ -45,14 +45,6 @@ RELATION_CONJUNCT = "conj"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def update_params(defaults, params):
-    updated = defaults.copy()
-    for key, value in defaults.items():
-        if key in params and params[key] is not None:
-            updated[key] = params[key]
-    return updated
-
-
 def contains_adjective_noun_pair(nlp_pipeline, caption, nouns, adjectives):
     noun_is_present = False
     adjective_is_present = False

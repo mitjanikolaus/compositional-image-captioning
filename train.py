@@ -9,13 +9,9 @@ from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence
 from torchvision.transforms import transforms
 
-from models.bottom_up_top_down import TopDownDecoder, create_top_down_decoder_optimizer
-from models.show_attend_tell import (
-    Encoder,
-    SATDecoder,
-    create_sat_encoder_optimizer,
-    create_sat_decoder_optimizer,
-)
+from models.bottom_up_top_down import TopDownDecoder
+from models.captioning_model import create_encoder_optimizer, create_decoder_optimizer
+from models.show_attend_tell import Encoder, SATDecoder
 from datasets import CaptionTrainDataset, CaptionTestDataset
 from nltk.translate.bleu_score import corpus_bleu
 
@@ -109,17 +105,17 @@ def main(
             encoder_optimizer = None
         if fine_tune_encoder and encoder_optimizer is None:
             encoder.set_fine_tuning_enabled(fine_tune_encoder)
-            encoder_optimizer = create_sat_encoder_optimizer(encoder, model_params)
+            encoder_optimizer = create_encoder_optimizer(encoder, model_params)
 
     # No checkpoint given, initialize the model
     else:
         if model_name == MODEL_SHOW_ATTEND_TELL:
             decoder = SATDecoder(word_map, model_params, embeddings)
-            decoder_optimizer = create_sat_decoder_optimizer(decoder, model_params)
+            decoder_optimizer = create_decoder_optimizer(decoder, model_params)
             encoder = Encoder()
             encoder.set_fine_tuning_enabled(fine_tune_encoder)
             encoder_optimizer = (
-                create_sat_encoder_optimizer(encoder, model_params)
+                create_encoder_optimizer(encoder, model_params)
                 if fine_tune_encoder
                 else None
             )
@@ -128,12 +124,12 @@ def main(
             encoder = None
             encoder_optimizer = None
             decoder = TopDownDecoder(word_map, model_params, embeddings)
-            decoder_optimizer = create_top_down_decoder_optimizer(decoder, model_params)
+            decoder_optimizer = create_decoder_optimizer(decoder, model_params)
         else:
             raise RuntimeError("Unknown model name: {}".format(model_name))
 
+    # Data loaders
     if model_name == MODEL_SHOW_ATTEND_TELL:
-        # Data loaders
         normalize = transforms.Normalize(
             mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD
         )
@@ -165,8 +161,6 @@ def main(
         )
 
     elif model_name == MODEL_BOTTOM_UP_TOP_DOWN:
-
-        # Data loaders
         train_images_loader = torch.utils.data.DataLoader(
             CaptionTrainDataset(
                 data_folder, BOTTOM_UP_FEATURES_FILENAME, train_images_split
@@ -301,7 +295,6 @@ def train(
         encoder.train()
 
     losses = AverageMeter()  # losses (per decoded word)
-    top5accuracies = AverageMeter()
 
     # Loop over training batches
     for i, (images, target_captions, caption_lengths) in enumerate(data_loader):
@@ -313,7 +306,7 @@ def train(
         if encoder:
             images = encoder(images)
         decode_lengths = caption_lengths.squeeze(1) - 1
-        scores, alphas, decode_lengths = decoder(
+        scores, decode_lengths, alphas = decoder(
             images, target_captions, decode_lengths
         )
 
@@ -334,8 +327,6 @@ def train(
             model_name, loss_function, packed_scores, packed_targets, alphas, alpha_c
         )
 
-        top5accuracy = top_k_accuracy(packed_scores, packed_targets, 5)
-
         # Back propagation
         decoder.zero_grad()
         if encoder_optimizer:
@@ -355,23 +346,17 @@ def train(
 
         # Keep track of metrics
         losses.update(loss.item(), sum(decode_lengths).item())
-        top5accuracies.update(top5accuracy, sum(decode_lengths).item())
 
         # Print status
         if i % print_freq == 0:
             print(
                 "Epoch: {0}[Batch {1}/{2}]\t"
-                "Loss {loss.val:.4f} (Average: {loss.avg:.4f})\t"
-                "Top-5 Accuracy {top5.val:.4f} (Average: {top5.avg:.4f})".format(
-                    epoch, i, len(data_loader), loss=losses, top5=top5accuracies
+                "Loss {loss.val:.4f} (Average: {loss.avg:.4f})\t".format(
+                    epoch, i, len(data_loader), loss=losses
                 )
             )
 
-    print(
-        "\n * LOSS - {loss.avg:.3f}, TOP-5 ACCURACY - {top5.avg:.3f}\n".format(
-            loss=losses, top5=top5accuracies
-        )
-    )
+    print("\n * LOSS - {loss.avg:.3f}\n".format(loss=losses))
 
 
 def validate(data_loader, encoder, decoder, word_map, print_freq):
@@ -393,7 +378,7 @@ def validate(data_loader, encoder, decoder, word_map, print_freq):
         # Forward propagation
         if encoder:
             images = encoder(images)
-        scores, alphas, decode_lengths = decoder(images)
+        scores, decode_lengths, alphas = decoder(images)
 
         if i % print_freq == 0:
             print("Validation: [Batch {0}/{1}]\t".format(i, len(data_loader)))

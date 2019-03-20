@@ -49,14 +49,14 @@ def sequence_score(encoder, decoder, img, word_map, sequence):
     score = 0
 
     # Start decoding
-    decoder_hidden_state, decoder_cell_state = decoder.init_hidden_state(encoder_out)
+    states = decoder.init_hidden_states(encoder_out)
     for step in range(0, len(encoded_sequence) - 1):
         # Embed the word of the previous timestep
-        embeddings = decoder.embedding(encoded_sequence[step]).unsqueeze(0)
+        embeddings = decoder.word_embedding(encoded_sequence[step]).unsqueeze(0)
 
         # Perform a forward step
-        predictions, alpha, decoder_hidden_state, decoder_cell_state = decoder.forward_step(
-            encoder_out, decoder_hidden_state, decoder_cell_state, embeddings
+        predictions, states, alpha = decoder.forward_step(
+            encoder_out, embeddings, states
         )
         scores = F.log_softmax(predictions, dim=1).squeeze(0)
 
