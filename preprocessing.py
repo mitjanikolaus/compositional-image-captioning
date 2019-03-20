@@ -9,7 +9,6 @@ from shutil import copy
 
 import h5py
 import nltk
-from nltk import word_tokenize
 from pycocotools.coco import COCO
 from tqdm import tqdm
 
@@ -22,9 +21,32 @@ from utils import (
     WORD_MAP_FILENAME,
     IMAGES_FILENAME,
     IMAGES_META_FILENAME,
+    POS_TAGS_MAP_FILENAME,
 )
 
-nltk.download("punkt", quiet=True)
+import stanfordnlp
+
+# stanfordnlp.download('en', confirm_if_exists=True)
+
+UNIVERSAL_POS_TAGS = {
+    "ADJ",
+    "ADP",
+    "ADV",
+    "AUX",
+    "CCONJ",
+    "DET",
+    "INTJ",
+    "NOUN",
+    "NUM",
+    "PART",
+    "PRON",
+    "PROPN",
+    "PUNCT",
+    "SCONJ",
+    "SYM",
+    "VERB",
+    "X",
+}
 
 
 def create_word_map(words):
@@ -38,6 +60,11 @@ def create_word_map(words):
     return word_map
 
 
+def create_pos_map(pos_tags):
+    pos_map = {p: i for i, p in enumerate(pos_tags)}
+    return pos_map
+
+
 def encode_caption(caption, word_map, max_caption_len):
     return (
         [word_map[TOKEN_START]]
@@ -47,6 +74,10 @@ def encode_caption(caption, word_map, max_caption_len):
     )
 
 
+def encode_pos_tags(pos_tags, pos_tag_map):
+    return [pos_tag_map.get(pos_tag) for pos_tag in pos_tags]
+
+
 def preprocess_images_and_captions(
     dataset_folder,
     output_folder,
@@ -54,6 +85,7 @@ def preprocess_images_and_captions(
     captions_per_image,
     existing_word_map_path,
 ):
+    nlp_pipeline = stanfordnlp.Pipeline()
     image_paths = {}
     image_metas = {}
 
@@ -68,6 +100,7 @@ def preprocess_images_and_captions(
 
         for img in images:
             captions = []
+            pos_tags = []
 
             annIds = coco.getAnnIds(imgIds=[img["id"]])
             anns = coco.loadAnns(annIds)
@@ -81,20 +114,27 @@ def preprocess_images_and_captions(
                 )
 
                 # Tokenize the caption
-                caption = word_tokenize(caption)
+                doc = nlp_pipeline(caption)
+                sentence = doc.sentences[0]
+                tokenized_caption = [token.text for token in sentence.tokens]
+                pos_tags_caption = [token.words[0].upos for token in sentence.tokens]
 
-                word_freq.update(caption)
-                captions.append(caption)
+                word_freq.update(tokenized_caption)
+                captions.append(tokenized_caption)
+                pos_tags.append(pos_tags_caption)
 
-                if len(caption) > max_caption_len:
-                    max_caption_len = len(caption)
+                if len(tokenized_caption) > max_caption_len:
+                    max_caption_len = len(tokenized_caption)
 
             path = os.path.join(dataset_folder, coco_split, img["file_name"])
 
             coco_id = img["id"]
             image_paths[coco_id] = path
-
-            image_metas[coco_id] = {"captions": captions, "coco_split": coco_split}
+            image_metas[coco_id] = {
+                "captions": captions,
+                "coco_split": coco_split,
+                "captions_pos": pos_tags,
+            }
 
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -118,6 +158,14 @@ def preprocess_images_and_captions(
         with open(word_map_path, "w") as file:
             json.dump(word_map, file)
 
+    # Create POS tags map
+    pos_tags_map = create_pos_map(UNIVERSAL_POS_TAGS)
+    pos_tags_path = os.path.join(output_folder, POS_TAGS_MAP_FILENAME)
+
+    print("Saving new POS tag mapping to {}".format(pos_tags_path))
+    with open(pos_tags_path, "w") as file:
+        json.dump(pos_tags_map, file)
+
     # Create hdf5 file and dataset for the images
     images_dataset_path = os.path.join(output_folder, IMAGES_FILENAME)
     print("Creating image dataset at {}".format(images_dataset_path))
@@ -129,6 +177,7 @@ def preprocess_images_and_captions(
 
             # Discard any additional captions
             captions = image_metas[coco_id]["captions"][:captions_per_image]
+            pos_tags = image_metas[coco_id]["captions_pos"][:captions_per_image]
 
             assert len(captions) == captions_per_image
 
@@ -138,19 +187,25 @@ def preprocess_images_and_captions(
                 str(coco_id), (3, 256, 256), dtype="uint8", data=img
             )
 
-            encoded_captions_for_image = []
-            encoded_caption_lengths_for_image = []
-            for j, caption in enumerate(captions):
+            encoded_captions = []
+            encoded_caption_lengths = []
+            for caption in captions:
                 # Encode caption
                 encoded_caption = encode_caption(caption, word_map, max_caption_len)
-                encoded_captions_for_image.append(encoded_caption)
+                encoded_captions.append(encoded_caption)
 
                 # extend caption length by 2 for start and end of sentence tokens
                 caption_length = len(caption) + 2
-                encoded_caption_lengths_for_image.append(caption_length)
+                encoded_caption_lengths.append(caption_length)
 
-            image_metas[coco_id]["captions"] = encoded_captions_for_image
-            image_metas[coco_id]["caption_lengths"] = encoded_caption_lengths_for_image
+            encoded_pos_tags = []
+            for pos_tags_image in pos_tags:
+                # Encode POS tags
+                encoded_pos_tags.append(encode_pos_tags(pos_tags_image, pos_tags_map))
+
+            image_metas[coco_id]["captions"] = encoded_captions
+            image_metas[coco_id]["caption_lengths"] = encoded_caption_lengths
+            image_metas[coco_id]["captions_pos"] = encoded_pos_tags
 
         # Sanity check
         assert len(h5py_file.keys()) == len(image_metas)
