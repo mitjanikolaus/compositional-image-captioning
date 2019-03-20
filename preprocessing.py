@@ -8,7 +8,6 @@ from collections import Counter
 from shutil import copy
 
 import h5py
-import nltk
 from pycocotools.coco import COCO
 from tqdm import tqdm
 
