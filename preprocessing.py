@@ -8,6 +8,7 @@ from collections import Counter
 from shutil import copy
 
 import h5py
+import nltk
 from nltk import word_tokenize
 from pycocotools.coco import COCO
 from tqdm import tqdm
@@ -22,6 +23,8 @@ from utils import (
     IMAGES_FILENAME,
     IMAGES_META_FILENAME,
 )
+
+nltk.download("punkt", quiet=True)
 
 
 def create_word_map(words):
@@ -63,7 +66,7 @@ def preprocess_images_and_captions(
         word_freq = Counter()
         max_caption_len = 0
 
-        for img in images[:10]:
+        for img in images:
             captions = []
 
             annIds = coco.getAnnIds(imgIds=[img["id"]])
@@ -92,12 +95,6 @@ def preprocess_images_and_captions(
             image_paths[coco_id] = path
 
             image_metas[coco_id] = {"captions": captions, "coco_split": coco_split}
-
-    # Save meta data to JSON file
-    captions_path = os.path.join(output_folder, IMAGES_META_FILENAME)
-    print("Saving image meta data to {}".format(captions_path))
-    with open(captions_path, "w") as json_file:
-        json.dump(image_metas, json_file)
 
     if existing_word_map_path:
         print("Loading existing word mapping from {}".format(existing_word_map_path))
