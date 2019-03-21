@@ -5,7 +5,6 @@ import string
 import sys
 
 from collections import Counter
-from shutil import copy
 
 import h5py
 from pycocotools.coco import COCO
@@ -23,7 +22,6 @@ from utils import (
     DATA_COCO_SPLIT,
     DATA_CAPTIONS,
     DATA_CAPTION_LENGTHS,
-    POS_TAGS_MAP_FILENAME,
     DATA_CAPTIONS_POS,
 )
 
@@ -52,7 +50,7 @@ UNIVERSAL_POS_TAGS = {
 }
 
 
-def create_word_map(words):
+def create_word_and_pos_map(words, pos_tags):
     word_map = {w: i + 1 for i, w in enumerate(words)}
     # Mapping for special characters
     word_map[TOKEN_UNKNOWN] = len(word_map) + 1
@@ -60,12 +58,9 @@ def create_word_map(words):
     word_map[TOKEN_END] = len(word_map) + 1
     word_map[TOKEN_PADDING] = 0
 
+    pos_map = {p: i + len(word_map) for i, p in enumerate(pos_tags)}
+    word_map.update(pos_map)
     return word_map
-
-
-def create_pos_map(pos_tags):
-    pos_map = {p: i for i, p in enumerate(pos_tags)}
-    return pos_map
 
 
 def encode_caption(caption, word_map, max_caption_len):
@@ -77,8 +72,8 @@ def encode_caption(caption, word_map, max_caption_len):
     )
 
 
-def encode_pos_tags(pos_tags, pos_tag_map):
-    return [pos_tag_map.get(pos_tag) for pos_tag in pos_tags]
+def encode_pos_tags(pos_tags, word_map):
+    return [word_map[pos_tag] for pos_tag in pos_tags]
 
 
 def preprocess_images_and_captions(
@@ -143,31 +138,19 @@ def preprocess_images_and_captions(
         os.makedirs(output_folder)
 
     if existing_word_map_path:
-        print("Loading existing word mapping from {}".format(existing_word_map_path))
-        with open(existing_word_map_path, "r") as json_file:
-            word_map = json.load(json_file)
-
-        copy(existing_word_map_path, output_folder)
+        raise NotImplementedError()
 
     else:
         # Select the most frequent words
         words = [w for w, c in word_freq.most_common(vocabulary_size)]
 
         # Create word map
-        word_map = create_word_map(words)
+        word_map = create_word_and_pos_map(words, UNIVERSAL_POS_TAGS)
         word_map_path = os.path.join(output_folder, WORD_MAP_FILENAME)
 
         print("Saving new word mapping to {}".format(word_map_path))
         with open(word_map_path, "w") as file:
             json.dump(word_map, file)
-
-    # Create POS tags map
-    pos_tags_map = create_pos_map(UNIVERSAL_POS_TAGS)
-    pos_tags_path = os.path.join(output_folder, POS_TAGS_MAP_FILENAME)
-
-    print("Saving new POS tag mapping to {}".format(pos_tags_path))
-    with open(pos_tags_path, "w") as file:
-        json.dump(pos_tags_map, file)
 
     # Create hdf5 file and dataset for the images
     images_dataset_path = os.path.join(output_folder, IMAGES_FILENAME)
@@ -204,7 +187,7 @@ def preprocess_images_and_captions(
             encoded_pos_tags = []
             for pos_tags_image in pos_tags:
                 # Encode POS tags
-                encoded_pos_tags.append(encode_pos_tags(pos_tags_image, pos_tags_map))
+                encoded_pos_tags.append(encode_pos_tags(pos_tags_image, word_map))
 
             image_metas[coco_id][DATA_CAPTIONS] = encoded_captions
             image_metas[coco_id][DATA_CAPTION_LENGTHS] = encoded_caption_lengths

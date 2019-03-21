@@ -4,7 +4,21 @@ import h5py
 import json
 import os
 
-from utils import IMAGES_META_FILENAME, DATA_CAPTIONS, DATA_CAPTION_LENGTHS
+from utils import (
+    IMAGES_META_FILENAME,
+    DATA_CAPTIONS,
+    DATA_CAPTION_LENGTHS,
+    DATA_CAPTIONS_POS,
+)
+
+
+def interleave_caption_pos_tags(caption, pos_tags):
+    interleaved = []
+    for token, pos_tag in zip(caption, pos_tags):
+        interleaved.append(token)
+        interleaved.append(pos_tag)
+    interleaved += [caption[-1]] * (len(caption) - len(interleaved))
+    return interleaved
 
 
 class CaptionDataset(Dataset):
@@ -78,14 +92,17 @@ class CaptionTrainDataset(CaptionDataset):
         caption_index = i % self.captions_per_image
 
         image = self.get_image_features(coco_id)
-        caption = torch.LongTensor(
-            self.images_meta[coco_id][DATA_CAPTIONS][caption_index]
-        )
-        caption_length = torch.LongTensor(
-            [self.images_meta[coco_id][DATA_CAPTION_LENGTHS][caption_index]]
+        caption = self.images_meta[coco_id][DATA_CAPTIONS][caption_index]
+        caption_length = self.images_meta[coco_id][DATA_CAPTION_LENGTHS][caption_index]
+        interleaved_caption_length = (caption_length - 2) * 2 + 2
+        interleaved_caption_length = torch.LongTensor([interleaved_caption_length])
+        pos_tags = self.images_meta[coco_id][DATA_CAPTIONS_POS][caption_index]
+
+        interleaved_caption = torch.LongTensor(
+            interleave_caption_pos_tags(caption, pos_tags)
         )
 
-        return image, caption, caption_length
+        return image, interleaved_caption, interleaved_caption_length
 
     def __len__(self):
         return self.dataset_size * self.captions_per_image
@@ -102,8 +119,13 @@ class CaptionTestDataset(CaptionDataset):
         coco_id = self.split[i]
 
         image = self.get_image_features(coco_id)
-        all_captions_for_image = torch.LongTensor(
-            self.images_meta[coco_id][DATA_CAPTIONS]
-        )
+        captions = self.images_meta[coco_id][DATA_CAPTIONS]
+        pos_tags = self.images_meta[coco_id][DATA_CAPTIONS_POS]
 
-        return image, all_captions_for_image, coco_id
+        interleaved_captions = [
+            interleave_caption_pos_tags(caption, pos_tags)
+            for caption, pos_tags in zip(captions, pos_tags)
+        ]
+        interleaved_captions = torch.LongTensor(interleaved_captions)
+
+        return image, interleaved_captions, coco_id

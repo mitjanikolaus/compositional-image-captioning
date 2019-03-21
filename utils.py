@@ -18,8 +18,7 @@ IMAGENET_IMAGES_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_IMAGES_STD = [0.229, 0.224, 0.225]
 
 
-WORD_MAP_FILENAME = "word_map.json"
-POS_TAGS_MAP_FILENAME = "pos_tags_map.json"
+WORD_MAP_FILENAME = "word_and_pos_tags_map.json"
 IMAGES_FILENAME = "images.hdf5"
 BOTTOM_UP_FEATURES_FILENAME = "bottom_up_features.hdf5"
 IMAGES_META_FILENAME = "images_meta.json"
