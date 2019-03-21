@@ -12,13 +12,13 @@ from utils import (
 )
 
 
-def interleave_caption_pos_tags(caption, pos_tags):
+def interleave_caption_and_pos_tags(caption, pos_tags, max_caption_len=100):
     interleaved = []
     for token, pos_tag in zip(caption, pos_tags):
         interleaved.append(token)
         interleaved.append(pos_tag)
     interleaved.append(caption[len(pos_tags) + 1])
-    interleaved += [caption[-1]] * (len(caption) - len(interleaved) - 1)
+    interleaved += [caption[-1]] * (max_caption_len - len(interleaved) - 1)
     return interleaved
 
 
@@ -100,7 +100,7 @@ class CaptionTrainDataset(CaptionDataset):
         pos_tags = self.images_meta[coco_id][DATA_CAPTIONS_POS][caption_index]
 
         interleaved_caption = torch.LongTensor(
-            interleave_caption_pos_tags(caption, pos_tags)
+            interleave_caption_and_pos_tags(caption, pos_tags)
         )
 
         return image, interleaved_caption, interleaved_caption_length
@@ -124,7 +124,7 @@ class CaptionTestDataset(CaptionDataset):
         pos_tags = self.images_meta[coco_id][DATA_CAPTIONS_POS]
 
         interleaved_captions = [
-            interleave_caption_pos_tags(caption, pos_tags)
+            interleave_caption_and_pos_tags(caption, pos_tags)
             for caption, pos_tags in zip(captions, pos_tags)
         ]
         interleaved_captions = torch.LongTensor(interleaved_captions)

@@ -216,7 +216,7 @@ def check_args(args):
         "--beam-size", help="Size of the decoding beam", type=int, default=1
     )
     parser.add_argument(
-        "--max-caption-len", help="Maximum caption length", type=int, default=50
+        "--max-caption-len", help="Maximum caption length", type=int, default=100
     )
     parser.add_argument(
         "--visualize-attention",

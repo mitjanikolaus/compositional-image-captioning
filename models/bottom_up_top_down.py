@@ -14,7 +14,7 @@ class TopDownDecoder(CaptioningModelDecoder):
         "attention_lstm_size": 1000,
         "attention_layer_size": 512,
         "language_lstm_size": 1000,
-        "max_caption_len": 50,
+        "max_caption_len": 100,
         "fine_tune_decoder_embeddings": True,
     }
     DEFAULT_OPTIMIZER_PARAMS = {"decoder_learning_rate": 1e-4}
