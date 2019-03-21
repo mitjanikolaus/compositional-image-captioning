@@ -239,23 +239,6 @@ def adjust_learning_rate(optimizer, shrink_factor):
     print("The new learning rate is {}\n".format(optimizer.param_groups[0]["lr"]))
 
 
-def top_k_accuracy(scores, targets, k):
-    """
-    Compute the top-k accuracy from predicted and true labels.
-
-    :param scores: predicted scores from the model
-    :param targets: true labels
-    :param k: k
-    :return: top-k accuracy
-    """
-
-    batch_size = targets.size(0)
-    _, ind = scores.topk(k, 1, True, True)
-    correct = ind.eq(targets.view(-1, 1).expand_as(ind))
-    correct_total = correct.view(-1).float().sum()
-    return correct_total.item() * (100.0 / batch_size)
-
-
 def load_embeddings(emb_file, word_map):
     """Return an embedding for the specified word map from the a GloVe embedding file"""
 

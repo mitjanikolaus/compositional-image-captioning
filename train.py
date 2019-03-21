@@ -20,7 +20,6 @@ from utils import (
     save_checkpoint,
     AverageMeter,
     clip_gradients,
-    top_k_accuracy,
     get_splits_from_occurrences_data,
     WORD_MAP_FILENAME,
     get_caption_without_special_tokens,
