@@ -117,7 +117,9 @@ class CaptioningModelDecoder(nn.Module):
             )
 
             # Update the previously predicted words
-            prev_words = torch.max(scores_for_timestep, dim=1)[1]
+            prev_words = self.update_previous_word(
+                scores_for_timestep, target_captions, t
+            )
 
             scores[indices_incomplete_sequences, t, :] = scores_for_timestep[
                 indices_incomplete_sequences
@@ -189,8 +191,8 @@ class CaptioningModelDecoder(nn.Module):
             # Add the new scores
             scores = top_k_scores.unsqueeze(1).expand_as(scores) + scores
 
-            # For the first timestep, the scores from previous decoding are all the same, so in order to create 5 different
-            # sequences, we should only look at one branch
+            # For the first timestep, the scores from previous decoding are all the same, so in order to create 5
+            # different sequences, we should only look at one branch
             if step == 0:
                 scores = scores[0]
 

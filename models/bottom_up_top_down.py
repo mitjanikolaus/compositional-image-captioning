@@ -97,7 +97,7 @@ class TopDownDecoder(CaptioningModelDecoder):
                 "Storage of alphas for this model is not supported"
             )
 
-        super(TopDownDecoder, self).beam_search(
+        return super(TopDownDecoder, self).beam_search(
             encoder_output,
             beam_size,
             max_caption_len,
