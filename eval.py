@@ -31,14 +31,7 @@ METRIC_BEAM_OCCURRENCES = "beam-occurrences"
 
 
 def evaluate(
-    data_folder,
-    occurrences_data,
-    checkpoint,
-    metrics,
-    beam_size,
-    max_caption_len,
-    visualize,
-    print_beam,
+    data_folder, occurrences_data, checkpoint, metrics, beam_size, visualize, print_beam
 ):
     # Load model
     checkpoint = torch.load(checkpoint, map_location=device)
@@ -121,7 +114,6 @@ def evaluate(
         top_k_generated_captions, alphas, beam = decoder.beam_search(
             encoded_features,
             beam_size,
-            max_caption_len,
             store_alphas=visualize,
             store_beam=store_beam,
             print_beam=print_beam,
@@ -216,9 +208,6 @@ def check_args(args):
         "--beam-size", help="Size of the decoding beam", type=int, default=1
     )
     parser.add_argument(
-        "--max-caption-len", help="Maximum caption length", type=int, default=50
-    )
-    parser.add_argument(
         "--visualize-attention",
         help="Visualize the attention for every sample",
         default=False,
@@ -244,7 +233,6 @@ if __name__ == "__main__":
         checkpoint=parsed_args.checkpoint,
         metrics=parsed_args.metrics,
         beam_size=parsed_args.beam_size,
-        max_caption_len=parsed_args.max_caption_len,
         visualize=parsed_args.visualize_attention,
         print_beam=parsed_args.print_beam,
     )
