@@ -17,6 +17,7 @@ def interleave_caption_pos_tags(caption, pos_tags):
     for token, pos_tag in zip(caption, pos_tags):
         interleaved.append(token)
         interleaved.append(pos_tag)
+    interleaved.append(caption[len(pos_tags) + 1])
     interleaved += [caption[-1]] * (len(caption) - len(interleaved))
     return interleaved
 
