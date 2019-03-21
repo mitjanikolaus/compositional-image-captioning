@@ -62,57 +62,13 @@ class Encoder(nn.Module):
                 p.requires_grad = enable_fine_tuning
 
 
-class AttentionModule(nn.Module):
-    def __init__(self, encoder_dim, decoder_dim, attention_dim):
-        """
-        :param encoder_dim: feature size of encoded images
-        :param decoder_dim: size of decoder's RNN
-        :param attention_dim: size of the attention network
-        """
-        super(AttentionModule, self).__init__()
-        self.encoder_att = nn.Linear(
-            encoder_dim, attention_dim
-        )  # linear layer to transform encoded image
-        self.decoder_att = nn.Linear(
-            decoder_dim, attention_dim
-        )  # linear layer to transform decoder's output
-        self.full_att = nn.Linear(
-            attention_dim, 1
-        )  # linear layer to calculate values to be softmax-ed
-        self.relu = nn.ReLU()
-        self.softmax = nn.Softmax(dim=1)  # softmax layer to calculate weights
-
-    def forward(self, encoder_out, decoder_hidden):
-        """
-        Forward propagation.
-
-        :param encoder_out: encoded images, shape: (batch_size, num_pixels, encoder_dim)
-        :param decoder_hidden: previous decoder output, shape: (batch_size, decoder_dim)
-        :return: attention weighted encoding, weights
-        """
-        att1 = self.encoder_att(
-            encoder_out
-        )  # output shape: (batch_size, num_pixels, attention_dim)
-        att2 = self.decoder_att(
-            decoder_hidden
-        )  # output shape: (batch_size, attention_dim)
-        att = self.full_att(self.relu(att1 + att2.unsqueeze(1))).squeeze(
-            2
-        )  # output shape: (batch_size, num_pixels)
-        alpha = self.softmax(att)  # output shape: (batch_size, num_pixels)
-        attention_weighted_encoding = (encoder_out * alpha.unsqueeze(2)).sum(
-            dim=1
-        )  # output shape: (batch_size, encoder_dim)
-
-        return attention_weighted_encoding, alpha
-
-
 class SATDecoder(CaptioningModelDecoder):
     DEFAULT_MODEL_PARAMS = {
         "embeddings_size": 512,
         "attention_dim": 512,
         "encoder_dim": 2048,
         "decoder_dim": 512,
+        "teacher_forcing_ratio": 1,
         "dropout": 0.5,
         "alpha_c": 1.0,
         "max_caption_len": 50,
@@ -129,22 +85,25 @@ class SATDecoder(CaptioningModelDecoder):
             self.params["attention_dim"],
         )
 
-        self.dropout = nn.Dropout(p=self.params["dropout"])
-        self.decode_step = nn.LSTMCell(
-            self.params["embeddings_size"] + self.params["encoder_dim"],
-            self.params["decoder_dim"],
-            bias=True,
-        )  # decoding LSTMCell
+        # Sigmoid layer
+        self.sigmoid = nn.Sigmoid()
 
         # linear layers to find initial states of LSTMs
         self.init_h = nn.Linear(self.params["encoder_dim"], self.params["decoder_dim"])
         self.init_c = nn.Linear(self.params["encoder_dim"], self.params["decoder_dim"])
         self.f_beta = nn.Linear(self.params["decoder_dim"], self.params["encoder_dim"])
 
-        # Sigmoid layer
-        self.sigmoid = nn.Sigmoid()
+        # LSTM
+        self.decode_step = nn.LSTMCell(
+            self.params["embeddings_size"] + self.params["encoder_dim"],
+            self.params["decoder_dim"],
+            bias=True,
+        )
 
-        # Linear layer to find scores over vocabulary
+        # Dropout layer
+        self.dropout = nn.Dropout(p=self.params["dropout"])
+
+        # Fully connected layer to find scores over vocabulary
         self.fully_connected = nn.Linear(self.params["decoder_dim"], self.vocab_size)
 
     def init_hidden_states(self, encoder_out):
@@ -186,3 +145,52 @@ class SATDecoder(CaptioningModelDecoder):
 
         states = [decoder_hidden_state, decoder_cell_state]
         return scores, states, alpha
+
+
+class AttentionModule(nn.Module):
+    def __init__(self, encoder_dim, decoder_dim, attention_dim):
+        """
+        :param encoder_dim: feature size of encoded images
+        :param decoder_dim: size of decoder's RNN
+        :param attention_dim: size of the attention network
+        """
+        super(AttentionModule, self).__init__()
+
+        # Linear layer to transform encoded image
+        self.encoder_att = nn.Linear(encoder_dim, attention_dim)
+
+        # Linear layer to transform decoder's output
+        self.decoder_att = nn.Linear(decoder_dim, attention_dim)
+
+        # Linear layer to calculate values to be softmax-ed
+        self.full_att = nn.Linear(attention_dim, 1)
+
+        # ReLU layer
+        self.relu = nn.ReLU()
+
+        # Softmax layer to calculate attention weights
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, encoder_out, decoder_hidden):
+        """
+        Forward propagation.
+
+        :param encoder_out: encoded images, shape: (batch_size, num_pixels, encoder_dim)
+        :param decoder_hidden: previous decoder output, shape: (batch_size, decoder_dim)
+        :return: attention weighted encoding, weights
+        """
+        att1 = self.encoder_att(
+            encoder_out
+        )  # output shape: (batch_size, num_pixels, attention_dim)
+        att2 = self.decoder_att(
+            decoder_hidden
+        )  # output shape: (batch_size, attention_dim)
+        att = self.full_att(self.relu(att1 + att2.unsqueeze(1))).squeeze(
+            2
+        )  # output shape: (batch_size, num_pixels)
+        alpha = self.softmax(att)  # output shape: (batch_size, num_pixels)
+        attention_weighted_encoding = (encoder_out * alpha.unsqueeze(2)).sum(
+            dim=1
+        )  # output shape: (batch_size, encoder_dim)
+
+        return attention_weighted_encoding, alpha
