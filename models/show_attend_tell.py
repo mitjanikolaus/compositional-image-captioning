@@ -127,9 +127,7 @@ class SATDecoder(CaptioningModelDecoder):
         attention_weighted_encoding, alpha = self.attention(
             encoder_output, decoder_hidden_state
         )
-        gate = self.sigmoid(
-            self.f_beta(decoder_hidden_state)
-        )  # gating scalar, (batch_size_t, encoder_dim)
+        gate = self.sigmoid(self.f_beta(decoder_hidden_state))
         attention_weighted_encoding = gate * attention_weighted_encoding
 
         decoder_input = torch.cat(
@@ -137,11 +135,9 @@ class SATDecoder(CaptioningModelDecoder):
         )
         decoder_hidden_state, decoder_cell_state = self.decode_step(
             decoder_input, (decoder_hidden_state, decoder_cell_state)
-        )  # (batch_size, decoder_dim)
+        )
 
-        scores = self.fully_connected(
-            self.dropout(decoder_hidden_state)
-        )  # (batch_size, vocab_size)
+        scores = self.fully_connected(self.dropout(decoder_hidden_state))
 
         states = [decoder_hidden_state, decoder_cell_state]
         return scores, states, alpha
