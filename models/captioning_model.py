@@ -135,7 +135,6 @@ class CaptioningModelDecoder(nn.Module):
         self,
         encoder_output,
         beam_size=1,
-        max_caption_len=50,
         store_alphas=False,
         store_beam=False,
         print_beam=False,
@@ -179,7 +178,7 @@ class CaptioningModelDecoder(nn.Module):
         states = self.init_hidden_states(encoder_output)
 
         # Start decoding
-        for step in range(0, max_caption_len - 1):
+        for step in range(0, self.params["max_caption_len"] - 1):
             prev_words = top_k_sequences[:, step]
 
             prev_word_embeddings = self.word_embedding(prev_words)
