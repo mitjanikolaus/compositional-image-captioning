@@ -251,6 +251,12 @@ class CaptioningModelDecoder(nn.Module):
             if store_alphas:
                 seqs_alpha = seqs_alpha[incomplete_inds]
 
+        if len(complete_seqs) < beam_size:
+            complete_seqs.extend(top_k_sequences[incomplete_inds].tolist())
+            complete_seqs_scores.extend(top_k_scores[incomplete_inds])
+            if store_alphas:
+                complete_seqs_alpha.extend(seqs_alpha[incomplete_inds])
+
         sorted_sequences = [
             sequence
             for _, sequence in sorted(
