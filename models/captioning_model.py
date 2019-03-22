@@ -70,7 +70,7 @@ class CaptioningModelDecoder(nn.Module):
         if not self.training:
             decode_lengths = torch.full(
                 (batch_size,),
-                self.params["max_caption_len"],
+                self.params["max_caption_len"] - 1,
                 dtype=torch.int64,
                 device=device,
             )
