@@ -240,7 +240,7 @@ def main(
             )
 
         # Save checkpoint
-        name = os.path.basename(occurrences_data).split(".")[0]
+        name = "pos_" + os.path.basename(occurrences_data).split(".")[0]
         save_checkpoint(
             model_name,
             name,
