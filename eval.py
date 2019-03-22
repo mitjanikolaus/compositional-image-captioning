@@ -14,7 +14,6 @@ from train import MODEL_SHOW_ATTEND_TELL, MODEL_BOTTOM_UP_TOP_DOWN
 from utils import (
     get_caption_without_special_tokens,
     IMAGENET_IMAGES_MEAN,
-    WORD_MAP_FILENAME,
     IMAGENET_IMAGES_STD,
     get_splits_from_occurrences_data,
     IMAGES_FILENAME,
@@ -47,10 +46,7 @@ def evaluate(
 
     model_name = checkpoint["model_name"]
 
-    # Load word map
-    word_map_path = os.path.join(data_folder, WORD_MAP_FILENAME)
-    with open(word_map_path, "r") as json_file:
-        word_map = json.load(json_file)
+    word_map = decoder.word_map
 
     _, _, test_images_split = get_splits_from_occurrences_data(occurrences_data)
 
