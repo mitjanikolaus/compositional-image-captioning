@@ -23,31 +23,12 @@ from utils import (
     DATA_CAPTIONS,
     DATA_CAPTION_LENGTHS,
     DATA_CAPTIONS_POS,
+    UNIVERSAL_POS_TAGS,
 )
 
 import stanfordnlp
 
 # stanfordnlp.download('en', confirm_if_exists=True)
-
-UNIVERSAL_POS_TAGS = {
-    "ADJ",
-    "ADP",
-    "ADV",
-    "AUX",
-    "CCONJ",
-    "DET",
-    "INTJ",
-    "NOUN",
-    "NUM",
-    "PART",
-    "PRON",
-    "PROPN",
-    "PUNCT",
-    "SCONJ",
-    "SYM",
-    "VERB",
-    "X",
-}
 
 
 def create_word_and_pos_map(words, pos_tags):

@@ -19,6 +19,7 @@ from utils import (
     get_splits_from_occurrences_data,
     IMAGES_FILENAME,
     BOTTOM_UP_FEATURES_FILENAME,
+    get_caption_without_pos_tags,
 )
 from visualize_attention import visualize_attention
 
@@ -99,7 +100,9 @@ def evaluate(
         # Target captions
         target_captions.append(
             [
-                get_caption_without_special_tokens(caption, word_map)
+                get_caption_without_pos_tags(
+                    get_caption_without_special_tokens(caption, word_map), word_map
+                )
                 for caption in all_captions_for_image[0].tolist()
             ]
         )
@@ -159,7 +162,10 @@ def calculate_metric(
 ):
     if metric_name == METRIC_BLEU:
         generated_captions = [
-            get_caption_without_special_tokens(top_k_captions[0], word_map)
+            get_caption_without_pos_tags(
+                get_caption_without_special_tokens(top_k_captions[0], word_map),
+                word_map,
+            )
             for top_k_captions in generated_captions
         ]
         bleu_1 = corpus_bleu(target_captions, generated_captions, weights=(1, 0, 0, 0))

@@ -41,6 +41,26 @@ RELATION_NOMINAL_SUBJECT = "nsubj"
 RELATION_ADJECTIVAL_MODIFIER = "amod"
 RELATION_CONJUNCT = "conj"
 
+UNIVERSAL_POS_TAGS = {
+    "ADJ",
+    "ADP",
+    "ADV",
+    "AUX",
+    "CCONJ",
+    "DET",
+    "INTJ",
+    "NOUN",
+    "NUM",
+    "PART",
+    "PRON",
+    "PROPN",
+    "PUNCT",
+    "SCONJ",
+    "SYM",
+    "VERB",
+    "X",
+}
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -116,7 +136,7 @@ def get_splits_from_occurrences_data(occurrences_data_file, val_set_size=0):
     test_images_split = [
         key
         for key, value in occurrences_data[OCCURRENCE_DATA].items()
-        if value[PAIR_OCCURENCES] >= 1
+        if value[PAIR_OCCURENCES] >= 4
     ]
 
     indices_without_test = [
@@ -150,6 +170,16 @@ def get_caption_without_special_tokens(caption, word_map):
         for token in caption
         if token
         not in {word_map[TOKEN_START], word_map[TOKEN_END], word_map[TOKEN_PADDING]}
+    ]
+
+
+def get_caption_without_pos_tags(caption, word_map):
+    """Remove pos tags from an encoded caption."""
+
+    return [
+        token
+        for token in caption
+        if token not in [word_map[pos_tag] for pos_tag in UNIVERSAL_POS_TAGS]
     ]
 
 
