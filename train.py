@@ -28,6 +28,7 @@ from utils import (
     BOTTOM_UP_FEATURES_FILENAME,
     IMAGES_FILENAME,
     load_embeddings,
+    get_caption_without_pos_tags,
 )
 
 MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
@@ -385,7 +386,9 @@ def validate(data_loader, encoder, decoder, word_map, print_freq):
         # Target captions
         for j in range(all_captions_for_image.shape[0]):
             img_captions = [
-                get_caption_without_special_tokens(caption, word_map)
+                get_caption_without_pos_tags(
+                    get_caption_without_special_tokens(caption, word_map), word_map
+                )
                 for caption in all_captions_for_image[j].tolist()
             ]
             target_captions.append(img_captions)
@@ -393,7 +396,9 @@ def validate(data_loader, encoder, decoder, word_map, print_freq):
         # Generated captions
         _, captions = torch.max(scores, dim=2)
         captions = [
-            get_caption_without_special_tokens(caption, word_map)
+            get_caption_without_pos_tags(
+                get_caption_without_special_tokens(caption, word_map), word_map
+            )
             for caption in captions.tolist()
         ]
         generated_captions.extend(captions)
