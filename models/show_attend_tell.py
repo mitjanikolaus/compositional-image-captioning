@@ -85,9 +85,13 @@ class SATDecoder(CaptioningModelDecoder):
             self.params["attention_dim"],
         )
 
+        # Sigmoid layer
+        self.sigmoid = nn.Sigmoid()
+
         # linear layers to find initial states of LSTMs
         self.init_h = nn.Linear(self.params["encoder_dim"], self.params["decoder_dim"])
         self.init_c = nn.Linear(self.params["encoder_dim"], self.params["decoder_dim"])
+        self.f_beta = nn.Linear(self.params["decoder_dim"], self.params["encoder_dim"])
 
         # LSTM
         self.decode_step = nn.LSTMCell(
@@ -123,6 +127,8 @@ class SATDecoder(CaptioningModelDecoder):
         attention_weighted_encoding, alpha = self.attention(
             encoder_output, decoder_hidden_state
         )
+        gate = self.sigmoid(self.f_beta(decoder_hidden_state))
+        attention_weighted_encoding = gate * attention_weighted_encoding
 
         decoder_input = torch.cat(
             (prev_word_embeddings, attention_weighted_encoding), dim=1
