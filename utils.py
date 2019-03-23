@@ -136,7 +136,7 @@ def get_splits_from_occurrences_data(occurrences_data_file, val_set_size=0):
     test_images_split = [
         key
         for key, value in occurrences_data[OCCURRENCE_DATA].items()
-        if value[PAIR_OCCURENCES] >= 4
+        if value[PAIR_OCCURENCES] >= 1
     ]
 
     indices_without_test = [
