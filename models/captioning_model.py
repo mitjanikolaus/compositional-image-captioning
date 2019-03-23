@@ -305,6 +305,6 @@ def print_current_beam(top_k_sequences, top_k_scores, word_map):
     for sequence, score in zip(top_k_sequences, top_k_scores):
         print(
             "{} \t\t\t\t Score: {}".format(
-                decode_caption(sequence.numpy(), word_map), score
+                decode_caption(sequence.cpu().numpy(), word_map), score
             )
         )
