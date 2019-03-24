@@ -204,6 +204,14 @@ class CaptioningModelDecoder(nn.Module):
             prev_seq_inds = top_k_words / self.vocab_size  # (k)
             next_words = top_k_words % self.vocab_size  # (k)
 
+            if step == 2:
+                next_words = torch.full(
+                    (current_beam_width,),
+                    self.word_map["ADJ"],
+                    dtype=torch.int64,
+                    device=device,
+                )
+
             # Add new words to sequences
             top_k_sequences = torch.cat(
                 (top_k_sequences[prev_seq_inds], next_words.unsqueeze(1)), dim=1
