@@ -103,8 +103,14 @@ class SATDecoder(CaptioningModelDecoder):
         # Dropout layer
         self.dropout = nn.Dropout(p=self.params["dropout"])
 
-        # Fully connected layer to find scores over vocabulary
-        self.fully_connected = nn.Linear(self.params["decoder_dim"], self.vocab_size)
+        # Linear layers for output generation
+        self.linear_o = nn.Linear(self.params["embeddings_size"], self.vocab_size)
+        self.linear_h = nn.Linear(
+            self.params["decoder_dim"], self.params["embeddings_size"]
+        )
+        self.linear_z = nn.Linear(
+            self.params["encoder_dim"], self.params["embeddings_size"]
+        )
 
     def init_hidden_states(self, encoder_out):
         """
@@ -137,7 +143,17 @@ class SATDecoder(CaptioningModelDecoder):
             decoder_input, (decoder_hidden_state, decoder_cell_state)
         )
 
-        scores = self.fully_connected(self.dropout(decoder_hidden_state))
+        decoder_hidden_state_embedded = self.linear_h(decoder_hidden_state)
+        attention_weighted_encoding_embedded = self.linear_z(
+            attention_weighted_encoding
+        )
+        scores = self.linear_o(
+            self.dropout(
+                prev_word_embeddings
+                + decoder_hidden_state_embedded
+                + attention_weighted_encoding_embedded
+            )
+        )
 
         states = [decoder_hidden_state, decoder_cell_state]
         return scores, states, alpha
