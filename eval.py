@@ -35,18 +35,22 @@ def evaluate(
 ):
     # Load model
     checkpoint = torch.load(checkpoint, map_location=device)
-    decoder = checkpoint["decoder"]
-    decoder = decoder.to(device)
-    decoder.eval()
+
+    model_name = checkpoint["model_name"]
+    print("Model: {}".format(model_name))
 
     encoder = checkpoint["encoder"]
     if encoder:
         encoder = encoder.to(device)
         encoder.eval()
+        print("Encoder params: {}".format(encoder.params))
 
-    model_name = checkpoint["model_name"]
-
+    decoder = checkpoint["decoder"]
+    decoder = decoder.to(device)
     word_map = decoder.word_map
+    decoder.eval()
+
+    print("Decoder params: {}".format(decoder.params))
 
     _, _, test_images_split = get_splits_from_occurrences_data(occurrences_data)
 
