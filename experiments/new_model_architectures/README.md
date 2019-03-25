@@ -58,6 +58,15 @@ Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Reca
 
 ![Beam Occurrences](beam_occurrences_butd_brown_dog_brown_dog_glove.png)
 
+Third run:
+
+Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------| --------------| --------------| --------------| --------------| -------------
+1         | 0.003         | 0             | 0             | 0             | N/A
+5         | 0.017         | 0.023         | 0             | 0             | N/A
+
+![Beam Occurrences](beam_occurrences_butd_brown_dog_brown_dog_glove_2.png)
+
 Performance on "white car" data:
 
 Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
