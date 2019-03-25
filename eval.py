@@ -168,11 +168,15 @@ def calculate_metric(
         bleu_4 = corpus_bleu(
             target_captions, generated_captions, weights=(0.25, 0.25, 0.25, 0.25)
         )
-        return [bleu_1, bleu_2, bleu_3, bleu_4]
+        bleu_scores = [bleu_1, bleu_2, bleu_3, bleu_4]
+        bleu_scores = [float("%.3f" % elem) for elem in bleu_scores]
+        return bleu_scores
     elif metric_name == METRIC_RECALL:
-        return recall_adjective_noun_pairs(
+        recall = recall_adjective_noun_pairs(
             generated_captions, coco_ids, word_map, occurrences_data
         )
+        recall = [float("%.3f" % elem) for elem in recall]
+        return recall
     elif metric_name == METRIC_BEAM_OCCURRENCES:
         return beam_occurrences(generated_beams, beam_size, word_map, occurrences_data)
 
