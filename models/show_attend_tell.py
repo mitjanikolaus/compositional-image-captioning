@@ -2,17 +2,18 @@ import torch
 from torch import nn
 import torchvision
 
-from models.captioning_model import CaptioningModelDecoder
+from models.captioning_model import CaptioningModelDecoder, update_params
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class Encoder(nn.Module):
+    DEFAULT_MODEL_PARAMS = {"encoded_image_size": 14, "fine_tune_encoder": False}
     DEFAULT_OPTIMIZER_PARAMS = {"encoder_learning_rate": 1e-4}
 
-    def __init__(self, encoded_image_size=14):
+    def __init__(self, params):
         super(Encoder, self).__init__()
-        self.enc_image_size = encoded_image_size
+        self.params = update_params(self.DEFAULT_MODEL_PARAMS, params)
 
         resnet = torchvision.models.resnet101(pretrained=True)
 
@@ -22,7 +23,7 @@ class Encoder(nn.Module):
 
         # Resize input image to fixed size
         self.adaptive_pool = nn.AdaptiveAvgPool2d(
-            (encoded_image_size, encoded_image_size)
+            (self.params["encoded_image_size"], self.params["encoded_image_size"])
         )
 
         # Disable calculation of all gradients
@@ -30,7 +31,7 @@ class Encoder(nn.Module):
             p.requires_grad = False
 
         # Enable calculation of some gradients for fine tuning
-        self.set_fine_tuning_enabled()
+        self.set_fine_tuning_enabled(self.params["fine_tune_encoder"])
 
     def forward(self, images):
         """
@@ -50,7 +51,7 @@ class Encoder(nn.Module):
         )  # output shape: (batch_size, encoded_image_size, encoded_image_size, 2048)
         return out
 
-    def set_fine_tuning_enabled(self, enable_fine_tuning=True):
+    def set_fine_tuning_enabled(self, enable_fine_tuning):
         """
         Enable or disable the computation of gradients for the convolutional blocks 2-4 of the encoder.
 
