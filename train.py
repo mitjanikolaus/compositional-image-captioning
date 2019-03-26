@@ -181,7 +181,6 @@ def main(
 
     # Print configuration
     print("Decoder params: {}".format(decoder.params))
-    print("Decoder optimizer params: {}".format(decoder_optimizer.defaults))
 
     # Move to GPU, if available
     decoder = decoder.to(device)
