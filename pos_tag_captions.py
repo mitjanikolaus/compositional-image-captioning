@@ -54,11 +54,12 @@ def count_adjective_noun_pairs(preprocessed_data_folder):
 
         data[coco_id] = {}
         data[coco_id][DATA_COCO_SPLIT] = image_meta[DATA_COCO_SPLIT]
+        data[coco_id]["pos_tagged_captions"] = []
 
         for caption in decoded_captions:
             doc = nlp_pipeline(caption)
             sentence = doc.sentences[0]
-            data[coco_id]["pos_tagged_sentence"] = sentence
+            data[coco_id]["pos_tagged_captions"].append(sentence)
 
     data_path = "pos_tagged_captions.p"
     print("\nSaving results to {}".format(data_path))
