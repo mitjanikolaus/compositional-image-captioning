@@ -42,7 +42,6 @@ def evaluate(
     if encoder:
         encoder = encoder.to(device)
         encoder.eval()
-        print("Encoder params: {}".format(encoder.params))
 
     decoder = checkpoint["decoder"]
     decoder = decoder.to(device)
