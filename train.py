@@ -452,6 +452,9 @@ def check_args(args):
         default=1.0,
     )
     parser.add_argument(
+        "--dropout-ratio", help="Dropout ratio in the decoder", type=float
+    )
+    parser.add_argument(
         "--checkpoint",
         help="Path to checkpoint of previously trained model",
         default=None,

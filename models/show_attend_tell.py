@@ -70,7 +70,7 @@ class SATDecoder(CaptioningModelDecoder):
         "encoder_dim": 2048,
         "decoder_dim": 512,
         "teacher_forcing_ratio": 1,
-        "dropout": 0.5,
+        "dropout_ratio": 0.5,
         "alpha_c": 1.0,
         "max_caption_len": 50,
         "fine_tune_decoder_embeddings": True,
@@ -102,7 +102,7 @@ class SATDecoder(CaptioningModelDecoder):
         )
 
         # Dropout layer
-        self.dropout = nn.Dropout(p=self.params["dropout"])
+        self.dropout = nn.Dropout(p=self.params["dropout_ratio"])
 
         # Linear layers for output generation
         self.linear_o = nn.Linear(self.params["embeddings_size"], self.vocab_size)
