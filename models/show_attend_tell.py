@@ -105,7 +105,6 @@ class SATDecoder(CaptioningModelDecoder):
         self.dropout = nn.Dropout(p=self.params["dropout"])
 
         # Linear layers for output generation
-        self.linear_o = nn.Linear(self.params["embeddings_size"], self.vocab_size)
         self.linear_h = nn.Linear(
             self.params["decoder_dim"], self.params["embeddings_size"]
         )
@@ -148,7 +147,7 @@ class SATDecoder(CaptioningModelDecoder):
         attention_weighted_encoding_embedded = self.linear_z(
             attention_weighted_encoding
         )
-        scores = self.linear_o(
+        scores = self.inverse_word_embedding(
             self.dropout(
                 prev_word_embeddings
                 + decoder_hidden_state_embedded

@@ -39,9 +39,9 @@ class TopDownDecoder(CaptioningModelDecoder):
             self.params["attention_layer_size"],
         )
 
-        # Linear layer to find scores over vocabulary
+        # Linear layer to transform lstm hidden output to embedding size
         self.fully_connected = nn.Linear(
-            self.params["language_lstm_size"], self.vocab_size, bias=True
+            self.params["language_lstm_size"], self.params["embeddings_size"], bias=True
         )
 
         # linear layers to find initial states of LSTMs
@@ -77,7 +77,8 @@ class TopDownDecoder(CaptioningModelDecoder):
         h1, c1 = self.attention_lstm(h1, c1, h2, v_mean, prev_words_embedded)
         v_hat = self.attention(encoder_output, h1)
         h2, c2 = self.language_lstm(h2, c2, h1, v_hat)
-        scores = self.fully_connected(h2)
+        fc = self.fully_connected(h2)
+        scores = self.inverse_word_embedding(fc)
         states = [h1, c1, h2, c2]
         return scores, states, None
 
