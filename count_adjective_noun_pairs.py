@@ -63,7 +63,7 @@ def count_adjective_noun_pairs(
                     caption, nouns, adjectives
                 )
                 if combination_is_present:
-                    print(" ".join([token.text for token in caption]))
+                    print(" ".join([token.text for token in caption.tokens]))
                     occurrence_data[coco_id][PAIR_OCCURENCES] += 1
                 if adjective_is_present:
                     occurrence_data[coco_id][ADJECTIVE_OCCURRENCES] += 1
