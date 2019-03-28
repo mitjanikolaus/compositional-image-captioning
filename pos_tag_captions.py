@@ -11,16 +11,10 @@ from utils import (
     WORD_MAP_FILENAME,
     decode_caption,
     get_caption_without_special_tokens,
-    PAIR_OCCURENCES,
-    ADJECTIVE_OCCURRENCES,
-    NOUN_OCCURRENCES,
-    NOUNS,
-    ADJECTIVES,
-    contains_adjective_noun_pair,
-    OCCURRENCE_DATA,
     IMAGES_META_FILENAME,
     DATA_CAPTIONS,
     DATA_COCO_SPLIT,
+    POS_TAGGED_CAPTIONS_FILENAME,
 )
 
 # stanfordnlp.download('en', confirm_if_exists=True)
@@ -61,7 +55,7 @@ def count_adjective_noun_pairs(preprocessed_data_folder):
             sentence = doc.sentences[0]
             data[coco_id]["pos_tagged_captions"].append(sentence)
 
-    data_path = "pos_tagged_captions.p"
+    data_path = os.path.join(preprocessed_data_folder, POS_TAGGED_CAPTIONS_FILENAME)
     print("\nSaving results to {}".format(data_path))
     with open(data_path, "wb") as pickle_file:
         pickle.dump(data, pickle_file)
