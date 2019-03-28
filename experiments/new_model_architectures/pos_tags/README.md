@@ -58,6 +58,22 @@ Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Reca
 1         | 0.096         | 0.159         | 0.184         | 0.125         | N/A
 5         | 0.397         | 0.548         | 0.658         | 0.75          | N/A
 
+### Model trained with held out "big car"
+
+Performance on held out test set ("big car"):
+
+Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------|---------------| --------------| --------------| --------------| -------------
+1         | 0             | 0             | 0             | 0             | N/A
+5         | 0             | 0             | 0             | 0             | N/A
+
+Performance on "brown dog" data:
+
+Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------| --------------| --------------| --------------| --------------| -------------
+1         | 0.01          | 0             | 0             | 0             | N/A
+5         | 0.086         | 0.103         | 0.2           | 0             | N/A
+
 
 ## Force generation of adjective at second timestep
 
@@ -118,3 +134,18 @@ Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Reca
 1         | 0.562         | 0.730         | 0.842         | 0.875         | N/A
 5         | 0.634         | 0.762         | 0.868         | 0.875         | N/A
 
+### Model trained with held out "big car"
+
+Performance on held out test set ("big car"):
+
+Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------|---------------| --------------| --------------| --------------| -------------
+1         | 0.04          | 0.064         | 0.231         | 0             | N/A
+5         | 0.04          | 0.056         | 0.192         | 0             | N/A
+
+Performance on "brown dog" data:
+
+Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------| --------------| --------------| --------------| --------------| -------------
+1         | 0.562         | 0.609         | 0.8           | 1             | N/A
+5         | 0.607         | 0.621         | 0.933         | 1             | N/A

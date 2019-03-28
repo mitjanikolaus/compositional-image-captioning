@@ -40,8 +40,9 @@ def recall_adjective_noun_pairs(
                     get_caption_without_special_tokens(caption, word_map), word_map
                 )
             )
+            pos_tagged_caption = nlp_pipeline(caption).sentences[0]
             _, _, match = contains_adjective_noun_pair(
-                nlp_pipeline, caption, nouns, adjectives
+                pos_tagged_caption, nouns, adjectives
             )
             if match:
                 hit = True
