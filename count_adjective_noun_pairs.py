@@ -1,15 +1,13 @@
 import argparse
 import json
 import os
+import pickle
 import sys
 
-import stanfordnlp
 from tqdm import tqdm
 
 from utils import (
     WORD_MAP_FILENAME,
-    decode_caption,
-    get_caption_without_special_tokens,
     PAIR_OCCURENCES,
     ADJECTIVE_OCCURRENCES,
     NOUN_OCCURRENCES,
@@ -17,19 +15,14 @@ from utils import (
     ADJECTIVES,
     contains_adjective_noun_pair,
     OCCURRENCE_DATA,
-    IMAGES_META_FILENAME,
-    DATA_CAPTIONS,
     DATA_COCO_SPLIT,
+    POS_TAGGED_CAPTIONS_FILENAME,
 )
-
-# stanfordnlp.download('en', confirm_if_exists=True)
 
 
 def count_adjective_noun_pairs(
     nouns_file, adjectives_file, preprocessed_data_folder, coco_split
 ):
-    nlp_pipeline = stanfordnlp.Pipeline()
-
     with open(nouns_file, "r") as json_file:
         nouns = json.load(json_file)
     with open(adjectives_file, "r") as json_file:
@@ -40,9 +33,9 @@ def count_adjective_noun_pairs(
         word_map = json.load(json_file)
 
     with open(
-        os.path.join(preprocessed_data_folder, IMAGES_META_FILENAME), "r"
-    ) as json_file:
-        images_meta = json.load(json_file)
+        os.path.join(preprocessed_data_folder, POS_TAGGED_CAPTIONS_FILENAME), "rb"
+    ) as pickle_file:
+        captions = pickle.load(pickle_file)
 
     print("Looking for pairs: {} - {}".format(adjectives, nouns))
 
@@ -58,27 +51,16 @@ def count_adjective_noun_pairs(
 
     occurrence_data = {}
 
-    for coco_id, image_meta in tqdm(images_meta.items()):
-        if image_meta[DATA_COCO_SPLIT] == coco_split:
-            encoded_captions = image_meta[DATA_CAPTIONS]
-
-            decoded_captions = [
-                " ".join(
-                    decode_caption(
-                        get_caption_without_special_tokens(caption, word_map), word_map
-                    )
-                )
-                for caption in encoded_captions
-            ]
-
+    for coco_id, tagged_caption in tqdm(captions.items()):
+        if tagged_caption[DATA_COCO_SPLIT] == coco_split:
             occurrence_data[coco_id] = {}
             occurrence_data[coco_id][PAIR_OCCURENCES] = 0
             occurrence_data[coco_id][ADJECTIVE_OCCURRENCES] = 0
             occurrence_data[coco_id][NOUN_OCCURRENCES] = 0
 
-            for caption in decoded_captions:
+            for caption in tagged_caption["pos_tagged_captions"]:
                 noun_is_present, adjective_is_present, combination_is_present = contains_adjective_noun_pair(
-                    nlp_pipeline, caption, nouns, adjectives
+                    caption, nouns, adjectives
                 )
                 if combination_is_present:
                     print(caption)
@@ -138,7 +120,7 @@ def check_args(args):
     )
     parser.add_argument(
         "--preprocessed-data-folder",
-        help="Folder where the preprocessed data is located (only the word map file is read)",
+        help="Folder where the preprocessed data is located",
         default="../datasets/coco2014_preprocessed/",
     )
     parser.add_argument(
