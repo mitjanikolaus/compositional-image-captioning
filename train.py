@@ -111,8 +111,7 @@ def main(
         if model_name == MODEL_SHOW_ATTEND_TELL:
             decoder = SATDecoder(word_map, model_params, embeddings)
             decoder_optimizer = create_decoder_optimizer(decoder, model_params)
-            encoder = Encoder()
-            encoder.set_fine_tuning_enabled(fine_tune_encoder)
+            encoder = Encoder(model_params)
             encoder_optimizer = (
                 create_encoder_optimizer(encoder, model_params)
                 if fine_tune_encoder
@@ -180,6 +179,9 @@ def main(
         )
 
     # Print configuration
+    if encoder:
+        print("Encoder params: {}".format(encoder.params))
+
     print("Decoder params: {}".format(decoder.params))
 
     # Move to GPU, if available
