@@ -7,11 +7,11 @@ Pair | #Matches (N=1) |  #Matches (N=2) | #Matches (N=3) | #Matches (N=4) | #Mat
 white car | 839.0 | 274.0 | 101.0 | 31.0 | 5.0
 big car | 1041.0 | 239.0 | 60.0 | 15.0 | 2.0
 brown dog | 614.0 | 164.0 | 32.0 | 3.0 | 0.0
-small dog 687.0 | 264.0 | 95.0 | 32.0 | 6.0
+small dog | 687.0 | 264.0 | 95.0 | 32.0 | 6.0
 small cat | 259.0 | 57.0 | 15.0 | 2.0 | 0.0 
-wooden bench 36.0 | 3.0 | 0.0 | 0.0 | 0.0
-wooden table 200.0 | 12.0 | 1.0 | 0.0 | 0.0
-wooden chair 21.0 | 0.0 | 0.0 | 0.0 | 0.0
+wooden bench | 36.0 | 3.0 | 0.0 | 0.0 | 0.0
+wooden table | 200.0 | 12.0 | 1.0 | 0.0 | 0.0
+wooden chair | 21.0 | 0.0 | 0.0 | 0.0 | 0.0
 
 ## Noun occurrences in the COCO training dataset
 
@@ -22,7 +22,7 @@ dog | 3625.0 | 3281.0 | 3011.0 | 2645.0 | 2062.0
 cat | 2859.0 | 2723.0 | 2650.0 | 2562.0 | 2223.0
 bench | 1921.0 | 1495.0 | 1325.0 | 1158.0 | 841.0
 table | 22432.0 | 10615.0 | 5980.0 | 3363.0 | 1387.0
-chair 2794.0 | 1443.0 | 867.0 | 513.0 | 256.0
+chair | 2794.0 | 1443.0 | 867.0 | 513.0 | 256.0
 
 ## Adjective occurrences in the COCO training dataset
 
