@@ -22,6 +22,7 @@ WORD_MAP_FILENAME = "word_map.json"
 IMAGES_FILENAME = "images.hdf5"
 BOTTOM_UP_FEATURES_FILENAME = "bottom_up_features.hdf5"
 IMAGES_META_FILENAME = "images_meta.json"
+POS_TAGGED_CAPTIONS_FILENAME = "pos_tagged_captions.p"
 
 DATA_CAPTIONS = "captions"
 DATA_CAPTION_LENGTHS = "caption_lengths"
@@ -43,20 +44,17 @@ RELATION_CONJUNCT = "conj"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def contains_adjective_noun_pair(nlp_pipeline, caption, nouns, adjectives):
+def contains_adjective_noun_pair(pos_tagged_caption, nouns, adjectives):
     noun_is_present = False
     adjective_is_present = False
 
-    doc = nlp_pipeline(caption)
-    sentence = doc.sentences[0]
-
-    for token in sentence.tokens:
+    for token in pos_tagged_caption.tokens:
         if token.text in nouns:
             noun_is_present = True
         if token.text in adjectives:
             adjective_is_present = True
 
-    dependencies = sentence.dependencies
+    dependencies = pos_tagged_caption.dependencies
     caption_adjectives = {
         d[2].text
         for d in dependencies
