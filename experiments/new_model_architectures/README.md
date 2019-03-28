@@ -39,6 +39,12 @@ Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Reca
 
 ![Beam Occurrences](beam_occurrences_butd_white_car_big_car_glove.png)
 
+Performance on "wooden table" data:
+
+Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------| --------------| --------------| --------------| --------------| -------------
+1         | 0.19          | 0.385         | 0             | 0             | N/A
+5         | 0.457         | 0.692         | 0.5           | 1             | N/A
 
 ### Model trained with held out "brown dog"
 
@@ -104,4 +110,29 @@ Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Reca
 1         | 0.199         | 0.309         | 0.395         | 0.625         | N/A
 5         | 0.395         | 0.587         | 0.711         | 0.75          | N/A
 
+Performance on "small dog" data:
+
+Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------| --------------| --------------| --------------| --------------| -------------
+1         | 0.063         | 0.08          | 0.167         | 0.294         | 0.5
+5         | 0.174         | 0.241         | 0.333         | 0.529         | 1.0
+
+
+### Model trained with held out "small dog"
+
+Performance on held out test set ("small dog"):
+
+Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------| --------------| --------------| --------------| --------------| -------------
+1         | 0             | 0             | 0             | 0             | 0
+5         | 0.003         | 0.009         | 0.024         | 0.059         | 0
+
+### Model trained with held out "wooden table"
+
+Performance on held out test set ("wooden table"):
+
+Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------| --------------| --------------| --------------| --------------| -------------
+1         | 0             | 0             | 0             | 0             | N/A
+5         | 0.241         | 0.462         | 0             | 0             | N/A
 
