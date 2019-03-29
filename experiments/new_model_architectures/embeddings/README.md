@@ -1,14 +1,10 @@
-# Experiments
-
-**Research Question: If MNLMs fail to generalise, what model architecture would generalise for generation?**
-
-## Pretrained Embeddings
+# Pretrained Embeddings
 
 We initialize the decoder of the Bottom Up and Top Down Attention Model with the 300 dimensional
 [GloVe embeddings](https://nlp.stanford.edu/projects/glove/), which are pretrained on Wikipedia 2014 and Gigaword 5.
 These embeddings are not further fine-tuned. 
 
-### Model trained with held out "white car"
+## Model trained with held out "white car"
 
 (similar results were observed in a second run)
 
@@ -46,7 +42,7 @@ Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Reca
 1         | 0.19          | 0.385         | 0             | 0             | N/A
 5         | 0.457         | 0.692         | 0.5           | 1             | N/A
 
-### Model trained with held out "brown dog"
+## Model trained with held out "brown dog"
 
 Performance on held out test set ("brown dog"):
 
@@ -90,7 +86,7 @@ Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Reca
 
 ![Beam Occurrences](beam_occurrences_butd_brown_dog_big_car_glove.png)
 
-### Model trained with held out "big car"
+## Model trained with held out "big car"
 
 (similar results were observed in a second run)
 
@@ -118,7 +114,7 @@ Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Reca
 5         | 0.174         | 0.241         | 0.333         | 0.529         | 1.0
 
 
-### Model trained with held out "small dog"
+## Model trained with held out "small dog"
 
 Performance on held out test set ("small dog"):
 
@@ -127,7 +123,7 @@ Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Reca
 1         | 0             | 0             | 0             | 0             | 0
 5         | 0.003         | 0.009         | 0.024         | 0.059         | 0
 
-### Model trained with held out "wooden table"
+## Model trained with held out "wooden table"
 
 Performance on held out test set ("wooden table"):
 
