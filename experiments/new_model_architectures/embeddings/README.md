@@ -132,3 +132,14 @@ Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Reca
 1         | 0             | 0             | 0             | 0             | N/A
 5         | 0.241         | 0.462         | 0             | 0             | N/A
 
+
+# Pretrained embeddings for both input and output layer
+
+## Model trained with held out "big car"
+
+Performance on held out test set ("big car"):
+
+Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------| --------------| --------------| --------------| --------------| -------------
+1         | 0.006         | 0.008         | 0.038         | 0.5           | N/A
+5         | 0             | 0             | 0             | 0             | N/A
