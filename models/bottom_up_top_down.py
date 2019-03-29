@@ -9,6 +9,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class TopDownDecoder(CaptioningModelDecoder):
     DEFAULT_MODEL_PARAMS = {
         "teacher_forcing_ratio": 1,
+        "dropout_ratio": 0.0,
         "image_features_size": 2048,
         "embeddings_size": 1000,
         "attention_lstm_size": 1000,
@@ -38,6 +39,9 @@ class TopDownDecoder(CaptioningModelDecoder):
             self.params["attention_lstm_size"],
             self.params["attention_layer_size"],
         )
+
+        # Dropout layer
+        self.dropout = nn.Dropout(p=self.params["dropout_ratio"])
 
         # Linear layer to transform lstm hidden output to embedding size
         self.fully_connected = nn.Linear(
@@ -77,7 +81,7 @@ class TopDownDecoder(CaptioningModelDecoder):
         h1, c1 = self.attention_lstm(h1, c1, h2, v_mean, prev_words_embedded)
         v_hat = self.attention(encoder_output, h1)
         h2, c2 = self.language_lstm(h2, c2, h1, v_hat)
-        fc = self.fully_connected(h2)
+        fc = self.fully_connected(self.dropout(h2))
         scores = self.inverse_word_embedding(fc)
         states = [h1, c1, h2, c2]
         return scores, states, None
