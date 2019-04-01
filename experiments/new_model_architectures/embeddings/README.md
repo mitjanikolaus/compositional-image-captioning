@@ -135,6 +135,15 @@ Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Reca
 
 # Pretrained embeddings for both input and output layer
 
+## Model trained with held out "brown dog"
+
+Performance on held out test set ("brown dog"):
+
+Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------| --------------| --------------| --------------| --------------| -------------
+1         | 0.01          | 0.023         | 0             | 0             | N/A
+5         | 0.09          | 0.103         | 0.2           | 0             | N/A
+
 ## Model trained with held out "big car"
 
 Performance on held out test set ("big car"):
@@ -143,3 +152,12 @@ Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Reca
 ----------| --------------| --------------| --------------| --------------| -------------
 1         | 0.006         | 0.008         | 0.038         | 0.5           | N/A
 5         | 0             | 0             | 0             | 0             | N/A
+
+## Model trained with held out "small dog"
+
+Performance on held out test set ("small dog"):
+
+Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------| --------------| --------------| --------------| --------------| -------------
+1         | 0             | 0             | 0             | 0             | 0
+5         | 0.003         | 0             | 0             | 0             | 0
