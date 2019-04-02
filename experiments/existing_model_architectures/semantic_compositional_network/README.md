@@ -56,3 +56,12 @@ Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Reca
 1         | 0.007         | 0             | 0             | 0             | N/A
 5         | 0.193         | 0.299         | 0.467         | 0             | N/A
 
+#### Model trained with held out "big car"
+
+Performance on held out test set ("white car"):
+
+Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------| --------------| --------------| --------------| --------------| -------------
+1         | 0.006         | 0.008         | 0             | 0             | N/A
+5         | 0.002         | 0.008         | 0.038         | 0             | N/A
+
