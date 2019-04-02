@@ -511,3 +511,112 @@ a dog with a dog laying on the floor
 a dog with a dog laying on the ground
 a dog with a dog laying on a floor
 ```
+
+**Forcing probability of 'dog' and 'blue' to be 1, all others reduced by 0.5:**
+
+```
+187199
+a dog laying on a blue blanket
+a blue dog laying on a blue blanket
+a dog is laying on a blue blanket
+a dog laying on a blue blue blanket
+a blue dog laying on a blue blue blanket
+
+537955
+a dog is in a blue blue cage
+a dog with a dog in a blue cage
+a dog with a blue dog in a blue cage
+a dog with a blue dog in a blue ramp
+a dog with a blue dog in a blue building
+
+214984
+a dog with a blue frisbee in its mouth
+a dog with a frisbee in its mouth
+a white dog with a blue frisbee in its mouth
+a blue dog with a blue frisbee in its mouth
+a dog with a blue frisbee in a blue sky
+
+283210
+a blue dog with a blue frisbee
+a white dog with a blue frisbee
+a large blue dog with a blue frisbee
+a blue dog with a blue frisbee in its mouth
+a blue dog with a blue frisbee in a blue sky
+
+114891
+a dog is sitting on a blue seat
+a dog is sitting in a blue seat
+a dog is sitting on a blue blue seat
+a dog is sitting on a blue blue couch
+a dog with a blue dog in a blue car
+
+520301
+a dog in a blue blue car
+a dog is in a blue car
+a dog is in a blue blue car
+a dog in a blue blue blue car
+a dog is in a blue blue blue car
+
+54643
+a blue blue dog in a blue
+a blue blue dog in a blue car
+a blue blue dog in a blue blue car
+a blue blue dog in a blue blue
+a blue blue dog in a blue blue blue car
+
+29393
+a dog with a blue dog in a blue sky
+a dog with a blue dog in a blue car
+a white dog with a blue dog in a blue sky
+a blue dog with a blue dog in a blue sky
+a white dog with a blue dog in a blue car
+
+443139
+a dog is in a blue car
+a dog in a blue blue car
+a dog is wearing a blue car
+a dog is wearing a blue blue car
+a dog in a blue car with a blue car
+
+251572
+a dog is in a blue car
+a dog is in a blue bed
+a dog is laying on a blue blanket
+a dog is laying on a blue blue blanket
+a dog is laying on a blue blue blue blanket
+
+89109
+a dog in a blue blue car
+a dog in a blue blue blue car
+a dog is in a blue blue car
+a dog is in a blue blue blue car
+a dog is looking at a blue blue blue car
+
+307423
+a close up of a blue dog in a blue car
+a close up of a blue dog on a blue car
+a close up of a blue dog sitting on a blue seat
+a close up of a blue dog sitting on a blue car
+a close up of a blue dog sitting on a blue blue car
+
+423036
+a blue dog with a blue dog
+a blue dog in a blue blue car
+a blue dog in a blue blue ramp
+a blue dog in a blue blue blue car
+a blue dog in a blue blue blue ramp
+
+42856
+a dog is sitting on a blue couch
+a dog is sitting on a blue blue couch
+a dog is sitting on a blue seat
+a dog is sitting on a blue blue seat
+a dog with a blue dog in a blue car
+
+476767
+a dog is laying on a blue blanket
+a dog is laying on a blue couch
+a dog is laying on a blue blue blanket
+a dog is laying on a blue chair
+a dog with a blue dog in a blue blanket
+```
