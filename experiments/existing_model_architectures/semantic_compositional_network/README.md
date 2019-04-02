@@ -69,7 +69,9 @@ Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Reca
 #### Qualitative Analysis for model trained with heldout "brown dog"
 
 For n>=3, the results look as follows:
+
 Average probability of tag 'dog': 0.98
+
 Average probability of tag 'brown': 0.74
 
 Recall@5 for 'brown' in the generated captions: 0
@@ -402,7 +404,7 @@ a **brown** dog a dog in a a
 
 **Forcing probability of 'dog' and 'brown' to be 1, all others reduced by 0.5:**
 
-Recall@5 for 'brown' in the generated captions: 0.267 (4/15)
+Recall@5 for 'brown' in the generated captions: 0.267
 ```
 187199
 a dog laying on a bed
