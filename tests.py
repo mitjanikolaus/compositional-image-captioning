@@ -2,7 +2,7 @@ import unittest
 
 import stanfordnlp
 
-from utils import contains_adjective_noun_pair
+from utils import contains_adjective_noun_pair, contains_verb_noun_pair
 
 
 class UtilsTests(unittest.TestCase):
@@ -126,6 +126,66 @@ class UtilsTests(unittest.TestCase):
         self.assertEqual(
             expected_pattern,
             contains_adjective_noun_pair(pos_tagged_caption, nouns, adjectives),
+        )
+
+    def test_contains_verb_noun_pair(self):
+        caption = "a man sits on a chair."
+        nouns = {"man"}
+        verbs = {"sit", "sits", "sitting"}
+
+        pos_tagged_caption = self.nlp_pipeline(caption).sentences[0]
+
+        expected_pattern = (True, True, True)
+        self.assertEqual(
+            expected_pattern, contains_verb_noun_pair(pos_tagged_caption, nouns, verbs)
+        )
+
+    def test_contains_verb_noun_pair_2(self):
+        caption = "a man that is sitting on a chair."
+        nouns = {"man"}
+        verbs = {"sit", "sits", "sitting"}
+
+        pos_tagged_caption = self.nlp_pipeline(caption).sentences[0]
+
+        expected_pattern = (True, True, True)
+        self.assertEqual(
+            expected_pattern, contains_verb_noun_pair(pos_tagged_caption, nouns, verbs)
+        )
+
+    def test_contains_verb_noun_pair_3(self):
+        caption = "a man that sits on a chair."
+        nouns = {"man"}
+        verbs = {"sit", "sits", "sitting"}
+
+        pos_tagged_caption = self.nlp_pipeline(caption).sentences[0]
+
+        expected_pattern = (True, True, True)
+        self.assertEqual(
+            expected_pattern, contains_verb_noun_pair(pos_tagged_caption, nouns, verbs)
+        )
+
+    def test_contains_verb_noun_pair_4(self):
+        caption = "a man sitting on a chair."
+        nouns = {"man"}
+        verbs = {"sit", "sits", "sitting"}
+
+        pos_tagged_caption = self.nlp_pipeline(caption).sentences[0]
+
+        expected_pattern = (True, True, True)
+        self.assertEqual(
+            expected_pattern, contains_verb_noun_pair(pos_tagged_caption, nouns, verbs)
+        )
+
+    def test_contains_verb_noun_pair_5(self):
+        caption = "a man is sitting on a chair."
+        nouns = {"man"}
+        verbs = {"sit", "sits", "sitting"}
+
+        pos_tagged_caption = self.nlp_pipeline(caption).sentences[0]
+
+        expected_pattern = (True, True, True)
+        self.assertEqual(
+            expected_pattern, contains_verb_noun_pair(pos_tagged_caption, nouns, verbs)
         )
 
 

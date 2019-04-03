@@ -31,15 +31,19 @@ DATA_COCO_SPLIT = "coco_split"
 
 NOUNS = "nouns"
 ADJECTIVES = "adjectives"
+VERBS = "verbs"
 
 OCCURRENCE_DATA = "adjective_noun_occurrence_data"
 PAIR_OCCURENCES = "pair_occurrences"
 NOUN_OCCURRENCES = "noun_occurrences"
 ADJECTIVE_OCCURRENCES = "adjective_occurrences"
+VERB_OCCURRENCES = "verb_occurrences"
 
 RELATION_NOMINAL_SUBJECT = "nsubj"
 RELATION_ADJECTIVAL_MODIFIER = "amod"
 RELATION_CONJUNCT = "conj"
+RELATION_RELATIVE_CLAUSE_MODIFIER = "acl:relcl"
+RELATION_ADJECTIVAL_CLAUSE = "acl"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -83,6 +87,47 @@ def contains_adjective_noun_pair(pos_tagged_caption, nouns, adjectives):
     combination_is_present = bool(adjectives & caption_adjectives)
 
     return noun_is_present, adjective_is_present, combination_is_present
+
+
+def contains_verb_noun_pair(pos_tagged_caption, nouns, verbs):
+    noun_is_present = False
+    verb_is_present = False
+
+    for token in pos_tagged_caption.tokens:
+        if token.text in nouns:
+            noun_is_present = True
+        if token.text in verbs:
+            verb_is_present = True
+
+    dependencies = pos_tagged_caption.dependencies
+    combination_is_present = bool(
+        {
+            d
+            for d in dependencies
+            if d[1] == RELATION_NOMINAL_SUBJECT
+            and d[0].text in verbs
+            and d[2].text in nouns
+            and d[0].upos == "VERB"
+        }
+        | {
+            d
+            for d in dependencies
+            if d[1] == RELATION_RELATIVE_CLAUSE_MODIFIER
+            and d[0].text in nouns
+            and d[2].text in verbs
+            and d[2].upos == "VERB"
+        }
+        | {
+            d
+            for d in dependencies
+            if d[1] == RELATION_ADJECTIVAL_CLAUSE
+            and d[0].text in nouns
+            and d[2].text in verbs
+            and d[2].upos == "VERB"
+        }
+    )
+
+    return noun_is_present, verb_is_present, combination_is_present
 
 
 def read_image(path):
