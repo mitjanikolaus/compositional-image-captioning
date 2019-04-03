@@ -93,6 +93,15 @@ Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=
 1         | 0.282  | 0.222         | 0.302         | 0.316         | 0.375         | N/A
 5         | 0.303  | 0.380         | 0.516         | 0.605         | 0.625         | N/A
 
+#### Model trained with held out "wooden table"
+
+Performance on held out test set ("wooden table"):
+
+Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------|--------| --------------| --------------| --------------| --------------| -------------
+1         | 0.444  | 0             | 0             | 0             | 0             | N/A
+5         | 0.507  | 0.164         | 0.231         | 0             | 0             | N/A
+
 
 #### Beam Occurrences
 
