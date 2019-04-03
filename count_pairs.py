@@ -143,7 +143,7 @@ def count_verb_noun_pairs(nouns_file, verbs_file, preprocessed_data_folder, coco
         if tagged_caption[DATA_COCO_SPLIT] == coco_split:
             occurrence_data[coco_id] = {}
             occurrence_data[coco_id][PAIR_OCCURENCES] = 0
-            occurrence_data[coco_id][ADJECTIVE_OCCURRENCES] = 0
+            occurrence_data[coco_id][VERB_OCCURRENCES] = 0
             occurrence_data[coco_id][NOUN_OCCURRENCES] = 0
 
             for caption in tagged_caption["pos_tagged_captions"]:
