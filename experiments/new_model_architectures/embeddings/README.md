@@ -132,6 +132,15 @@ Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Reca
 1         | 0             | 0             | 0             | 0             | N/A
 5         | 0.241         | 0.462         | 0             | 0             | N/A
 
+## Model trained with held out "sit cat"
+
+Performance on held out test set ("sit cat"):
+
+Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
+----------| --------------| --------------| --------------| --------------| -------------
+1         | 0.066         | 0.073         | 0.09          | 0.116         | 0.105
+5         | 0.142         | 0.169         | 0.199         | 0.265         | 0.263
+
 
 # Pretrained embeddings for both input and output layer
 
