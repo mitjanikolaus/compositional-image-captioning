@@ -6,7 +6,12 @@ import json
 import argparse
 
 from train import MODEL_SHOW_ATTEND_TELL
-from utils import decode_caption, WORD_MAP_FILENAME, read_image
+from utils import (
+    decode_caption,
+    WORD_MAP_FILENAME,
+    read_image,
+    get_caption_without_special_tokens,
+)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -45,7 +50,13 @@ def generate_captions(checkpoint, data_folder, image_path, beam_size, print_beam
     )
 
     for seq in generated_sequences:
-        print(" ".join(decode_caption(seq, word_map)))
+        print(
+            " ".join(
+                decode_caption(
+                    get_caption_without_special_tokens(seq, word_map), word_map
+                )
+            )
+        )
 
 
 def check_args(args):
