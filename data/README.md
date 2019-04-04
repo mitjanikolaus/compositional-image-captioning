@@ -12,6 +12,10 @@ small cat | 259.0 | 57.0 | 15.0 | 2.0 | 0.0
 wooden bench | 36.0 | 3.0 | 0.0 | 0.0 | 0.0
 wooden table | 200.0 | 12.0 | 1.0 | 0.0 | 0.0
 wooden chair | 21.0 | 0.0 | 0.0 | 0.0 | 0.0
+sit cat | 1385.0 | 839.0 | 519.0 | 285.0 | 90.0
+sit dog | 827.0 | 368.0 | 185.0 | 97.0 | 30.0
+ride woman | 591.0 | 234.0 | 107.0 | 35.0 | 6.0
+ride man | 3229.0 | 1070.0 | 355.0 | 84.0 | 16.0
 
 ## Noun occurrences in the COCO training dataset
 
@@ -23,6 +27,8 @@ cat | 2859.0 | 2723.0 | 2650.0 | 2562.0 | 2223.0
 bench | 1921.0 | 1495.0 | 1325.0 | 1158.0 | 841.0
 table | 22432.0 | 10615.0 | 5980.0 | 3363.0 | 1387.0
 chair | 2794.0 | 1443.0 | 867.0 | 513.0 | 256.0
+woman | 11979.0 | 9268.0 | 7538.0 | 5634.0 | 2953.0
+man | 23870.0 | 18148.0 | 13599.0 | 9146.0 | 4317.0
 
 ## Adjective occurrences in the COCO training dataset
 
@@ -34,6 +40,12 @@ big | 18966.0 | 6007.0 | 1994.0 | 611.0 | 128.0
 small | 13783.0 | 4225.0 | 1423.0 | 408.0 | 63.0
 wooden | 4497.0 | 1245.0 | 385.0 | 101.0 | 18.0
 
+## Adjective occurrences in the COCO training dataset
+
+Verb | #Matches (N=1) |  #Matches (N=2) | #Matches (N=3) | #Matches (N=4) | #Matches (N=5)
+-----|----------------| --------------- |----------------|----------------|--------------
+sit | 25042.0 | 11491.0 | 5653.0 | 2664.0 | 910.0
+ride | 7605.0 | 3869.0 | 2130.0 | 1011.0 | 296.0
 
 Captions are counted as matches also when one of the synonyms for the respective adjective or nouns is present (see the
 respective JSON files for a list of synonyms considered). For adjective-noun pair matches, we only consider captions
