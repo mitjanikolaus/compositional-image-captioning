@@ -2,6 +2,8 @@ import json
 
 import matplotlib.pyplot as plt
 
+import stanfordnlp
+
 import numpy as np
 from utils import (
     decode_caption,
@@ -11,22 +13,58 @@ from utils import (
     OCCURRENCE_DATA,
     PAIR_OCCURENCES,
     get_caption_without_special_tokens,
+    VERBS,
+    contains_verb_noun_pair,
 )
+
+
+# stanfordnlp.download('en', confirm_if_exists=True)
 
 
 def recall_adjective_noun_pairs(
     generated_captions, coco_ids, word_map, occurrences_data_file
 ):
-    import stanfordnlp
-
-    # stanfordnlp.download('en', confirm_if_exists=True)
-    nlp_pipeline = stanfordnlp.Pipeline()
-
     with open(occurrences_data_file, "r") as json_file:
         occurrences_data = json.load(json_file)
 
     nouns = set(occurrences_data[NOUNS])
-    adjectives = set(occurrences_data[ADJECTIVES])
+
+    if ADJECTIVES in occurrences_data:
+        adjectives = set(occurrences_data[ADJECTIVES])
+        return calc_recall(
+            generated_captions,
+            coco_ids,
+            word_map,
+            nouns,
+            adjectives,
+            occurrences_data,
+            contains_adjective_noun_pair,
+        )
+    elif VERBS in occurrences_data:
+        verbs = set(occurrences_data[VERBS])
+        return calc_recall(
+            generated_captions,
+            coco_ids,
+            word_map,
+            nouns,
+            verbs,
+            occurrences_data,
+            contains_verb_noun_pair,
+        )
+    else:
+        raise ValueError("No adjectives or verbs found in occurrences data!")
+
+
+def calc_recall(
+    generated_captions,
+    coco_ids,
+    word_map,
+    nouns,
+    other,
+    occurrences_data,
+    contains_pair_function,
+):
+    nlp_pipeline = stanfordnlp.Pipeline()
 
     true_positives = np.zeros(5)
     false_negatives = np.zeros(5)
@@ -41,9 +79,7 @@ def recall_adjective_noun_pairs(
                 )
             )
             pos_tagged_caption = nlp_pipeline(caption).sentences[0]
-            _, _, match = contains_adjective_noun_pair(
-                pos_tagged_caption, nouns, adjectives
-            )
+            _, _, match = contains_pair_function(pos_tagged_caption, nouns, other)
             if match:
                 hit = True
 

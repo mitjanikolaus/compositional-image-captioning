@@ -193,8 +193,8 @@ def check_args(args):
     )
     parser.add_argument(
         "--occurrences-data",
-        help="File containing occurrences statistics about adjective noun pairs",
-        default="data/brown_dog.json",
+        help="File containing occurrences statistics about adjective-noun or verb-noun pairs",
+        required=True,
     )
     parser.add_argument(
         "--checkpoint", help="Path to checkpoint of trained model", required=True
