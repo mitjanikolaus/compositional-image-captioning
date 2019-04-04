@@ -9,6 +9,9 @@ from utils import (
     PAIR_OCCURENCES,
     NOUN_OCCURRENCES,
     ADJECTIVE_OCCURRENCES,
+    ADJECTIVES,
+    VERBS,
+    VERB_OCCURRENCES,
 )
 
 
@@ -19,6 +22,7 @@ def visualize_occurrences(occurrences_data_file):
     pair_matches = np.zeros(5)
     noun_matches = np.zeros(5)
     adjective_matches = np.zeros(5)
+    verb_matches = np.zeros(5)
     for n in range(len(pair_matches)):
         noun_matches[n] = len(
             [
@@ -27,13 +31,22 @@ def visualize_occurrences(occurrences_data_file):
                 if value[NOUN_OCCURRENCES] > n
             ]
         )
-        adjective_matches[n] = len(
-            [
-                key
-                for key, value in occurrences_data[OCCURRENCE_DATA].items()
-                if value[ADJECTIVE_OCCURRENCES] > n
-            ]
-        )
+        if ADJECTIVES in occurrences_data:
+            adjective_matches[n] = len(
+                [
+                    key
+                    for key, value in occurrences_data[OCCURRENCE_DATA].items()
+                    if value[ADJECTIVE_OCCURRENCES] > n
+                ]
+            )
+        if VERBS in occurrences_data:
+            verb_matches[n] = len(
+                [
+                    key
+                    for key, value in occurrences_data[OCCURRENCE_DATA].items()
+                    if value[VERB_OCCURRENCES] > n
+                ]
+            )
         pair_matches[n] = len(
             [
                 key
@@ -48,6 +61,9 @@ def visualize_occurrences(occurrences_data_file):
     print("\nAdjective matches:")
     for n in range(len(pair_matches)):
         print(str(adjective_matches[n]) + " | ", end="")
+    print("\nVerb matches:")
+    for n in range(len(pair_matches)):
+        print(str(verb_matches[n]) + " | ", end="")
     print("\nPair matches:")
     for n in range(len(pair_matches)):
         print(str(pair_matches[n]) + " | ", end="")
@@ -65,8 +81,8 @@ def check_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--occurrences-data",
-        help="File containing occurrences statistics about adjective noun pairs",
-        default="data/brown_dog.json",
+        help="File containing occurrences statistics about adjective-noun or verb-noun pairs",
+        required=True,
     )
 
     parsed_args = parser.parse_args(args)
