@@ -102,7 +102,7 @@ Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=
 1         | 0.444  | 0             | 0             | 0             | 0             | N/A
 5         | 0.507  | 0.164         | 0.231         | 0             | 0             | N/A
 
-## Model trained with held out "sit cat"
+#### Model trained with held out "sit cat"
 
 Performance on held out test set ("sit cat"):
 
