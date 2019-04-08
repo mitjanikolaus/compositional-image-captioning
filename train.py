@@ -233,12 +233,17 @@ def main(
             print_freq,
         )
 
-        # One epoch's validation
-        current_bleu4 = validate(
-            val_images_loader, encoder, decoder, word_map, print_freq
-        )
-        # Check if there was an improvement
-        current_checkpoint_is_best = current_bleu4 > best_bleu4
+        if model_name == MODEL_RANKING_GENERATING:
+            # current_score = validate_ranking(val_images_loader, encoder, decoder, word_map, print_freq)
+            current_checkpoint_is_best = True
+            current_bleu4 = 1
+        else:
+            # One epoch's validation
+            current_bleu4 = validate(
+                val_images_loader, encoder, decoder, word_map, print_freq
+            )
+            # Check if there was an improvement
+            current_checkpoint_is_best = current_bleu4 > best_bleu4
         if current_checkpoint_is_best:
             best_bleu4 = current_bleu4
             epochs_since_last_improvement = 0
@@ -316,29 +321,42 @@ def train(
         if encoder:
             images = encoder(images)
         decode_lengths = caption_lengths.squeeze(1) - 1
-        scores, decode_lengths, alphas = decoder(
-            images, target_captions, decode_lengths
-        )
 
-        # Since we decoded starting with <start>, the targets are all words after <start>, up to <end>
-        target_captions = target_captions[:, 1:]
+        if model_name == MODEL_RANKING_GENERATING:
+            images_embedded, captions_embedded = decoder.forward_ranking(
+                images, target_captions, decode_lengths
+            )
+            loss = decoder.criterion(images_embedded, captions_embedded)
 
-        # Remove timesteps that we didn't decode at, or are pads
-        decode_lengths, sort_ind = decode_lengths.sort(dim=0, descending=True)
-        packed_scores, _ = pack_padded_sequence(
-            scores[sort_ind], decode_lengths, batch_first=True
-        )
-        packed_targets, _ = pack_padded_sequence(
-            target_captions[sort_ind], decode_lengths, batch_first=True
-        )
+        else:
+            scores, decode_lengths, alphas = decoder(
+                images, target_captions, decode_lengths
+            )
 
-        # Calculate loss
-        loss = calculate_loss(
-            model_name, loss_function, packed_scores, packed_targets, alphas, alpha_c
-        )
+            # Since we decoded starting with <start>, the targets are all words after <start>, up to <end>
+            target_captions = target_captions[:, 1:]
+
+            # Remove timesteps that we didn't decode at, or are pads
+            decode_lengths, sort_ind = decode_lengths.sort(dim=0, descending=True)
+            packed_scores, _ = pack_padded_sequence(
+                scores[sort_ind], decode_lengths, batch_first=True
+            )
+            packed_targets, _ = pack_padded_sequence(
+                target_captions[sort_ind], decode_lengths, batch_first=True
+            )
+
+            # Calculate loss
+            loss = calculate_loss(
+                model_name,
+                loss_function,
+                packed_scores,
+                packed_targets,
+                alphas,
+                alpha_c,
+            )
 
         # Back propagation
-        decoder.zero_grad()
+        decoder_optimizer.zero_grad()
         if encoder_optimizer:
             encoder_optimizer.zero_grad()
         loss.backward()
@@ -416,6 +434,63 @@ def validate(data_loader, encoder, decoder, word_map, print_freq):
     print("\n * BLEU-4 - {bleu}\n".format(bleu=bleu4))
 
     return bleu4
+
+
+#
+# def validate_ranking(data_loader, encoder, decoder, word_map, print_freq):
+#     """
+#     Perform validation of one training epoch.
+#
+#     """
+#     decoder.eval()
+#     if encoder:
+#         encoder.eval()
+#
+#     images = []
+#     captions = []
+#
+#     # Loop over batches
+#     for i, (image, all_captions_for_image, _) in enumerate(data_loader):
+#         images.append(image)
+#         captions.append(all_captions_for_image)
+#
+#     images = images.to(device)
+#     # Forward propagation
+#     images = encoder(images)
+#     # scores, decode_lengths, alphas = decoder(image)
+#     # images_embedded, captions_embedded = decoder.forward_ranking(
+#     #     images, target_captions, decode_lengths
+#     # )
+#
+#
+#
+#         if i % print_freq == 0:
+#             print("Validation: [Batch {0}/{1}]\t".format(i, len(data_loader)))
+#
+#         # Target captions
+#         for j in range(all_captions_for_image.shape[0]):
+#             img_captions = [
+#                 get_caption_without_special_tokens(caption, word_map)
+#                 for caption in all_captions_for_image[j].tolist()
+#             ]
+#             target_captions.append(img_captions)
+#
+#         # Generated captions
+#         _, captions = torch.max(scores, dim=2)
+#         captions = [
+#             get_caption_without_special_tokens(caption, word_map)
+#             for caption in captions.tolist()
+#         ]
+#         generated_captions.extend(captions)
+#
+#         assert len(target_captions) == len(generated_captions)
+#
+#     bleu4 = corpus_bleu(target_captions, generated_captions)
+#
+#     print("\n * BLEU-4 - {bleu}\n".format(bleu=bleu4))
+#
+#     return bleu4
+#
 
 
 def check_args(args):
