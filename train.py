@@ -11,6 +11,7 @@ from torchvision.transforms import transforms
 
 from models.bottom_up_top_down import TopDownDecoder
 from models.captioning_model import create_encoder_optimizer, create_decoder_optimizer
+from models.ranking_generating import RankGenDecoder, RankGenEncoder
 from models.show_attend_tell import Encoder, SATDecoder
 from datasets import CaptionTrainDataset, CaptionTestDataset
 from nltk.translate.bleu_score import corpus_bleu
@@ -32,6 +33,7 @@ from utils import (
 
 MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
 MODEL_BOTTOM_UP_TOP_DOWN = "BOTTOM_UP_TOP_DOWN"
+MODEL_RANKING_GENERATING = "RANKING_GENERATING"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True  # improve performance if inputs to model are fixed size
@@ -123,6 +125,12 @@ def main(
             encoder_optimizer = None
             decoder = TopDownDecoder(word_map, model_params, embeddings)
             decoder_optimizer = create_decoder_optimizer(decoder, model_params)
+
+        elif model_name == MODEL_RANKING_GENERATING:
+            encoder = RankGenEncoder(model_params)
+            encoder_optimizer = create_encoder_optimizer(encoder, model_params)
+            decoder = RankGenDecoder(word_map, model_params, embeddings)
+            decoder_optimizer = create_decoder_optimizer(decoder, model_params)
         else:
             raise RuntimeError("Unknown model name: {}".format(model_name))
 
@@ -158,7 +166,9 @@ def main(
             pin_memory=True,
         )
 
-    elif model_name == MODEL_BOTTOM_UP_TOP_DOWN:
+    elif (
+        model_name == MODEL_BOTTOM_UP_TOP_DOWN or model_name == MODEL_RANKING_GENERATING
+    ):
         train_images_loader = torch.utils.data.DataLoader(
             CaptionTrainDataset(
                 data_folder, BOTTOM_UP_FEATURES_FILENAME, train_images_split
@@ -261,7 +271,7 @@ def main(
 def calculate_loss(
     model_name, loss_function, packed_scores, packed_targets, alphas, alpha_c
 ):
-    if model_name == MODEL_BOTTOM_UP_TOP_DOWN:
+    if model_name == MODEL_BOTTOM_UP_TOP_DOWN or model_name == MODEL_RANKING_GENERATING:
         return loss_function(packed_scores, packed_targets)
 
     elif model_name == MODEL_SHOW_ATTEND_TELL:
@@ -414,7 +424,11 @@ def check_args(args):
         "--model",
         help="Name of the model to be used",
         default=MODEL_SHOW_ATTEND_TELL,
-        choices=[MODEL_SHOW_ATTEND_TELL, MODEL_BOTTOM_UP_TOP_DOWN],
+        choices=[
+            MODEL_SHOW_ATTEND_TELL,
+            MODEL_BOTTOM_UP_TOP_DOWN,
+            MODEL_RANKING_GENERATING,
+        ],
     )
     parser.add_argument(
         "--data-folder",
