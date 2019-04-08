@@ -20,7 +20,7 @@ class CaptioningModelDecoder(nn.Module):
         self.word_map = word_map
 
         self.word_embedding = nn.Embedding(
-            self.vocab_size, self.params["embeddings_size"]
+            self.vocab_size, self.params["word_embeddings_size"]
         )
 
         if pretrained_embeddings is not None:

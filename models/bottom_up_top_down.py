@@ -11,7 +11,7 @@ class TopDownDecoder(CaptioningModelDecoder):
         "teacher_forcing_ratio": 1,
         "dropout_ratio": 0.0,
         "image_features_size": 2048,
-        "embeddings_size": 1000,
+        "word_embeddings_size": 1000,
         "attention_lstm_size": 1000,
         "attention_layer_size": 512,
         "language_lstm_size": 1000,
@@ -24,7 +24,7 @@ class TopDownDecoder(CaptioningModelDecoder):
         super(TopDownDecoder, self).__init__(word_map, params, pretrained_embeddings)
 
         self.attention_lstm = AttentionLSTM(
-            self.params["embeddings_size"],
+            self.params["word_embeddings_size"],
             self.params["language_lstm_size"],
             self.params["image_features_size"],
             self.params["attention_lstm_size"],

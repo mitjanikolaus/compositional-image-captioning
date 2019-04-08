@@ -65,7 +65,7 @@ class Encoder(nn.Module):
 
 class SATDecoder(CaptioningModelDecoder):
     DEFAULT_MODEL_PARAMS = {
-        "embeddings_size": 512,
+        "word_embeddings_size": 512,
         "attention_dim": 512,
         "encoder_dim": 2048,
         "decoder_dim": 512,
@@ -96,7 +96,7 @@ class SATDecoder(CaptioningModelDecoder):
 
         # LSTM
         self.decode_step = nn.LSTMCell(
-            self.params["embeddings_size"] + self.params["encoder_dim"],
+            self.params["word_embeddings_size"] + self.params["encoder_dim"],
             self.params["decoder_dim"],
             bias=True,
         )
@@ -105,12 +105,12 @@ class SATDecoder(CaptioningModelDecoder):
         self.dropout = nn.Dropout(p=self.params["dropout_ratio"])
 
         # Linear layers for output generation
-        self.linear_o = nn.Linear(self.params["embeddings_size"], self.vocab_size)
+        self.linear_o = nn.Linear(self.params["word_embeddings_size"], self.vocab_size)
         self.linear_h = nn.Linear(
-            self.params["decoder_dim"], self.params["embeddings_size"]
+            self.params["decoder_dim"], self.params["word_embeddings_size"]
         )
         self.linear_z = nn.Linear(
-            self.params["encoder_dim"], self.params["embeddings_size"]
+            self.params["encoder_dim"], self.params["word_embeddings_size"]
         )
 
     def init_hidden_states(self, encoder_out):
