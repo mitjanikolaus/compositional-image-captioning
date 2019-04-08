@@ -10,7 +10,11 @@ from metrics import recall_adjective_noun_pairs, beam_occurrences
 from nltk.translate.bleu_score import corpus_bleu
 from tqdm import tqdm
 
-from train import MODEL_SHOW_ATTEND_TELL, MODEL_BOTTOM_UP_TOP_DOWN
+from train import (
+    MODEL_SHOW_ATTEND_TELL,
+    MODEL_BOTTOM_UP_TOP_DOWN,
+    MODEL_RANKING_GENERATING,
+)
 from utils import (
     get_caption_without_special_tokens,
     IMAGENET_IMAGES_MEAN,
@@ -72,7 +76,9 @@ def evaluate(
             num_workers=1,
             pin_memory=True,
         )
-    elif model_name == MODEL_BOTTOM_UP_TOP_DOWN:
+    elif (
+        model_name == MODEL_BOTTOM_UP_TOP_DOWN or model_name == MODEL_RANKING_GENERATING
+    ):
         data_loader = torch.utils.data.DataLoader(
             CaptionTestDataset(
                 data_folder, BOTTOM_UP_FEATURES_FILENAME, test_images_split
