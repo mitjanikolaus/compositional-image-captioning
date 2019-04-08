@@ -148,7 +148,7 @@ class RankGenDecoder(CaptioningModelDecoder):
         v_mean = encoder_output.mean(dim=1)
 
         h_lan_enc, c_lan_enc = self.language_encoding_lstm.init_state(
-            encoder_output.shape(0)
+            encoder_output.size(0)
         )
         h_attention = self.init_h_attention(v_mean)
         c_attention = self.init_c_attention(v_mean)
