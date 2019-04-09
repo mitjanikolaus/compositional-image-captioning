@@ -217,7 +217,7 @@ def save_checkpoint(
     decoder,
     encoder_optimizer,
     decoder_optimizer,
-    bleu4,
+    validation_metric_score,
     is_best,
 ):
     """
@@ -229,14 +229,14 @@ def save_checkpoint(
     :param decoder: decoder model
     :param encoder_optimizer: optimizer to update the encoder's weights
     :param decoder_optimizer: optimizer to update the decoder's weights
-    :param bleu4: validation set BLEU-4 score for this epoch
+    :param validation_metric_score: validation set score for this epoch
     :param is_best: True, if this is the best checkpoint so far (will save the model to a dedicated file)
     """
     state = {
         "model_name": model_name,
         "epoch": epoch,
         "epochs_since_improvement": epochs_since_last_improvement,
-        "bleu-4": bleu4,
+        "validation_metric_score": validation_metric_score,
         "encoder": encoder,
         "decoder": decoder,
         "encoder_optimizer": encoder_optimizer,

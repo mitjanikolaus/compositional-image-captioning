@@ -97,8 +97,8 @@ def evaluate(
     generated_beams = []
     coco_ids = []
 
-    for i, (image_features, all_captions_for_image, coco_id) in enumerate(
-        tqdm(data_loader, desc="Evaluate with beam size " + str(beam_size))
+    for image_features, all_captions_for_image, coco_id in tqdm(
+        data_loader, desc="Evaluate with beam size " + str(beam_size)
     ):
 
         # Target captions

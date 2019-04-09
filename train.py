@@ -9,6 +9,7 @@ from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence
 from torchvision.transforms import transforms
 
+from metrics import recall_captions_from_images
 from models.bottom_up_top_down import TopDownDecoder
 from models.captioning_model import create_encoder_optimizer, create_decoder_optimizer
 from models.ranking_generating import RankGenDecoder, RankGenEncoder
@@ -39,7 +40,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True  # improve performance if inputs to model are fixed size
 
 epochs_since_last_improvement = 0
-best_bleu4 = 0.0
+best_validation_metric_score = 0.0
 
 
 def main(
@@ -63,7 +64,7 @@ def main(
     print_freq=100,
 ):
 
-    global best_bleu4, epochs_since_last_improvement
+    global best_validation_metric_score, epochs_since_last_improvement
 
     print("Starting training on device: ", device)
 
@@ -94,7 +95,7 @@ def main(
         checkpoint = torch.load(checkpoint, map_location=device)
         start_epoch = checkpoint["epoch"] + 1
         epochs_since_last_improvement = checkpoint["epochs_since_improvement"]
-        best_bleu4 = checkpoint["bleu-4"]
+        best_validation_metric_score = checkpoint["validation_metric_score"]
         decoder = checkpoint["decoder"]
         decoder_optimizer = checkpoint["decoder_optimizer"]
         model_name = checkpoint["model_name"]
@@ -182,7 +183,7 @@ def main(
             CaptionTestDataset(
                 data_folder, BOTTOM_UP_FEATURES_FILENAME, val_images_split
             ),
-            batch_size=batch_size,
+            batch_size=1,
             shuffle=True,
             num_workers=workers,
             pin_memory=True,
@@ -233,19 +234,21 @@ def main(
             print_freq,
         )
 
+        # One epoch's validation
         if model_name == MODEL_RANKING_GENERATING:
-            # current_score = validate_ranking(val_images_loader, encoder, decoder, word_map, print_freq)
-            current_checkpoint_is_best = True
-            current_bleu4 = 1
+            current_validation_metric_score = validate_ranking(
+                val_images_loader, encoder, decoder, val_images_split
+            )
         else:
-            # One epoch's validation
-            current_bleu4 = validate(
+            current_validation_metric_score = validate(
                 val_images_loader, encoder, decoder, word_map, print_freq
             )
-            # Check if there was an improvement
-            current_checkpoint_is_best = current_bleu4 > best_bleu4
+        # Check if there was an improvement
+        current_checkpoint_is_best = (
+            current_validation_metric_score > best_validation_metric_score
+        )
         if current_checkpoint_is_best:
-            best_bleu4 = current_bleu4
+            best_validation_metric_score = current_validation_metric_score
             epochs_since_last_improvement = 0
         else:
             epochs_since_last_improvement += 1
@@ -266,7 +269,7 @@ def main(
             decoder,
             encoder_optimizer,
             decoder_optimizer,
-            current_bleu4,
+            current_validation_metric_score,
             current_checkpoint_is_best,
         )
 
@@ -436,61 +439,41 @@ def validate(data_loader, encoder, decoder, word_map, print_freq):
     return bleu4
 
 
-#
-# def validate_ranking(data_loader, encoder, decoder, word_map, print_freq):
-#     """
-#     Perform validation of one training epoch.
-#
-#     """
-#     decoder.eval()
-#     if encoder:
-#         encoder.eval()
-#
-#     images = []
-#     captions = []
-#
-#     # Loop over batches
-#     for i, (image, all_captions_for_image, _) in enumerate(data_loader):
-#         images.append(image)
-#         captions.append(all_captions_for_image)
-#
-#     images = images.to(device)
-#     # Forward propagation
-#     images = encoder(images)
-#     # scores, decode_lengths, alphas = decoder(image)
-#     # images_embedded, captions_embedded = decoder.forward_ranking(
-#     #     images, target_captions, decode_lengths
-#     # )
-#
-#
-#
-#         if i % print_freq == 0:
-#             print("Validation: [Batch {0}/{1}]\t".format(i, len(data_loader)))
-#
-#         # Target captions
-#         for j in range(all_captions_for_image.shape[0]):
-#             img_captions = [
-#                 get_caption_without_special_tokens(caption, word_map)
-#                 for caption in all_captions_for_image[j].tolist()
-#             ]
-#             target_captions.append(img_captions)
-#
-#         # Generated captions
-#         _, captions = torch.max(scores, dim=2)
-#         captions = [
-#             get_caption_without_special_tokens(caption, word_map)
-#             for caption in captions.tolist()
-#         ]
-#         generated_captions.extend(captions)
-#
-#         assert len(target_captions) == len(generated_captions)
-#
-#     bleu4 = corpus_bleu(target_captions, generated_captions)
-#
-#     print("\n * BLEU-4 - {bleu}\n".format(bleu=bleu4))
-#
-#     return bleu4
-#
+def validate_ranking(data_loader, encoder, decoder, testing_indices):
+    """
+    Perform validation of one training epoch.
+
+    """
+    decoder.eval()
+    encoder.eval()
+
+    # Lists for target captions and generated captions for each image
+    embedded_captions = {}
+    embedded_images = {}
+
+    for image_features, captions, caption_lengths, coco_id in data_loader:
+        image_features = image_features.to(device)
+        coco_id = coco_id[0]
+        captions = captions[0]
+        captions = captions.to(device)
+        caption_lengths = caption_lengths.to(device)
+
+        decode_lengths = caption_lengths[0] - 1
+
+        encoded_features = encoder(image_features)
+
+        image_embedded, image_captions_embedded = decoder.forward_ranking(
+            encoded_features, captions, decode_lengths
+        )
+
+        embedded_images[coco_id] = image_embedded.detach().cpu().numpy()[0]
+        embedded_captions[coco_id] = image_captions_embedded.detach().cpu().numpy()
+
+    meanr = recall_captions_from_images(
+        embedded_images, embedded_captions, testing_indices
+    )
+
+    return meanr
 
 
 def check_args(args):

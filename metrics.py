@@ -158,3 +158,47 @@ def beam_occurrences(generated_beams, beam_size, word_map, occurrences_data_file
     plt.show()
 
     return pair_occurrences
+
+
+def recall_captions_from_images(embedded_images, embedded_captions, testing_indices):
+    embedding_size = next(iter(embedded_captions.values())).shape[1]
+    all_captions = np.array(list(embedded_captions.values())).reshape(
+        -1, embedding_size
+    )
+    all_captions_keys = list(embedded_captions.keys())
+
+    index_list = []
+    ranks = np.zeros(len(testing_indices))
+    top1 = np.zeros(len(testing_indices))
+    for i, key in enumerate(testing_indices):
+        image = embedded_images[key]
+
+        # Compute similarity of image to all captions
+        d = np.dot(image, all_captions.T).flatten()
+        inds = np.argsort(d)[::-1]
+        index_list.append(inds[0])
+
+        # Look for rank of all 5 corresponding captions
+        best_rank = len(all_captions)
+        index = all_captions_keys.index(key)
+        for j in range(5 * index, 5 * index + 5, 1):
+            rank = np.where(inds == j)[0]
+            if rank < best_rank:
+                best_rank = rank
+        ranks[i] = best_rank
+        top1[i] = inds[0]
+
+    # Compute metrics
+    r1 = 100.0 * len(np.where(ranks < 1)[0]) / len(ranks)
+    r5 = 100.0 * len(np.where(ranks < 5)[0]) / len(ranks)
+    r10 = 100.0 * len(np.where(ranks < 10)[0]) / len(ranks)
+    medr = np.floor(np.median(ranks)) + 1
+    meanr = ranks.mean() + 1
+
+    print("R@1: {}".format(r1))
+    print("R@5: {}".format(r5))
+    print("R@10: {}".format(r10))
+    print("Median Rank: {}".format(medr))
+    print("Mean Rank: {}".format(meanr))
+
+    return meanr

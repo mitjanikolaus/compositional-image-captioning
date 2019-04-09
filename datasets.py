@@ -85,7 +85,7 @@ class CaptionTrainDataset(CaptionDataset):
             [self.images_meta[coco_id][DATA_CAPTION_LENGTHS][caption_index]]
         )
 
-        return image, caption, caption_length, coco_id
+        return image, caption, caption_length
 
     def __len__(self):
         return self.dataset_size * self.captions_per_image

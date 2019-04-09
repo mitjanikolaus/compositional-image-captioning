@@ -6,8 +6,8 @@ import torch.optim
 import torch.utils.data
 from datasets import *
 from tqdm import tqdm
-import numpy as np
 
+from metrics import recall_captions_from_images
 from train import MODEL_RANKING_GENERATING
 from utils import get_splits_from_occurrences_data, BOTTOM_UP_FEATURES_FILENAME
 
@@ -53,8 +53,8 @@ def evaluate(data_folder, occurrences_data, checkpoint):
     embedded_captions = {}
     embedded_images = {}
 
-    for i, (image_features, captions, caption_lengths, coco_id) in enumerate(
-        tqdm(data_loader, desc="Embedding samples")
+    for image_features, captions, caption_lengths, coco_id in tqdm(
+        data_loader, desc="Embedding samples"
     ):
 
         image_features = image_features.to(device)
@@ -77,48 +77,6 @@ def evaluate(data_folder, occurrences_data, checkpoint):
     recall_captions_from_images(
         embedded_images, embedded_captions, indices_matching_samples
     )
-
-
-def recall_captions_from_images(
-    embedded_images, embedded_captions, indices_matching_samples
-):
-    embedding_size = next(iter(embedded_captions.values())).shape[1]
-    all_captions = np.array(list(embedded_captions.values())).reshape(
-        -1, embedding_size
-    )
-    all_captions_keys = list(embedded_captions.keys())
-
-    index_list = []
-    ranks = np.zeros(len(indices_matching_samples))
-    top1 = np.zeros(len(indices_matching_samples))
-    for i, key in enumerate(indices_matching_samples):
-        image = embedded_images[key]
-
-        # Compute similarity of image to all captions
-        d = np.dot(image, all_captions.T).flatten()
-        inds = np.argsort(d)[::-1]
-        index_list.append(inds[0])
-
-        # Look for rank of all 5 corresponding captions
-        best_rank = len(all_captions)
-        index = all_captions_keys.index(key)
-        for j in range(5 * index, 5 * index + 5, 1):
-            rank = np.where(inds == j)[0]
-            if rank < best_rank:
-                best_rank = rank
-        ranks[i] = best_rank
-        top1[i] = inds[0]
-
-    # Compute metrics
-    r1 = 100.0 * len(np.where(ranks < 1)[0]) / len(ranks)
-    r5 = 100.0 * len(np.where(ranks < 5)[0]) / len(ranks)
-    r10 = 100.0 * len(np.where(ranks < 10)[0]) / len(ranks)
-    medr = np.floor(np.median(ranks)) + 1
-
-    print("R@1: {}".format(r1))
-    print("R@5: {}".format(r5))
-    print("R@10: {}".format(r10))
-    print("Median Rank: {}".format(medr))
 
 
 def check_args(args):
