@@ -80,8 +80,8 @@ def evaluate(data_folder, occurrences_data, checkpoint):
             encoded_features, captions, caption_lengths - 1
         )
 
-        embedded_captions_matching.extend(captions_embedded.cpu().numpy())
-        embedded_images_matching.extend(images_embedded.cpu().numpy())
+        embedded_captions_matching.extend(captions_embedded.detach().cpu().numpy())
+        embedded_images_matching.extend(images_embedded.detach().cpu().numpy())
 
     for i, (image_features, captions, caption_lengths, coco_ids) in enumerate(
         tqdm(data_loader_non_matching, desc="Embedding non-matching samples")
@@ -97,8 +97,8 @@ def evaluate(data_folder, occurrences_data, checkpoint):
             encoded_features, captions, caption_lengths - 1
         )
 
-        embedded_captions_non_matching.extend(captions_embedded.cpu().numpy())
-        embedded_images_non_matching.extend(images_embedded.cpu().numpy())
+        embedded_captions_non_matching.extend(captions_embedded.detach().cpu().numpy())
+        embedded_images_non_matching.extend(images_embedded.detach().cpu().numpy())
 
     recall_captions_from_images(
         embedded_images_matching,
