@@ -102,37 +102,14 @@ def evaluate(data_folder, occurrences_data, checkpoint):
 
     recall_captions_from_images(
         embedded_images_matching,
-        embedded_images_non_matching,
         embedded_captions_matching,
         embedded_captions_non_matching,
     )
 
 
-def order_sim(im, s):
-    """Order embeddings similarity measure $max(0, s-im)$
-    """
-    YmX = s.unsqueeze(1).expand(s.size(0), im.size(0), s.size(1)) - im.unsqueeze(
-        0
-    ).expand(s.size(0), im.size(0), s.size(1))
-    score = -YmX.clamp(min=0).pow(2).sum(2).sqrt().t()
-    return score
-
-
 def recall_captions_from_images(
-    embedded_images_matching,
-    embedded_images_non_matching,
-    embedded_captions_matching,
-    embedded_captions_non_matching,
-    return_ranks=False,
+    embedded_images_matching, embedded_captions_matching, embedded_captions_non_matching
 ):
-    """
-    Images->Text (Image Annotation)
-    Images: (5N, K) matrix of images
-    Captions: (5N, K) matrix of captions
-    """
-    # ranks = np.zeros(npts)
-    # top1 = np.zeros(npts)
-
     all_captions = np.array(embedded_captions_matching + embedded_captions_non_matching)
 
     index_list = []
@@ -163,11 +140,6 @@ def recall_captions_from_images(
     print("R@1: {}".format(r1))
     print("R@5: {}".format(r5))
     print("R@10: {}".format(r10))
-
-    if return_ranks:
-        return (r1, r5, r10, medr, meanr), (ranks, top1)
-    else:
-        return (r1, r5, r10, medr, meanr)
 
 
 def check_args(args):
