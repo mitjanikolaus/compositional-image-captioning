@@ -43,7 +43,7 @@ def evaluate(data_folder, occurrences_data, checkpoint):
             CaptionTrainDataset(
                 data_folder, BOTTOM_UP_FEATURES_FILENAME, indices_non_matching_samples
             ),
-            batch_size=10,
+            batch_size=50,
             shuffle=False,
             num_workers=1,
             pin_memory=True,
@@ -52,7 +52,7 @@ def evaluate(data_folder, occurrences_data, checkpoint):
             CaptionTrainDataset(
                 data_folder, BOTTOM_UP_FEATURES_FILENAME, indices_matching_samples
             ),
-            batch_size=10,
+            batch_size=50,
             shuffle=False,
             num_workers=1,
             pin_memory=True,
@@ -70,8 +70,10 @@ def evaluate(data_folder, occurrences_data, checkpoint):
         tqdm(data_loader_matching, desc="Embedding matching samples")
     ):
 
-        # Embed
         image_features = image_features.to(device)
+        captions = captions.to(device)
+        caption_lengths = caption_lengths.to(device)
+
         encoded_features = encoder(image_features)
 
         images_embedded, captions_embedded = decoder.forward_ranking(
@@ -85,8 +87,10 @@ def evaluate(data_folder, occurrences_data, checkpoint):
         tqdm(data_loader_non_matching, desc="Embedding non-matching samples")
     ):
 
-        # Embed
         image_features = image_features.to(device)
+        captions = captions.to(device)
+        caption_lengths = caption_lengths.to(device)
+
         encoded_features = encoder(image_features)
 
         images_embedded, captions_embedded = decoder.forward_ranking(
@@ -136,13 +140,8 @@ def recall_captions_from_images(
     top1 = np.zeros(len(embedded_images_matching))
     for index, image in enumerate(embedded_images_matching):
         # Compute scores
-        print(image.shape)
         d = np.dot(image, all_captions.T).flatten()
-        print("d")
-        print(d.shape)
-        print(d)
         inds = np.argsort(d)[::-1]
-        print(inds)
         index_list.append(inds[0])
 
         # Score
