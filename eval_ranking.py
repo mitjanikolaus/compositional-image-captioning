@@ -93,19 +93,20 @@ def recall_captions_from_images(
     top1 = np.zeros(len(indices_matching_samples))
     for i, key in enumerate(indices_matching_samples):
         image = embedded_images[key]
-        # Compute scores
+
+        # Compute similarity of image to all captions
         d = np.dot(image, all_captions.T).flatten()
         inds = np.argsort(d)[::-1]
         index_list.append(inds[0])
 
-        # Score
-        rank = 1e20
+        # Look for rank of all 5 corresponding captions
+        best_rank = len(all_captions)
         index = all_captions_keys.index(key)
         for j in range(5 * index, 5 * index + 5, 1):
-            tmp = np.where(inds == j)[0]
-            if tmp < rank:
-                rank = tmp
-        ranks[i] = rank
+            rank = np.where(inds == j)[0]
+            if rank < best_rank:
+                best_rank = rank
+        ranks[i] = best_rank
         top1[i] = inds[0]
 
     # Compute metrics
@@ -113,11 +114,11 @@ def recall_captions_from_images(
     r5 = 100.0 * len(np.where(ranks < 5)[0]) / len(ranks)
     r10 = 100.0 * len(np.where(ranks < 10)[0]) / len(ranks)
     medr = np.floor(np.median(ranks)) + 1
-    meanr = ranks.mean() + 1
 
     print("R@1: {}".format(r1))
     print("R@5: {}".format(r5))
     print("R@10: {}".format(r10))
+    print("Median Rank: {}".format(medr))
 
 
 def check_args(args):
