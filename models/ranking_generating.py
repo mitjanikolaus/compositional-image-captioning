@@ -211,7 +211,9 @@ class RankGenDecoder(CaptioningModelDecoder):
             hidden_activations[:, t, :] = states[0]
 
         captions_embedded = torch.zeros(
-            (batch_size, self.params["joint_embeddings_size"]), device=device
+            (batch_size, self.params["joint_embeddings_size"]),
+            device=device,
+            requires_grad=False,
         )
         for i, length in enumerate(decode_lengths):
             captions_embedded[i] = hidden_activations[i][length - 1]
