@@ -29,7 +29,6 @@ def evaluate(data_folder, occurrences_data, checkpoint):
 
     decoder = checkpoint["decoder"]
     decoder = decoder.to(device)
-    word_map = decoder.word_map
     decoder.eval()
 
     print("Decoder params: {}".format(decoder.params))
@@ -40,19 +39,19 @@ def evaluate(data_folder, occurrences_data, checkpoint):
 
     if model_name == MODEL_RANKING_GENERATING:
         data_loader_non_matching = torch.utils.data.DataLoader(
-            CaptionTrainDataset(
+            CaptionTestDataset(
                 data_folder, BOTTOM_UP_FEATURES_FILENAME, indices_non_matching_samples
             ),
-            batch_size=50,
+            batch_size=1,
             shuffle=False,
             num_workers=1,
             pin_memory=True,
         )
         data_loader_matching = torch.utils.data.DataLoader(
-            CaptionTrainDataset(
+            CaptionTestDataset(
                 data_folder, BOTTOM_UP_FEATURES_FILENAME, indices_matching_samples
             ),
-            batch_size=50,
+            batch_size=1,
             shuffle=False,
             num_workers=1,
             pin_memory=True,
@@ -61,44 +60,56 @@ def evaluate(data_folder, occurrences_data, checkpoint):
         raise RuntimeError("Unknown model name: {}".format(model_name))
 
     # Lists for target captions and generated captions for each image
-    embedded_captions_non_matching = []
-    embedded_captions_matching = []
-    embedded_images_non_matching = []
-    embedded_images_matching = []
+    embedded_captions_non_matching = {}
+    embedded_captions_matching = {}
+    embedded_images_non_matching = {}
+    embedded_images_matching = {}
 
-    for i, (image_features, captions, caption_lengths, coco_ids) in enumerate(
+    for i, (image_features, captions, caption_lengths, coco_id) in enumerate(
         tqdm(data_loader_matching, desc="Embedding matching samples")
     ):
 
         image_features = image_features.to(device)
+        coco_id = coco_id[0]
+        captions = captions[0]
         captions = captions.to(device)
         caption_lengths = caption_lengths.to(device)
+
+        decode_lengths = caption_lengths[0] - 1
 
         encoded_features = encoder(image_features)
 
         images_embedded, captions_embedded = decoder.forward_ranking(
-            encoded_features, captions, caption_lengths - 1
+            encoded_features, captions, decode_lengths
         )
 
-        embedded_captions_matching.extend(captions_embedded.detach().cpu().numpy())
-        embedded_images_matching.extend(images_embedded.detach().cpu().numpy())
+        embedded_captions_matching[coco_id] = captions_embedded.detach().cpu().numpy()
+        embedded_images_matching[coco_id] = images_embedded.detach().cpu().numpy()[0]
 
-    for i, (image_features, captions, caption_lengths, coco_ids) in enumerate(
+    for i, (image_features, captions, caption_lengths, coco_id) in enumerate(
         tqdm(data_loader_non_matching, desc="Embedding non-matching samples")
     ):
 
         image_features = image_features.to(device)
+        coco_id = coco_id[0]
+        captions = captions[0]
         captions = captions.to(device)
         caption_lengths = caption_lengths.to(device)
+
+        decode_lengths = caption_lengths[0] - 1
 
         encoded_features = encoder(image_features)
 
         images_embedded, captions_embedded = decoder.forward_ranking(
-            encoded_features, captions, caption_lengths - 1
+            encoded_features, captions, decode_lengths
         )
 
-        embedded_captions_non_matching.extend(captions_embedded.detach().cpu().numpy())
-        embedded_images_non_matching.extend(images_embedded.detach().cpu().numpy())
+        embedded_captions_non_matching[coco_id] = (
+            captions_embedded.detach().cpu().numpy()
+        )
+        embedded_images_non_matching[coco_id] = (
+            images_embedded.detach().cpu().numpy()[0]
+        )
 
     recall_captions_from_images(
         embedded_images_matching,
@@ -110,12 +121,16 @@ def evaluate(data_folder, occurrences_data, checkpoint):
 def recall_captions_from_images(
     embedded_images_matching, embedded_captions_matching, embedded_captions_non_matching
 ):
-    all_captions = np.array(embedded_captions_matching + embedded_captions_non_matching)
+    embedding_size = next(iter(embedded_captions_matching.values())).shape[1]
+    all_captions = np.array(
+        list(embedded_captions_matching.values())
+        + list(embedded_captions_non_matching.values())
+    ).reshape(-1, embedding_size)
 
     index_list = []
     ranks = np.zeros(len(embedded_images_matching))
     top1 = np.zeros(len(embedded_images_matching))
-    for index, image in enumerate(embedded_images_matching):
+    for index, (coco_id, image) in enumerate(embedded_images_matching.items()):
         # Compute scores
         d = np.dot(image, all_captions.T).flatten()
         inds = np.argsort(d)[::-1]
