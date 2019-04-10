@@ -260,7 +260,10 @@ def main(
             )
 
         # Save checkpoint
-        name = os.path.basename(occurrences_data).split(".")[0]
+        if occurrences_data:
+            name = os.path.basename(occurrences_data).split(".")[0]
+        elif karpathy_json:
+            name = "karpathy"
         save_checkpoint(
             model_name,
             name,
