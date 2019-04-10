@@ -174,6 +174,25 @@ def get_splits_from_occurrences_data(occurrences_data_file, val_set_size=0):
     return train_images_split, val_images_split, test_images_split
 
 
+def get_splits_from_karpathy_json(karpathy_json):
+    with open(karpathy_json, "r") as json_file:
+        images_data = json.load(json_file)["images"]
+
+    train_images_split = [
+        str(data["cocoid"]) for data in images_data if data["split"] == "train"
+    ]
+
+    val_images_split = [
+        str(data["cocoid"]) for data in images_data if data["split"] == "val"
+    ]
+
+    test_images_split = [
+        str(data["cocoid"]) for data in images_data if data["split"] == "test"
+    ]
+
+    return train_images_split, val_images_split, test_images_split
+
+
 def show_img(img):
     plt.imshow(img.transpose(1, 2, 0))
     plt.show()
