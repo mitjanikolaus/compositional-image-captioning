@@ -21,9 +21,7 @@ from utils import (
 # stanfordnlp.download('en', confirm_if_exists=True)
 
 
-def recall_adjective_noun_pairs(
-    generated_captions, coco_ids, word_map, occurrences_data_file
-):
+def recall_pairs(generated_captions, coco_ids, word_map, occurrences_data_file):
     with open(occurrences_data_file, "r") as json_file:
         occurrences_data = json.load(json_file)
 
@@ -169,7 +167,6 @@ def recall_captions_from_images(embedded_images, embedded_captions, testing_indi
 
     index_list = []
     ranks = np.zeros(len(testing_indices))
-    top1 = np.zeros(len(testing_indices))
     for i, key in enumerate(testing_indices):
         image = embedded_images[key]
 
@@ -186,7 +183,6 @@ def recall_captions_from_images(embedded_images, embedded_captions, testing_indi
             if rank < best_rank:
                 best_rank = rank
         ranks[i] = best_rank
-        top1[i] = inds[0]
 
     # Compute metrics
     r1 = 100.0 * len(np.where(ranks < 1)[0]) / len(ranks)
@@ -204,3 +200,77 @@ def recall_captions_from_images(embedded_images, embedded_captions, testing_indi
     print("Mean Rank: {}".format(meanr))
 
     return recalls_sum
+
+
+def recall_captions_from_images_pairs(
+    embedded_images,
+    embedded_captions,
+    testing_indices,
+    target_captions,
+    word_map,
+    occurrences_data_file,
+):
+    embedding_size = next(iter(embedded_captions.values())).shape[1]
+    all_captions = np.array(list(embedded_captions.values())).reshape(
+        -1, embedding_size
+    )
+    target_captions = np.array(list(target_captions.values())).reshape(
+        len(all_captions), -1
+    )
+    with open(occurrences_data_file, "r") as json_file:
+        occurrences_data = json.load(json_file)
+
+    nouns = set(occurrences_data[NOUNS])
+    if ADJECTIVES in occurrences_data:
+        adjectives = set(occurrences_data[ADJECTIVES])
+    elif VERBS in occurrences_data:
+        verbs = set(occurrences_data[VERBS])
+    else:
+        raise ValueError("No adjectives or verbs found in occurrences data!")
+
+    nlp_pipeline = stanfordnlp.Pipeline()
+
+    index_list = []
+    true_positives = np.zeros(5)
+    false_negatives = np.zeros(5)
+    for i, coco_id in enumerate(testing_indices):
+        image = embedded_images[coco_id]
+
+        # Compute similarity of image to all captions
+        d = np.dot(image, all_captions.T).flatten()
+        inds = np.argsort(d)[::-1]
+        index_list.append(inds[0])
+
+        count = occurrences_data[OCCURRENCE_DATA][coco_id][PAIR_OCCURENCES]
+
+        # Look for pair occurrences in top 5 captions
+        hit = False
+        for j in inds[:5]:
+            caption = " ".join(
+                decode_caption(
+                    get_caption_without_special_tokens(target_captions[j], word_map),
+                    word_map,
+                )
+            )
+            pos_tagged_caption = nlp_pipeline(caption).sentences[0]
+            match = False
+            if ADJECTIVES in occurrences_data:
+                _, _, match = contains_adjective_noun_pair(
+                    pos_tagged_caption, nouns, adjectives
+                )
+            elif VERBS in occurrences_data:
+                _, _, match = contains_verb_noun_pair(pos_tagged_caption, nouns, verbs)
+
+            if match:
+                hit = True
+
+        for j in range(count):
+            if hit:
+                true_positives[j] += 1
+            else:
+                false_negatives[j] += 1
+
+    # Compute metrics
+    recall = true_positives / (true_positives + false_negatives)
+
+    print("Recall of pairs: {}".format(recall))

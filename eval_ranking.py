@@ -7,7 +7,7 @@ import torch.utils.data
 from datasets import *
 from tqdm import tqdm
 
-from metrics import recall_captions_from_images
+from metrics import recall_captions_from_images, recall_captions_from_images_pairs
 from train import MODEL_RANKING_GENERATING
 from utils import (
     get_splits_from_occurrences_data,
@@ -18,8 +18,11 @@ from utils import (
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True  # improve performance if inputs to model are fixed size
 
+METRIC_RECALL = "recall"
+METRIC_RECALL_PAIRS = "recall_pairs"
 
-def evaluate(data_folder, occurrences_data, karpathy_json, checkpoint):
+
+def evaluate(data_folder, occurrences_data, karpathy_json, checkpoint, metrics):
     # Load model
     checkpoint = torch.load(checkpoint, map_location=device)
 
@@ -33,6 +36,7 @@ def evaluate(data_folder, occurrences_data, karpathy_json, checkpoint):
 
     decoder = checkpoint["decoder"]
     decoder = decoder.to(device)
+    word_map = decoder.word_map
     decoder.eval()
 
     print("Decoder params: {}".format(decoder.params))
@@ -72,6 +76,7 @@ def evaluate(data_folder, occurrences_data, karpathy_json, checkpoint):
     # Lists for target captions and generated captions for each image
     embedded_captions = {}
     embedded_images = {}
+    target_captions = {}
 
     for image_features, captions, caption_lengths, coco_id in tqdm(
         data_loader, desc="Embedding samples"
@@ -93,8 +98,40 @@ def evaluate(data_folder, occurrences_data, karpathy_json, checkpoint):
 
         embedded_images[coco_id] = image_embedded.detach().cpu().numpy()[0]
         embedded_captions[coco_id] = image_captions_embedded.detach().cpu().numpy()
+        target_captions[coco_id] = captions.cpu().numpy()
 
-    recall_captions_from_images(embedded_images, embedded_captions, test_indices)
+    for metric in metrics:
+        calculate_metric(
+            metric,
+            embedded_images,
+            embedded_captions,
+            test_indices,
+            target_captions,
+            word_map,
+            occurrences_data,
+        )
+
+
+def calculate_metric(
+    metric_name,
+    embedded_images,
+    embedded_captions,
+    test_indices,
+    target_captions,
+    word_map,
+    occurrences_data_file,
+):
+    if metric_name == METRIC_RECALL:
+        recall_captions_from_images(embedded_images, embedded_captions, test_indices)
+    elif metric_name == METRIC_RECALL_PAIRS:
+        recall_captions_from_images_pairs(
+            embedded_images,
+            embedded_captions,
+            test_indices,
+            target_captions,
+            word_map,
+            occurrences_data_file,
+        )
 
 
 def check_args(args):
@@ -114,6 +151,13 @@ def check_args(args):
     parser.add_argument(
         "--checkpoint", help="Path to checkpoint of trained model", required=True
     )
+    parser.add_argument(
+        "--metrics",
+        help="Evaluation metrics",
+        nargs="+",
+        default=[METRIC_RECALL],
+        choices=[METRIC_RECALL, METRIC_RECALL_PAIRS],
+    )
 
     parsed_args = parser.parse_args(args)
     print(parsed_args)
@@ -127,4 +171,5 @@ if __name__ == "__main__":
         occurrences_data=parsed_args.occurrences_data,
         karpathy_json=parsed_args.karpathy_json,
         checkpoint=parsed_args.checkpoint,
+        metrics=parsed_args.metrics,
     )

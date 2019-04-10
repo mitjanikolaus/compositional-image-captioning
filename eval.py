@@ -6,7 +6,7 @@ import torch.optim
 import torch.utils.data
 import torchvision.transforms as transforms
 from datasets import *
-from metrics import recall_adjective_noun_pairs, beam_occurrences
+from metrics import recall_pairs, beam_occurrences
 from nltk.translate.bleu_score import corpus_bleu
 from tqdm import tqdm
 
@@ -188,9 +188,7 @@ def calculate_metric(
         bleu_scores = [float("%.3f" % elem) for elem in bleu_scores]
         return bleu_scores
     elif metric_name == METRIC_RECALL:
-        recall = recall_adjective_noun_pairs(
-            generated_captions, coco_ids, word_map, occurrences_data
-        )
+        recall = recall_pairs(generated_captions, coco_ids, word_map, occurrences_data)
         recall = [float("%.3f" % elem) for elem in recall]
         return recall
     elif metric_name == METRIC_BEAM_OCCURRENCES:
