@@ -83,7 +83,7 @@ class RankGenDecoder(CaptioningModelDecoder):
         "teacher_forcing_ratio": 1,
         "dropout_ratio": 0.0,
         "joint_embeddings_size": 1024,
-        "word_embeddings_size": 1000,
+        "word_embeddings_size": 300,
         "attention_lstm_size": 1000,
         "attention_layer_size": 512,
         "language_generation_lstm_size": 1000,
