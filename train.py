@@ -239,18 +239,14 @@ def main(
             current_validation_metric_score = validate_ranking(
                 val_images_loader, encoder, decoder, val_images_split
             )
-            # Check if there was an improvement
-            current_checkpoint_is_best = (
-                -current_validation_metric_score > best_validation_metric_score
-            )
         else:
             current_validation_metric_score = validate(
                 val_images_loader, encoder, decoder, word_map, print_freq
             )
-            # Check if there was an improvement
-            current_checkpoint_is_best = (
-                current_validation_metric_score > best_validation_metric_score
-            )
+        # Check if there was an improvement
+        current_checkpoint_is_best = (
+            current_validation_metric_score > best_validation_metric_score
+        )
         if current_checkpoint_is_best:
             best_validation_metric_score = current_validation_metric_score
             epochs_since_last_improvement = 0
@@ -473,11 +469,11 @@ def validate_ranking(data_loader, encoder, decoder, testing_indices):
         embedded_images[coco_id] = image_embedded.detach().cpu().numpy()[0]
         embedded_captions[coco_id] = image_captions_embedded.detach().cpu().numpy()
 
-    meanr = recall_captions_from_images(
+    recalls_sum = recall_captions_from_images(
         embedded_images, embedded_captions, testing_indices
     )
 
-    return meanr
+    return recalls_sum
 
 
 def check_args(args):

@@ -1,10 +1,8 @@
 import torch
-import torchvision
 from torch import nn
 from torch.autograd import Variable
 
 from models.captioning_model import CaptioningModelDecoder, update_params
-from utils import TOKEN_START, TOKEN_END
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

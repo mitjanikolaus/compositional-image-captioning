@@ -192,13 +192,15 @@ def recall_captions_from_images(embedded_images, embedded_captions, testing_indi
     r1 = 100.0 * len(np.where(ranks < 1)[0]) / len(ranks)
     r5 = 100.0 * len(np.where(ranks < 5)[0]) / len(ranks)
     r10 = 100.0 * len(np.where(ranks < 10)[0]) / len(ranks)
+    recalls_sum = r1 + r5 + r10
     medr = np.floor(np.median(ranks)) + 1
     meanr = ranks.mean() + 1
 
     print("R@1: {}".format(r1))
     print("R@5: {}".format(r5))
     print("R@10: {}".format(r10))
+    print("Sum of recalls: {}".format(recalls_sum))
     print("Median Rank: {}".format(medr))
     print("Mean Rank: {}".format(meanr))
 
-    return meanr
+    return recalls_sum
