@@ -175,17 +175,6 @@ class RankGenDecoder(CaptioningModelDecoder):
         states = [h_lan_enc, c_lan_enc, h_attention, c_attention, h_lan_gen, c_lan_gen]
         return scores, states, None
 
-    def forward_step_ranking(self, prev_words_embedded, states):
-        h_lan_enc, c_lan_enc = states
-
-        h_lan_enc, c_lan_enc = self.language_encoding_lstm(
-            h_lan_enc, c_lan_enc, prev_words_embedded
-        )
-
-        states = [h_lan_enc, c_lan_enc]
-
-        return states
-
     def embed_images(self, encoder_output):
         images_embedded = encoder_output.mean(dim=1)
         images_embedded = l2_norm(images_embedded)
@@ -194,7 +183,7 @@ class RankGenDecoder(CaptioningModelDecoder):
     def embed_captions(self, captions, decode_lengths):
         # Initialize LSTM state
         batch_size = captions.size(0)
-        states = self.language_encoding_lstm.init_state(batch_size)
+        h_lan_enc, c_lan_enc = self.language_encoding_lstm.init_state(batch_size)
 
         # Tensor to store hidden activations
         hidden_activations = torch.zeros(
@@ -204,9 +193,12 @@ class RankGenDecoder(CaptioningModelDecoder):
 
         for t in range(max(decode_lengths)):
             prev_words_embedded = self.word_embedding(captions[:, t])
-            states = self.forward_step_ranking(prev_words_embedded, states)
 
-            hidden_activations[:, t, :] = states[0]
+            h_lan_enc, c_lan_enc = self.language_encoding_lstm(
+                h_lan_enc, c_lan_enc, prev_words_embedded
+            )
+
+            hidden_activations[:, t, :] = h_lan_enc
 
         captions_embedded = torch.zeros(
             (batch_size, self.params["joint_embeddings_size"]),
