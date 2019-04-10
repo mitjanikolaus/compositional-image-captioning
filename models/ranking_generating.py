@@ -68,20 +68,15 @@ class RankGenEncoder(nn.Module):
         super(RankGenEncoder, self).__init__()
         self.params = update_params(self.DEFAULT_MODEL_PARAMS, params)
 
-        self.image_emb = nn.Linear(
-            self.params["image_features_size"], self.params["joint_embeddings_size"]
-        )
-
     def forward(self, image_features):
-        features_embedded = self.image_emb(image_features)
-
-        return features_embedded
+        return image_features
 
 
 class RankGenDecoder(CaptioningModelDecoder):
     DEFAULT_MODEL_PARAMS = {
         "teacher_forcing_ratio": 1,
         "dropout_ratio": 0.0,
+        "image_features_size": 2048,
         "joint_embeddings_size": 1024,
         "word_embeddings_size": 300,
         "attention_lstm_size": 1000,
@@ -140,6 +135,12 @@ class RankGenDecoder(CaptioningModelDecoder):
             self.language_generation_lstm.lstm_cell.hidden_size,
         )
 
+        self.adaptive_avg_pool = nn.AdaptiveAvgPool1d(1)
+
+        self.image_emb = nn.Linear(
+            self.params["image_features_size"], self.params["joint_embeddings_size"]
+        )
+
         self.criterion = ContrastiveLoss()
 
     def init_hidden_states(self, encoder_output):
@@ -176,7 +177,10 @@ class RankGenDecoder(CaptioningModelDecoder):
         return scores, states, None
 
     def embed_images(self, encoder_output):
-        images_embedded = encoder_output.mean(dim=1)
+        encoder_output = encoder_output.permute(0, 2, 1)
+        images_pooled = self.adaptive_avg_pool(encoder_output).squeeze(2)
+        images_embedded = self.image_emb(images_pooled)
+
         images_embedded = l2_norm(images_embedded)
         return images_embedded
 

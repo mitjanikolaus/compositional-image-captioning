@@ -276,11 +276,16 @@ class CaptioningModelDecoder(nn.Module):
 
 def create_encoder_optimizer(encoder, params):
     optimizer_params = update_params(encoder.DEFAULT_OPTIMIZER_PARAMS, params)
-    optimizer = torch.optim.Adam(
-        params=filter(lambda p: p.requires_grad, encoder.parameters()),
-        lr=optimizer_params["encoder_learning_rate"],
-    )
-    return optimizer
+
+    parameters_to_optimize = filter(lambda p: p.requires_grad, encoder.parameters())
+    if len(list(parameters_to_optimize)) > 0:
+        optimizer = torch.optim.Adam(
+            params=filter(lambda p: p.requires_grad, encoder.parameters()),
+            lr=optimizer_params["encoder_learning_rate"],
+        )
+        return optimizer
+    else:
+        return None
 
 
 def create_decoder_optimizer(decoder, params):
