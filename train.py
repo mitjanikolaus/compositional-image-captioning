@@ -241,7 +241,7 @@ def main(
             )
             # Check if there was an improvement
             current_checkpoint_is_best = (
-                current_validation_metric_score < best_validation_metric_score
+                -current_validation_metric_score > best_validation_metric_score
             )
         else:
             current_validation_metric_score = validate(
