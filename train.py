@@ -22,7 +22,6 @@ from utils import (
     save_checkpoint,
     AverageMeter,
     clip_gradients,
-    get_splits_from_occurrences_data,
     WORD_MAP_FILENAME,
     get_caption_without_special_tokens,
     IMAGENET_IMAGES_MEAN,
@@ -30,7 +29,7 @@ from utils import (
     BOTTOM_UP_FEATURES_FILENAME,
     IMAGES_FILENAME,
     load_embeddings,
-    get_splits_from_karpathy_json,
+    get_splits,
 )
 
 MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
@@ -88,18 +87,9 @@ def main(
         )
 
     # Generate dataset splits
-    if occurrences_data and not karpathy_json:
-        train_images_split, val_images_split, _ = get_splits_from_occurrences_data(
-            occurrences_data, val_set_size
-        )
-    elif karpathy_json and not occurrences_data:
-        train_images_split, val_images_split, _ = get_splits_from_karpathy_json(
-            karpathy_json
-        )
-    elif occurrences_data and karpathy_json:
-        return ValueError("Specify either karpathy_json or occurrences_data, not both!")
-    else:
-        return ValueError("Specify either karpathy_json or occurrences_data!")
+    train_images_split, val_images_split, _ = get_splits(
+        occurrences_data, karpathy_json, val_set_size
+    )
 
     # Load checkpoint
     if checkpoint:

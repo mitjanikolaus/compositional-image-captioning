@@ -151,7 +151,7 @@ def invert_normalization(image):
     return inv_normalize(image)
 
 
-def get_splits_from_occurrences_data(occurrences_data_file, val_set_size=0):
+def get_splits_from_occurrences_data(occurrences_data_file, val_set_size=0.1):
     with open(occurrences_data_file, "r") as json_file:
         occurrences_data = json.load(json_file)
 
@@ -190,6 +190,22 @@ def get_splits_from_karpathy_json(karpathy_json):
         str(data["cocoid"]) for data in images_data if data["split"] == "test"
     ]
 
+    return train_images_split, val_images_split, test_images_split
+
+
+def get_splits(occurrences_data, karpathy_json, val_set_size=0.1):
+    if occurrences_data and not karpathy_json:
+        train_images_split, val_images_split, test_images_split = get_splits_from_occurrences_data(
+            occurrences_data, val_set_size
+        )
+    elif karpathy_json and not occurrences_data:
+        train_images_split, val_images_split, test_images_split = get_splits_from_karpathy_json(
+            karpathy_json
+        )
+    elif occurrences_data and karpathy_json:
+        return ValueError("Specify either karpathy_json or occurrences_data, not both!")
+    else:
+        return ValueError("Specify either karpathy_json or occurrences_data!")
     return train_images_split, val_images_split, test_images_split
 
 

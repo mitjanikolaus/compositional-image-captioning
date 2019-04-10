@@ -19,9 +19,9 @@ from utils import (
     get_caption_without_special_tokens,
     IMAGENET_IMAGES_MEAN,
     IMAGENET_IMAGES_STD,
-    get_splits_from_occurrences_data,
     IMAGES_FILENAME,
     BOTTOM_UP_FEATURES_FILENAME,
+    get_splits,
 )
 from visualize_attention import visualize_attention
 
@@ -34,7 +34,14 @@ METRIC_BEAM_OCCURRENCES = "beam-occurrences"
 
 
 def evaluate(
-    data_folder, occurrences_data, checkpoint, metrics, beam_size, visualize, print_beam
+    data_folder,
+    occurrences_data,
+    karpathy_json,
+    checkpoint,
+    metrics,
+    beam_size,
+    visualize,
+    print_beam,
 ):
     # Load model
     checkpoint = torch.load(checkpoint, map_location=device)
@@ -54,7 +61,7 @@ def evaluate(
 
     print("Decoder params: {}".format(decoder.params))
 
-    _, _, test_images_split = get_splits_from_occurrences_data(occurrences_data)
+    _, _, test_images_split = get_splits(occurrences_data, karpathy_json)
 
     if model_name == MODEL_SHOW_ATTEND_TELL:
         # Normalization
@@ -200,7 +207,9 @@ def check_args(args):
     parser.add_argument(
         "--occurrences-data",
         help="File containing occurrences statistics about adjective-noun or verb-noun pairs",
-        required=True,
+    )
+    parser.add_argument(
+        "--karpathy-json", help="File containing train/val/test split information"
     )
     parser.add_argument(
         "--checkpoint", help="Path to checkpoint of trained model", required=True
@@ -239,6 +248,7 @@ if __name__ == "__main__":
     evaluate(
         data_folder=parsed_args.data_folder,
         occurrences_data=parsed_args.occurrences_data,
+        karpathy_json=parsed_args.karpathy_json,
         checkpoint=parsed_args.checkpoint,
         metrics=parsed_args.metrics,
         beam_size=parsed_args.beam_size,

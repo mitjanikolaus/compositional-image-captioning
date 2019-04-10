@@ -9,13 +9,17 @@ from tqdm import tqdm
 
 from metrics import recall_captions_from_images
 from train import MODEL_RANKING_GENERATING
-from utils import get_splits_from_occurrences_data, BOTTOM_UP_FEATURES_FILENAME
+from utils import (
+    get_splits_from_occurrences_data,
+    BOTTOM_UP_FEATURES_FILENAME,
+    get_splits_from_karpathy_json,
+)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True  # improve performance if inputs to model are fixed size
 
 
-def evaluate(data_folder, occurrences_data, checkpoint):
+def evaluate(data_folder, occurrences_data, karpathy_json, checkpoint):
     # Load model
     checkpoint = torch.load(checkpoint, map_location=device)
 
@@ -33,14 +37,30 @@ def evaluate(data_folder, occurrences_data, checkpoint):
 
     print("Decoder params: {}".format(decoder.params))
 
-    indices_non_matching_samples, _, indices_matching_samples = get_splits_from_occurrences_data(
-        occurrences_data, 0
-    )
-    all_indices = indices_non_matching_samples + indices_matching_samples
+    if occurrences_data and not karpathy_json:
+        indices_non_matching_samples, _, indices_matching_samples = get_splits_from_occurrences_data(
+            occurrences_data, 0
+        )
+        all_indices = indices_non_matching_samples + indices_matching_samples
+        test_images_split = all_indices
+        # Evaluate the model only on the matching samples
+        test_indices = indices_matching_samples
+    elif karpathy_json and not occurrences_data:
+        _, _, test_images_split = get_splits_from_karpathy_json(karpathy_json)
+        test_indices = test_images_split
+    elif occurrences_data and karpathy_json:
+        return ValueError("Specify either karpathy_json or occurrences_data, not both!")
+    else:
+        return ValueError("Specify either karpathy_json or occurrences_data!")
+
+    print("Test set size: {}".format(len(test_images_split)))
+    print("Evaluating performance for {} samples.".format(len(test_indices)))
 
     if model_name == MODEL_RANKING_GENERATING:
         data_loader = torch.utils.data.DataLoader(
-            CaptionTestDataset(data_folder, BOTTOM_UP_FEATURES_FILENAME, all_indices),
+            CaptionTestDataset(
+                data_folder, BOTTOM_UP_FEATURES_FILENAME, test_images_split
+            ),
             batch_size=1,
             shuffle=False,
             num_workers=1,
@@ -74,9 +94,7 @@ def evaluate(data_folder, occurrences_data, checkpoint):
         embedded_images[coco_id] = image_embedded.detach().cpu().numpy()[0]
         embedded_captions[coco_id] = image_captions_embedded.detach().cpu().numpy()
 
-    recall_captions_from_images(
-        embedded_images, embedded_captions, indices_matching_samples
-    )
+    recall_captions_from_images(embedded_images, embedded_captions, test_indices)
 
 
 def check_args(args):
@@ -89,7 +107,9 @@ def check_args(args):
     parser.add_argument(
         "--occurrences-data",
         help="File containing occurrences statistics about adjective-noun or verb-noun pairs",
-        required=True,
+    )
+    parser.add_argument(
+        "--karpathy-json", help="File containing train/val/test split information"
     )
     parser.add_argument(
         "--checkpoint", help="Path to checkpoint of trained model", required=True
@@ -105,5 +125,6 @@ if __name__ == "__main__":
     evaluate(
         data_folder=parsed_args.data_folder,
         occurrences_data=parsed_args.occurrences_data,
+        karpathy_json=parsed_args.karpathy_json,
         checkpoint=parsed_args.checkpoint,
     )
