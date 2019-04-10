@@ -239,14 +239,18 @@ def main(
             current_validation_metric_score = validate_ranking(
                 val_images_loader, encoder, decoder, val_images_split
             )
+            # Check if there was an improvement
+            current_checkpoint_is_best = (
+                current_validation_metric_score < best_validation_metric_score
+            )
         else:
             current_validation_metric_score = validate(
                 val_images_loader, encoder, decoder, word_map, print_freq
             )
-        # Check if there was an improvement
-        current_checkpoint_is_best = (
-            current_validation_metric_score > best_validation_metric_score
-        )
+            # Check if there was an improvement
+            current_checkpoint_is_best = (
+                current_validation_metric_score > best_validation_metric_score
+            )
         if current_checkpoint_is_best:
             best_validation_metric_score = current_validation_metric_score
             epochs_since_last_improvement = 0
