@@ -164,6 +164,7 @@ class RankGenDecoder(CaptioningModelDecoder):
 
     def embed_images(self, encoder_output):
         images_mean_pooled = encoder_output.mean(dim=1)
+        images_mean_pooled = l2_norm(images_mean_pooled)
         images_embedded = self.image_emb(images_mean_pooled)
 
         images_embedded = l2_norm(images_embedded)
