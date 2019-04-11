@@ -257,6 +257,7 @@ def save_checkpoint(
     ranking_metric_score,
     generation_metric_score,
     is_best,
+    checkpoint_suffix,
 ):
     """
     Save a model checkpoint.
@@ -274,6 +275,7 @@ def save_checkpoint(
         name = os.path.basename(occurrences_data).split(".")[0]
     elif karpathy_json:
         name = "karpathy"
+    name += checkpoint_suffix
     state = {
         "model_name": model_name,
         "epoch": epoch,

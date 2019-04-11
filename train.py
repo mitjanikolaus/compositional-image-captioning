@@ -5,8 +5,6 @@ import sys
 import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
-from torch import nn
-from torch.nn.utils.rnn import pack_padded_sequence
 from torchvision.transforms import transforms
 
 from metrics import recall_captions_from_images
@@ -58,10 +56,11 @@ def main(
     batch_size,
     embeddings_file,
     grad_clip,
+    epochs,
+    checkpoint_suffix,
     fine_tune_encoder=False,
     workers=1,
     start_epoch=0,
-    epochs=120,
     epochs_early_stopping=10,
     epochs_adjust_learning_rate=8,
     rate_adjust_learning_rate=0.8,
@@ -280,6 +279,7 @@ def main(
             current_ranking_metric_score,
             current_generation_metric_score,
             current_checkpoint_is_best,
+            checkpoint_suffix,
         )
 
     print("\n\nFinished training.")
@@ -522,6 +522,11 @@ def check_args(args):
         default=None,
     )
     parser.add_argument(
+        "--checkpoint-suffix",
+        help="Extra suffix to add to the checkpoint file name on saving.",
+        default="",
+    )
+    parser.add_argument(
         "--epochs", help="Maximum number of training epochs", type=int, default=120
     )
     parser.add_argument(
@@ -556,4 +561,5 @@ if __name__ == "__main__":
         grad_clip=parsed_args.grad_clip,
         checkpoint=parsed_args.checkpoint,
         epochs=parsed_args.epochs,
+        checkpoint_suffix=parsed_args.checkpoint_suffix,
     )
