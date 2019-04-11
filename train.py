@@ -320,12 +320,15 @@ def train(
         decode_lengths = caption_lengths.squeeze(1) - 1
 
         if model_name == MODEL_RANKING_GENERATING:
-            scores, decode_lengths, images_embedded, captions_embedded, alphas = decoder.forward_joint(
-                images, target_captions, decode_lengths
-            )
             if objective == OBJECTIVE_GENERATION:
+                scores, decode_lengths, images_embedded, captions_embedded, alphas = decoder.forward_joint(
+                    images, target_captions, decode_lengths
+                )
                 loss = decoder.loss(scores, target_captions, decode_lengths, alphas)
             if objective == OBJECTIVE_RANKING:
+                images_embedded, captions_embedded = decoder.forward_ranking(
+                    images, target_captions, decode_lengths
+                )
                 loss = decoder.loss_ranking(images_embedded, captions_embedded)
 
         else:
