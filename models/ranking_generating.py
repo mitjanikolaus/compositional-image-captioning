@@ -176,9 +176,10 @@ class RankGenDecoder(CaptioningModelDecoder):
 
         # Tensor to store hidden activations
         hidden_activations = torch.zeros(
-            (batch_size, max(decode_lengths), self.params["joint_embeddings_size"]),
-            device=device,
+            (batch_size, self.params["joint_embeddings_size"]), device=device
         )
+
+        decode_lengths = decode_lengths - 1
 
         for t in range(max(decode_lengths)):
             prev_words_embedded = self.word_embedding(captions[:, t])
@@ -186,18 +187,9 @@ class RankGenDecoder(CaptioningModelDecoder):
             h_lan_enc, c_lan_enc = self.language_encoding_lstm(
                 h_lan_enc, c_lan_enc, prev_words_embedded
             )
+            hidden_activations[decode_lengths == t] = h_lan_enc[decode_lengths == t]
 
-            hidden_activations[:, t, :] = h_lan_enc
-
-        captions_embedded = torch.zeros(
-            (batch_size, self.params["joint_embeddings_size"]),
-            device=device,
-            requires_grad=False,
-        )
-        for i, length in enumerate(decode_lengths):
-            captions_embedded[i] = hidden_activations[i][length - 1]
-
-        captions_embedded = l2_norm(captions_embedded)
+        captions_embedded = l2_norm(hidden_activations)
         return captions_embedded
 
     def forward_ranking(self, encoder_output, captions, decode_lengths):
