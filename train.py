@@ -95,6 +95,9 @@ def main(
         occurrences_data, karpathy_json, val_set_size
     )
 
+    current_generation_metric_score = 0.0
+    current_ranking_metric_score = 0.0
+
     # Load checkpoint
     if checkpoint:
         checkpoint = torch.load(checkpoint, map_location=device)
@@ -251,6 +254,7 @@ def main(
             current_checkpoint_is_best = (
                 current_generation_metric_score > best_generation_metric_score
             )
+
         if current_checkpoint_is_best:
             best_generation_metric_score = current_generation_metric_score
             best_ranking_metric_score = current_ranking_metric_score
