@@ -1,4 +1,5 @@
 import json
+import os
 
 import torch
 
@@ -245,14 +246,16 @@ def clip_gradients(optimizer, grad_clip):
 
 def save_checkpoint(
     model_name,
-    name,
+    occurrences_data,
+    karpathy_json,
     epoch,
     epochs_since_last_improvement,
     encoder,
     decoder,
     encoder_optimizer,
     decoder_optimizer,
-    validation_metric_score,
+    ranking_metric_score,
+    generation_metric_score,
     is_best,
 ):
     """
@@ -267,11 +270,16 @@ def save_checkpoint(
     :param validation_metric_score: validation set score for this epoch
     :param is_best: True, if this is the best checkpoint so far (will save the model to a dedicated file)
     """
+    if occurrences_data:
+        name = os.path.basename(occurrences_data).split(".")[0]
+    elif karpathy_json:
+        name = "karpathy"
     state = {
         "model_name": model_name,
         "epoch": epoch,
         "epochs_since_improvement": epochs_since_last_improvement,
-        "validation_metric_score": validation_metric_score,
+        "ranking_metric_score": ranking_metric_score,
+        "generation_metric_score": generation_metric_score,
         "encoder": encoder,
         "decoder": decoder,
         "encoder_optimizer": encoder_optimizer,

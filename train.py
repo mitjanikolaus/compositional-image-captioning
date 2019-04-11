@@ -36,11 +36,16 @@ MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
 MODEL_BOTTOM_UP_TOP_DOWN = "BOTTOM_UP_TOP_DOWN"
 MODEL_RANKING_GENERATING = "RANKING_GENERATING"
 
+OBJECTIVE_GENERATION = "GENERATION"
+OBJECTIVE_RANKING = "RANKING"
+OBJECTIVE_JOINT = "JOINT"
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True  # improve performance if inputs to model are fixed size
 
 epochs_since_last_improvement = 0
-best_validation_metric_score = 0.0
+best_ranking_metric_score = 0.0
+best_generation_metric_score = 0.0
 
 
 def main(
@@ -49,6 +54,7 @@ def main(
     data_folder,
     occurrences_data,
     karpathy_json,
+    objective,
     batch_size,
     embeddings_file,
     grad_clip,
@@ -64,7 +70,7 @@ def main(
     print_freq=100,
 ):
 
-    global best_validation_metric_score, epochs_since_last_improvement
+    global best_ranking_metric_score, best_generation_metric_score, epochs_since_last_improvement
 
     print("Starting training on device: ", device)
 
@@ -95,7 +101,8 @@ def main(
         checkpoint = torch.load(checkpoint, map_location=device)
         start_epoch = checkpoint["epoch"] + 1
         epochs_since_last_improvement = checkpoint["epochs_since_improvement"]
-        best_validation_metric_score = checkpoint["validation_metric_score"]
+        best_ranking_metric_score = checkpoint["ranking_metric_score"]
+        best_generation_metric_score = checkpoint["generation_metric_score"]
         decoder = checkpoint["decoder"]
         decoder_optimizer = checkpoint["decoder_optimizer"]
         model_name = checkpoint["model_name"]
@@ -225,25 +232,29 @@ def main(
             encoder_optimizer,
             decoder_optimizer,
             epoch,
+            objective,
             grad_clip,
             print_freq,
         )
 
         # One epoch's validation
-        if model_name == MODEL_RANKING_GENERATING:
-            current_validation_metric_score = validate_ranking(
+        if objective == OBJECTIVE_RANKING:
+            current_ranking_metric_score = validate_ranking(
                 val_images_loader, encoder, decoder, val_images_split, print_freq
             )
-        else:
-            current_validation_metric_score = validate(
+            current_checkpoint_is_best = (
+                current_ranking_metric_score > best_ranking_metric_score
+            )
+        if objective == OBJECTIVE_GENERATION:
+            current_generation_metric_score = validate(
                 val_images_loader, encoder, decoder, word_map, print_freq
             )
-        # Check if there was an improvement
-        current_checkpoint_is_best = (
-            current_validation_metric_score > best_validation_metric_score
-        )
+            current_checkpoint_is_best = (
+                current_generation_metric_score > best_generation_metric_score
+            )
         if current_checkpoint_is_best:
-            best_validation_metric_score = current_validation_metric_score
+            best_generation_metric_score = current_generation_metric_score
+            best_ranking_metric_score = current_ranking_metric_score
             epochs_since_last_improvement = 0
         else:
             epochs_since_last_improvement += 1
@@ -252,23 +263,22 @@ def main(
                     epochs_since_last_improvement
                 )
             )
-            print("Best validation score: {}\n".format(best_validation_metric_score))
+            print("Best ranking score: {}\n".format(best_ranking_metric_score))
+            print("Best generation score: {}\n".format(best_generation_metric_score))
 
         # Save checkpoint
-        if occurrences_data:
-            name = os.path.basename(occurrences_data).split(".")[0]
-        elif karpathy_json:
-            name = "karpathy"
         save_checkpoint(
             model_name,
-            name,
+            occurrences_data,
+            karpathy_json,
             epoch,
             epochs_since_last_improvement,
             encoder,
             decoder,
             encoder_optimizer,
             decoder_optimizer,
-            current_validation_metric_score,
+            current_ranking_metric_score,
+            current_generation_metric_score,
             current_checkpoint_is_best,
         )
 
@@ -283,6 +293,7 @@ def train(
     encoder_optimizer,
     decoder_optimizer,
     epoch,
+    objective,
     grad_clip,
     print_freq,
 ):
@@ -309,30 +320,19 @@ def train(
         decode_lengths = caption_lengths.squeeze(1) - 1
 
         if model_name == MODEL_RANKING_GENERATING:
-            scores, decode_lengths, images_embedded, captions_embedded = decoder.forward_joint(
+            scores, decode_lengths, images_embedded, captions_embedded, alphas = decoder.forward_joint(
                 images, target_captions, decode_lengths
             )
-            loss = decoder.criterion(images_embedded, captions_embedded)
+            if objective == OBJECTIVE_GENERATION:
+                loss = decoder.loss(scores, target_captions, decode_lengths, alphas)
+            if objective == OBJECTIVE_RANKING:
+                loss = decoder.loss_ranking(images_embedded, captions_embedded)
 
         else:
             scores, decode_lengths, alphas = decoder(
                 images, target_captions, decode_lengths
             )
-
-            # Since we decoded starting with <start>, the targets are all words after <start>, up to <end>
-            target_captions = target_captions[:, 1:]
-
-            # Remove timesteps that we didn't decode at, or are pads
-            decode_lengths, sort_ind = decode_lengths.sort(dim=0, descending=True)
-            packed_scores, _ = pack_padded_sequence(
-                scores[sort_ind], decode_lengths, batch_first=True
-            )
-            packed_targets, _ = pack_padded_sequence(
-                target_captions[sort_ind], decode_lengths, batch_first=True
-            )
-
-            # Calculate loss
-            loss = decoder.loss(packed_scores, packed_targets, alphas)
+            loss = decoder.loss(scores, target_captions, decode_lengths, alphas)
 
         # Back propagation
         decoder_optimizer.zero_grad()
@@ -482,6 +482,12 @@ def check_args(args):
     parser.add_argument(
         "--karpathy-json", help="File containing train/val/test split information"
     )
+    parser.add_argument(
+        "--objective",
+        help="Training objective for which the loss is calculated",
+        default=OBJECTIVE_GENERATION,
+        choices=[OBJECTIVE_GENERATION, OBJECTIVE_RANKING, OBJECTIVE_JOINT],
+    )
     parser.add_argument("--batch-size", help="Batch size", type=int, default=32)
     parser.add_argument(
         "--teacher-forcing",
@@ -544,6 +550,7 @@ if __name__ == "__main__":
         data_folder=parsed_args.data_folder,
         occurrences_data=parsed_args.occurrences_data,
         karpathy_json=parsed_args.karpathy_json,
+        objective=parsed_args.objective,
         batch_size=parsed_args.batch_size,
         embeddings_file=parsed_args.embeddings,
         grad_clip=parsed_args.grad_clip,

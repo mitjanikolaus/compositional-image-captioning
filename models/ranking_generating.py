@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torch.autograd import Variable
 
-from models.captioning_model import CaptioningModelDecoder, update_params
+from models.captioning_model import CaptioningModelDecoder
 from utils import TOKEN_START, TOKEN_END
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -128,7 +128,7 @@ class RankGenDecoder(CaptioningModelDecoder):
             self.language_generation_lstm.lstm_cell.hidden_size,
         )
 
-        self.criterion = ContrastiveLoss()
+        self.loss_ranking = ContrastiveLoss()
 
     def init_hidden_states(self, v_mean_embedded):
         h_lan_enc, c_lan_enc = self.language_encoding_lstm.init_state(
@@ -161,6 +161,78 @@ class RankGenDecoder(CaptioningModelDecoder):
         scores = self.fully_connected(self.dropout(h_lan_gen))
         states = [h_lan_enc, c_lan_enc, h_attention, c_attention, h_lan_gen, c_lan_gen]
         return scores, states, None
+
+    def forward(self, encoder_output, target_captions=None, decode_lengths=None):
+        """
+        Forward propagation.
+
+        :param encoder_output: output features of the encoder
+        :param target_captions: encoded target captions, shape: (batch_size, max_caption_length)
+        :param decode_lengths: caption lengths, shape: (batch_size, 1)
+        :return: scores for vocabulary, decode lengths, weights
+        """
+
+        batch_size = encoder_output.size(0)
+
+        assert (
+            not self.training
+        ), "This forward function should only be used for evaluation."
+
+        decode_lengths = torch.full(
+            (batch_size,),
+            self.params["max_caption_len"],
+            dtype=torch.int64,
+            device=device,
+        )
+
+        # Embed images
+        images_embedded, v_mean_embedded = self.embed_images(encoder_output)
+
+        # Initialize LSTM states
+        states = self.init_hidden_states(v_mean_embedded)
+
+        # Tensors to hold word prediction scores and alphas
+        scores = torch.zeros(
+            (batch_size, max(decode_lengths), self.vocab_size), device=device
+        )
+
+        # At the start, all 'previous words' are the <start> token
+        prev_words = torch.full(
+            (batch_size,), self.word_map[TOKEN_START], dtype=torch.int64, device=device
+        )
+
+        for t in range(max(decode_lengths)):
+            # Find all sequences where an <end> token has been produced in the last timestep
+            ind_end_token = (
+                torch.nonzero(prev_words == self.word_map[TOKEN_END]).view(-1).tolist()
+            )
+
+            # Update the decode lengths accordingly
+            decode_lengths[ind_end_token] = torch.min(
+                decode_lengths[ind_end_token],
+                torch.full_like(decode_lengths[ind_end_token], t, device=device),
+            )
+
+            # Check if all sequences are finished:
+            indices_incomplete_sequences = torch.nonzero(decode_lengths > t).view(-1)
+            if len(indices_incomplete_sequences) == 0:
+                break
+
+            prev_words_embedded = self.word_embedding(prev_words)
+            scores_for_timestep, states, alphas_for_timestep = self.forward_step(
+                images_embedded, v_mean_embedded, prev_words_embedded, states
+            )
+
+            # Update the previously predicted words
+            prev_words = self.update_previous_word(
+                scores_for_timestep, target_captions, t
+            )
+
+            scores[indices_incomplete_sequences, t, :] = scores_for_timestep[
+                indices_incomplete_sequences
+            ]
+
+        return scores, decode_lengths, None
 
     def forward_joint(self, encoder_output, target_captions, decode_lengths):
         """Forward pass for both ranking and caption generation."""
@@ -211,7 +283,7 @@ class RankGenDecoder(CaptioningModelDecoder):
             ]
 
         captions_embedded = l2_norm(lang_encoding_hidden_activations)
-        return scores, decode_lengths, v_mean_embedded, captions_embedded
+        return scores, decode_lengths, v_mean_embedded, captions_embedded, None
 
     def embed_images(self, encoder_output):
         images_embedded = self.image_embedding(encoder_output)
@@ -252,6 +324,9 @@ class RankGenDecoder(CaptioningModelDecoder):
         captions_embedded = self.embed_captions(captions, decode_lengths)
 
         return v_mean_embedded, captions_embedded
+
+    def loss(self, scores, target_captions, decode_lengths, alphas):
+        return self.loss_cross_entropy(scores, target_captions, decode_lengths)
 
     def beam_search(
         self,
