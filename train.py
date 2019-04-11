@@ -52,9 +52,9 @@ def main(
     batch_size,
     alpha_c,
     embeddings_file,
+    grad_clip,
     fine_tune_encoder=False,
     workers=1,
-    grad_clip=10.0,
     start_epoch=0,
     epochs=120,
     epochs_early_stopping=10,
@@ -530,7 +530,7 @@ def check_args(args):
     )
     parser.add_argument(
         "--alpha-c",
-        help="regularization parameter for doubly stochastic attention",
+        help="regularization parameter for doubly stochastic attention (used in Show, Attend Tell model loss)",
         type=float,
         default=1.0,
     )
@@ -550,6 +550,7 @@ def check_args(args):
         help="Path to a word GloVe embeddings file to be used to initialize the decoder word embeddings",
         default=None,
     )
+    parser.add_argument("--grad-clip", help="Gradient clip", type=float, default=10.0)
     parser.add_argument(
         "--dont-fine-tune-embeddings",
         help="Do not fine tune the decoder embeddings",
@@ -573,6 +574,7 @@ if __name__ == "__main__":
         batch_size=parsed_args.batch_size,
         alpha_c=parsed_args.alpha_c,
         embeddings_file=parsed_args.embeddings,
+        grad_clip=parsed_args.grad_clip,
         checkpoint=parsed_args.checkpoint,
         epochs=parsed_args.epochs,
     )
