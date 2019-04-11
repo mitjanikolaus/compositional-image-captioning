@@ -254,10 +254,11 @@ def main(
         else:
             epochs_since_last_improvement += 1
             print(
-                "\nEpochs since last improvement: {}\n".format(
+                "\nEpochs since last improvement: {}".format(
                     epochs_since_last_improvement
                 )
             )
+            print("Best validation score: {}\n".format(best_validation_metric_score))
 
         # Save checkpoint
         if occurrences_data:
