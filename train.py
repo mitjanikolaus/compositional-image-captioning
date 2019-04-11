@@ -238,7 +238,7 @@ def main(
         # One epoch's validation
         if model_name == MODEL_RANKING_GENERATING:
             current_validation_metric_score = validate_ranking(
-                val_images_loader, encoder, decoder, val_images_split
+                val_images_loader, encoder, decoder, val_images_split, print_freq
             )
         else:
             current_validation_metric_score = validate(
@@ -444,7 +444,7 @@ def validate(data_loader, encoder, decoder, word_map, print_freq):
     return bleu4
 
 
-def validate_ranking(data_loader, encoder, decoder, testing_indices):
+def validate_ranking(data_loader, encoder, decoder, testing_indices, print_freq):
     """
     Perform validation of one training epoch.
 
@@ -456,13 +456,14 @@ def validate_ranking(data_loader, encoder, decoder, testing_indices):
     embedded_captions = {}
     embedded_images = {}
 
-    for image_features, captions, caption_lengths, coco_id in data_loader:
+    for i, (image_features, captions, caption_lengths, coco_id) in enumerate(
+        data_loader
+    ):
         image_features = image_features.to(device)
         coco_id = coco_id[0]
         captions = captions[0]
         captions = captions.to(device)
         caption_lengths = caption_lengths.to(device)
-
         decode_lengths = caption_lengths[0] - 1
 
         encoded_features = encoder(image_features)
@@ -473,6 +474,9 @@ def validate_ranking(data_loader, encoder, decoder, testing_indices):
 
         embedded_images[coco_id] = image_embedded.detach().cpu().numpy()[0]
         embedded_captions[coco_id] = image_captions_embedded.detach().cpu().numpy()
+
+        if i % print_freq == 0:
+            print("Validation: [Batch {0}/{1}]\t".format(i, len(data_loader)))
 
     recalls_sum = recall_captions_from_images(
         embedded_images, embedded_captions, testing_indices
