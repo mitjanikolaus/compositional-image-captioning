@@ -187,7 +187,9 @@ class RankGenDecoder(CaptioningModelDecoder):
             h_lan_enc, c_lan_enc = self.language_encoding_lstm(
                 h_lan_enc, c_lan_enc, prev_words_embedded
             )
-            hidden_activations[decode_lengths == t] = h_lan_enc[decode_lengths == t]
+            hidden_activations[decode_lengths == t + 1] = h_lan_enc[
+                decode_lengths == t + 1
+            ]
 
         captions_embedded = l2_norm(hidden_activations)
         return captions_embedded
