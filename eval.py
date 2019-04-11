@@ -104,7 +104,7 @@ def evaluate(
     generated_beams = []
     coco_ids = []
 
-    for image_features, all_captions_for_image, coco_id in tqdm(
+    for image_features, all_captions_for_image, _, coco_id in tqdm(
         data_loader, desc="Evaluate with beam size " + str(beam_size)
     ):
 
