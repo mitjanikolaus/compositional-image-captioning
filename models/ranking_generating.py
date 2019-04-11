@@ -60,28 +60,11 @@ def cosine_sim(images_embedded, captions_embedded):
     return images_embedded.mm(captions_embedded.t())
 
 
-class RankGenEncoder(nn.Module):
-    DEFAULT_MODEL_PARAMS = {"image_features_size": 2048, "joint_embeddings_size": 1024}
-    DEFAULT_OPTIMIZER_PARAMS = {"encoder_learning_rate": 1e-4}
-
-    def __init__(self, params):
-        super(RankGenEncoder, self).__init__()
-        self.params = update_params(self.DEFAULT_MODEL_PARAMS, params)
-
-        self.image_emb = nn.Linear(
-            self.params["image_features_size"], self.params["joint_embeddings_size"]
-        )
-
-    def forward(self, image_features):
-        features_embedded = self.image_emb(image_features)
-
-        return features_embedded
-
-
 class RankGenDecoder(CaptioningModelDecoder):
     DEFAULT_MODEL_PARAMS = {
         "teacher_forcing_ratio": 1,
         "dropout_ratio": 0.0,
+        "image_features_size": 2048,
         "joint_embeddings_size": 1024,
         "word_embeddings_size": 300,
         "attention_lstm_size": 1000,
@@ -94,6 +77,10 @@ class RankGenDecoder(CaptioningModelDecoder):
 
     def __init__(self, word_map, params, pretrained_embeddings=None):
         super(RankGenDecoder, self).__init__(word_map, params, pretrained_embeddings)
+
+        self.image_emb = nn.Linear(
+            self.params["image_features_size"], self.params["joint_embeddings_size"]
+        )
 
         self.attention_lstm = AttentionLSTM(
             self.params["joint_embeddings_size"],
@@ -176,7 +163,9 @@ class RankGenDecoder(CaptioningModelDecoder):
         return scores, states, None
 
     def embed_images(self, encoder_output):
-        images_embedded = encoder_output.mean(dim=1)
+        images_mean_pooled = encoder_output.mean(dim=1)
+        images_embedded = self.image_emb(images_mean_pooled)
+
         images_embedded = l2_norm(images_embedded)
         return images_embedded
 

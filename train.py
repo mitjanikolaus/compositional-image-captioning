@@ -12,7 +12,7 @@ from torchvision.transforms import transforms
 from metrics import recall_captions_from_images
 from models.bottom_up_top_down import TopDownDecoder
 from models.captioning_model import create_encoder_optimizer, create_decoder_optimizer
-from models.ranking_generating import RankGenDecoder, RankGenEncoder
+from models.ranking_generating import RankGenDecoder
 from models.show_attend_tell import Encoder, SATDecoder
 from datasets import CaptionTrainDataset, CaptionTestDataset
 from nltk.translate.bleu_score import corpus_bleu
@@ -129,8 +129,8 @@ def main(
             decoder_optimizer = create_decoder_optimizer(decoder, model_params)
 
         elif model_name == MODEL_RANKING_GENERATING:
-            encoder = RankGenEncoder(model_params)
-            encoder_optimizer = create_encoder_optimizer(encoder, model_params)
+            encoder = None
+            encoder_optimizer = None
             decoder = RankGenDecoder(word_map, model_params, embeddings)
             decoder_optimizer = create_decoder_optimizer(decoder, model_params)
         else:
@@ -450,7 +450,8 @@ def validate_ranking(data_loader, encoder, decoder, testing_indices, print_freq)
 
     """
     decoder.eval()
-    encoder.eval()
+    if encoder:
+        encoder.eval()
 
     # Lists for target captions and generated captions for each image
     embedded_captions = {}
@@ -466,10 +467,11 @@ def validate_ranking(data_loader, encoder, decoder, testing_indices, print_freq)
         caption_lengths = caption_lengths.to(device)
         decode_lengths = caption_lengths[0] - 1
 
-        encoded_features = encoder(image_features)
+        if encoder:
+            image_features = encoder(image_features)
 
         image_embedded, image_captions_embedded = decoder.forward_ranking(
-            encoded_features, captions, decode_lengths
+            image_features, captions, decode_lengths
         )
 
         embedded_images[coco_id] = image_embedded.detach().cpu().numpy()[0]

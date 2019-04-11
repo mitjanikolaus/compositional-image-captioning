@@ -90,10 +90,11 @@ def evaluate(data_folder, occurrences_data, karpathy_json, checkpoint, metrics):
 
         decode_lengths = caption_lengths[0] - 1
 
-        encoded_features = encoder(image_features)
+        if encoder:
+            image_features = encoder(image_features)
 
         image_embedded, image_captions_embedded = decoder.forward_ranking(
-            encoded_features, captions, decode_lengths
+            image_features, captions, decode_lengths
         )
 
         embedded_images[coco_id] = image_embedded.detach().cpu().numpy()[0]
