@@ -331,7 +331,7 @@ def train(
         decode_lengths = caption_lengths.squeeze(1) - 1
 
         if model_name == MODEL_RANKING_GENERATING:
-            images_embedded, captions_embedded = decoder.forward_ranking(
+            scores, decode_lengths, images_embedded, captions_embedded = decoder.forward_joint(
                 images, target_captions, decode_lengths
             )
             loss = decoder.criterion(images_embedded, captions_embedded)

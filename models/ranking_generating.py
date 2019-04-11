@@ -3,6 +3,7 @@ from torch import nn
 from torch.autograd import Variable
 
 from models.captioning_model import CaptioningModelDecoder, update_params
+from utils import TOKEN_START, TOKEN_END
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -78,7 +79,7 @@ class RankGenDecoder(CaptioningModelDecoder):
     def __init__(self, word_map, params, pretrained_embeddings=None):
         super(RankGenDecoder, self).__init__(word_map, params, pretrained_embeddings)
 
-        self.image_emb = nn.Linear(
+        self.image_embedding = nn.Linear(
             self.params["image_features_size"], self.params["joint_embeddings_size"]
         )
 
@@ -129,22 +130,21 @@ class RankGenDecoder(CaptioningModelDecoder):
 
         self.criterion = ContrastiveLoss()
 
-    def init_hidden_states(self, encoder_output):
-        v_mean = encoder_output.mean(dim=1)
-
+    def init_hidden_states(self, v_mean_embedded):
         h_lan_enc, c_lan_enc = self.language_encoding_lstm.init_state(
-            encoder_output.size(0)
+            v_mean_embedded.size(0)
         )
-        h_attention = self.init_h_attention(v_mean)
-        c_attention = self.init_c_attention(v_mean)
-        h_lan_gen = self.init_h_lan_gen(v_mean)
-        c_lan_gen = self.init_c_lan_gen(v_mean)
+        h_attention = self.init_h_attention(v_mean_embedded)
+        c_attention = self.init_c_attention(v_mean_embedded)
+        h_lan_gen = self.init_h_lan_gen(v_mean_embedded)
+        c_lan_gen = self.init_c_lan_gen(v_mean_embedded)
         states = [h_lan_enc, c_lan_enc, h_attention, c_attention, h_lan_gen, c_lan_gen]
 
         return states
 
-    def forward_step(self, encoder_output, prev_words_embedded, states):
-        v_mean = encoder_output.mean(dim=1)
+    def forward_step(
+        self, images_embedded, v_mean_embedded, prev_words_embedded, states
+    ):
         h_lan_enc, c_lan_enc, h_attention, c_attention, h_lan_gen, c_lan_gen = states
 
         h_lan_enc, c_lan_enc = self.language_encoding_lstm(
@@ -152,9 +152,9 @@ class RankGenDecoder(CaptioningModelDecoder):
         )
 
         h_attention, c_attention = self.attention_lstm(
-            h_attention, c_attention, h_lan_gen, v_mean, h_lan_enc
+            h_attention, c_attention, h_lan_gen, v_mean_embedded, h_lan_enc
         )
-        v_hat = self.attention(encoder_output, h_attention)
+        v_hat = self.attention(images_embedded, h_attention)
         h_lan_gen, c_lan_gen = self.language_generation_lstm(
             h_lan_gen, c_lan_gen, h_attention, v_hat
         )
@@ -162,12 +162,63 @@ class RankGenDecoder(CaptioningModelDecoder):
         states = [h_lan_enc, c_lan_enc, h_attention, c_attention, h_lan_gen, c_lan_gen]
         return scores, states, None
 
-    def embed_images(self, encoder_output):
-        images_mean_pooled = encoder_output.mean(dim=1)
-        images_embedded = self.image_emb(images_mean_pooled)
+    def forward_joint(self, encoder_output, target_captions, decode_lengths):
+        """Forward pass for both ranking and caption generation."""
+        batch_size = encoder_output.size(0)
 
-        images_embedded = l2_norm(images_embedded)
-        return images_embedded
+        # Tensor to hold word prediction scores
+        scores = torch.zeros(
+            (batch_size, max(decode_lengths), self.vocab_size), device=device
+        )
+
+        # Tensor to store hidden activations of the language encoding LSTM of the last timestep, these will be the
+        # caption embedding
+        lang_encoding_hidden_activations = torch.zeros(
+            (batch_size, self.params["joint_embeddings_size"]), device=device
+        )
+
+        # At the start, all 'previous words' are the <start> token
+        prev_words = torch.full(
+            (batch_size,), self.word_map[TOKEN_START], dtype=torch.int64, device=device
+        )
+
+        # Embed images
+        images_embedded, v_mean_embedded = self.embed_images(encoder_output)
+
+        # Initialize LSTM states
+        states = self.init_hidden_states(v_mean_embedded)
+
+        for t in range(max(decode_lengths)):
+            # Check which sequences are finished:
+            indices_incomplete_sequences = torch.nonzero(decode_lengths > t).view(-1)
+
+            prev_words_embedded = self.word_embedding(prev_words)
+            scores_for_timestep, states, alphas_for_timestep = self.forward_step(
+                images_embedded, v_mean_embedded, prev_words_embedded, states
+            )
+
+            # Update the previously predicted words
+            prev_words = self.update_previous_word(
+                scores_for_timestep, target_captions, t
+            )
+
+            scores[indices_incomplete_sequences, t, :] = scores_for_timestep[
+                indices_incomplete_sequences
+            ]
+            h_lan_enc = states[0]
+            lang_encoding_hidden_activations[decode_lengths == t + 1] = h_lan_enc[
+                decode_lengths == t + 1
+            ]
+
+        captions_embedded = l2_norm(lang_encoding_hidden_activations)
+        return scores, decode_lengths, v_mean_embedded, captions_embedded
+
+    def embed_images(self, encoder_output):
+        images_embedded = self.image_embedding(encoder_output)
+        images_embedded_mean_pooled = images_embedded.mean(dim=1)
+
+        v_mean_embedded = l2_norm(images_embedded_mean_pooled)
+        return images_embedded, v_mean_embedded
 
     def embed_captions(self, captions, decode_lengths):
         # Initialize LSTM state
@@ -178,8 +229,6 @@ class RankGenDecoder(CaptioningModelDecoder):
         hidden_activations = torch.zeros(
             (batch_size, self.params["joint_embeddings_size"]), device=device
         )
-
-        decode_lengths = decode_lengths - 1
 
         for t in range(max(decode_lengths)):
             prev_words_embedded = self.word_embedding(captions[:, t])
@@ -199,10 +248,10 @@ class RankGenDecoder(CaptioningModelDecoder):
         Forward propagation for the ranking task.
 
         """
-        images_embedded = self.embed_images(encoder_output)
+        _, v_mean_embedded = self.embed_images(encoder_output)
         captions_embedded = self.embed_captions(captions, decode_lengths)
 
-        return images_embedded, captions_embedded
+        return v_mean_embedded, captions_embedded
 
     def beam_search(
         self,
