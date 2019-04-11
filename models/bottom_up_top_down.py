@@ -64,6 +64,9 @@ class TopDownDecoder(CaptioningModelDecoder):
             self.params["image_features_size"], self.language_lstm.lstm_cell.hidden_size
         )
 
+        # Loss function
+        self.loss_function = nn.CrossEntropyLoss().to(device)
+
     def init_hidden_states(self, encoder_output):
         v_mean = encoder_output.mean(dim=1)
 
@@ -84,6 +87,9 @@ class TopDownDecoder(CaptioningModelDecoder):
         scores = self.fully_connected(self.dropout(h2))
         states = [h1, c1, h2, c2]
         return scores, states, None
+
+    def loss(self, packed_scores, packed_targets, alphas):
+        return self.loss_function(packed_scores, packed_targets)
 
     def beam_search(
         self,

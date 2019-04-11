@@ -113,6 +113,9 @@ class SATDecoder(CaptioningModelDecoder):
             self.params["encoder_dim"], self.params["word_embeddings_size"]
         )
 
+        # Loss function
+        self.loss_function = nn.CrossEntropyLoss().to(device)
+
     def init_hidden_states(self, encoder_out):
         """
         Create the initial hidden and cell states for the decoder's LSTM based on the encoded images.
@@ -158,6 +161,13 @@ class SATDecoder(CaptioningModelDecoder):
 
         states = [decoder_hidden_state, decoder_cell_state]
         return scores, states, alpha
+
+    def loss(self, packed_scores, packed_targets, alphas):
+        loss = self.loss_function(packed_scores, packed_targets)
+
+        # Add doubly stochastic attention regularization
+        loss += self.params["alpha_c"] * ((1.0 - alphas.sum(dim=1)) ** 2).mean()
+        return loss
 
 
 class AttentionModule(nn.Module):

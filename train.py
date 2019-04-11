@@ -50,7 +50,6 @@ def main(
     occurrences_data,
     karpathy_json,
     batch_size,
-    alpha_c,
     embeddings_file,
     grad_clip,
     fine_tune_encoder=False,
@@ -201,9 +200,6 @@ def main(
     if encoder:
         encoder.to(device)
 
-    # Loss function
-    loss_function = nn.CrossEntropyLoss().to(device)
-
     for epoch in range(start_epoch, epochs):
         if epochs_since_last_improvement >= epochs_early_stopping:
             print(
@@ -228,10 +224,8 @@ def main(
             decoder,
             encoder_optimizer,
             decoder_optimizer,
-            loss_function,
             epoch,
             grad_clip,
-            alpha_c,
             print_freq,
         )
 
@@ -281,20 +275,6 @@ def main(
     print("\n\nFinished training.")
 
 
-def calculate_loss(
-    model_name, loss_function, packed_scores, packed_targets, alphas, alpha_c
-):
-    if model_name == MODEL_BOTTOM_UP_TOP_DOWN or model_name == MODEL_RANKING_GENERATING:
-        return loss_function(packed_scores, packed_targets)
-
-    elif model_name == MODEL_SHOW_ATTEND_TELL:
-        loss = loss_function(packed_scores, packed_targets)
-
-        # Add doubly stochastic attention regularization
-        loss += alpha_c * ((1.0 - alphas.sum(dim=1)) ** 2).mean()
-        return loss
-
-
 def train(
     model_name,
     data_loader,
@@ -302,10 +282,8 @@ def train(
     decoder,
     encoder_optimizer,
     decoder_optimizer,
-    loss_function,
     epoch,
     grad_clip,
-    alpha_c,
     print_freq,
 ):
     """
@@ -317,7 +295,7 @@ def train(
     if encoder:
         encoder.train()
 
-    losses = AverageMeter()  # losses (per decoded word)
+    losses = AverageMeter()
 
     # Loop over training batches
     for i, (images, target_captions, caption_lengths) in enumerate(data_loader):
@@ -354,14 +332,7 @@ def train(
             )
 
             # Calculate loss
-            loss = calculate_loss(
-                model_name,
-                loss_function,
-                packed_scores,
-                packed_targets,
-                alphas,
-                alpha_c,
-            )
+            loss = decoder.loss(packed_scores, packed_targets, alphas)
 
         # Back propagation
         decoder_optimizer.zero_grad()
@@ -574,7 +545,6 @@ if __name__ == "__main__":
         occurrences_data=parsed_args.occurrences_data,
         karpathy_json=parsed_args.karpathy_json,
         batch_size=parsed_args.batch_size,
-        alpha_c=parsed_args.alpha_c,
         embeddings_file=parsed_args.embeddings,
         grad_clip=parsed_args.grad_clip,
         checkpoint=parsed_args.checkpoint,
