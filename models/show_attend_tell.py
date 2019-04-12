@@ -73,7 +73,7 @@ class SATDecoder(CaptioningModelDecoder):
         "dropout_ratio": 0.5,
         "alpha_c": 1.0,
         "max_caption_len": 50,
-        "fine_tune_decoder_embeddings": True,
+        "fine_tune_decoder_word_embeddings": True,
     }
     DEFAULT_OPTIMIZER_PARAMS = {"decoder_learning_rate": 4e-4}
 

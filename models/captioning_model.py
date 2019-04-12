@@ -26,7 +26,7 @@ class CaptioningModelDecoder(nn.Module):
 
         if pretrained_embeddings is not None:
             self.word_embedding.weight = nn.Parameter(pretrained_embeddings)
-        self.set_fine_tune_embeddings(self.params["fine_tune_decoder_embeddings"])
+        self.set_fine_tune_embeddings(self.params["fine_tune_decoder_word_embeddings"])
 
         self.loss_function = nn.CrossEntropyLoss().to(device)
 

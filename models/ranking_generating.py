@@ -72,7 +72,9 @@ class RankGenDecoder(CaptioningModelDecoder):
         "attention_layer_size": 512,
         "language_generation_lstm_size": 1000,
         "max_caption_len": 50,
-        "fine_tune_decoder_embeddings": True,
+        "fine_tune_decoder_word_embeddings": True,
+        "fine_tune_decoder_caption_embeddings": True,
+        "fine_tune_decoder_image_embeddings": True,
     }
     DEFAULT_OPTIMIZER_PARAMS = {"decoder_learning_rate": 1e-4}
 
@@ -368,6 +370,15 @@ class LanguageEncodingLSTM(nn.Module):
         c = torch.zeros((batch_size, self.lstm_cell.hidden_size), device=device)
         return [h, c]
 
+    def enable_fine_tuning(self, enable_fine_tuning):
+        """
+        Enable or disable the computation of gradients for image embedding module
+
+        :param enable_fine_tuning: Set to True to enable fine tuning
+        """
+        for p in list(self.parameters()):
+            p.requires_grad = enable_fine_tuning
+
 
 class LanguageGenerationLSTM(nn.Module):
     def __init__(self, dim_att_lstm, dim_visual_att, hidden_size):
@@ -428,3 +439,12 @@ class ImageEmbedding(nn.Module):
 
         v_mean_embedded = l2_norm(weighted_image_boxes_summed)
         return images_embedded, v_mean_embedded
+
+    def enable_fine_tuning(self, enable_fine_tuning):
+        """
+        Enable or disable the computation of gradients for image embedding module
+
+        :param enable_fine_tuning: Set to True to enable fine tuning
+        """
+        for p in list(self.parameters()):
+            p.requires_grad = enable_fine_tuning

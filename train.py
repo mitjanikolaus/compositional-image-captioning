@@ -58,7 +58,9 @@ def main(
     grad_clip,
     epochs,
     checkpoint_suffix,
-    fine_tune_encoder=False,
+    fine_tune_decoder_image_embeddings,
+    fine_tune_decoder_caption_embeddings,
+    fine_tune_encoder,
     workers=1,
     start_epoch=0,
     epochs_early_stopping=10,
@@ -196,6 +198,13 @@ def main(
             shuffle=True,
             num_workers=workers,
             pin_memory=True,
+        )
+
+    # Enable or disable training of image and caption embedding
+    if model_name == MODEL_RANKING_GENERATING:
+        decoder.image_embedding.enable_fine_tuning(fine_tune_decoder_image_embeddings)
+        decoder.language_encoding_lstm.enable_fine_tuning(
+            fine_tune_decoder_caption_embeddings
         )
 
     # Print configuration
@@ -543,9 +552,21 @@ def check_args(args):
     )
     parser.add_argument("--grad-clip", help="Gradient clip", type=float, default=10.0)
     parser.add_argument(
-        "--dont-fine-tune-embeddings",
-        help="Do not fine tune the decoder embeddings",
-        dest="fine_tune_decoder_embeddings",
+        "--dont-fine-tune-word-embeddings",
+        help="Do not fine tune the decoder word embeddings",
+        dest="fine_tune_decoder_word_embeddings",
+        action="store_false",
+    )
+    parser.add_argument(
+        "--dont-fine-tune-caption-embeddings",
+        help="Do not fine tune the decoder caption embeddings",
+        dest="fine_tune_decoder_caption_embeddings",
+        action="store_false",
+    )
+    parser.add_argument(
+        "--dont-fine-tune-image-embeddings",
+        help="Do not fine tune the decoder image embeddings",
+        dest="fine_tune_decoder_image_embeddings",
         action="store_false",
     )
 
@@ -569,4 +590,7 @@ if __name__ == "__main__":
         checkpoint=parsed_args.checkpoint,
         epochs=parsed_args.epochs,
         checkpoint_suffix=parsed_args.checkpoint_suffix,
+        fine_tune_decoder_image_embeddings=parsed_args.fine_tune_decoder_image_embeddings,
+        fine_tune_decoder_caption_embeddings=parsed_args.fine_tune_decoder_caption_embeddings,
+        fine_tune_encoder=parsed_args.fine_tune_encoder,
     )
