@@ -45,7 +45,13 @@ class ContrastiveLoss(nn.Module):
             cost_s = cost_s.max(1)[0]
             cost_im = cost_im.max(0)[0]
 
-        return cost_s.sum() + cost_im.sum()
+        # Sum up caption retrieval and image retrieval loss
+        sum_of_losses = cost_s.sum() + cost_im.sum()
+
+        # Normalize loss by batch size
+        normalized_loss = sum_of_losses / images_embedded.size(0)
+
+        return normalized_loss
 
 
 def l2_norm(X):
