@@ -66,7 +66,7 @@ def main(
     epochs_early_stopping=10,
     epochs_adjust_learning_rate=8,
     rate_adjust_learning_rate=0.8,
-    val_set_size=0.1,
+    val_set_size=0.05,
     checkpoint=None,
     print_freq=100,
 ):
