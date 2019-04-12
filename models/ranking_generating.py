@@ -164,27 +164,37 @@ class RankGenDecoder(CaptioningModelDecoder):
         states = [h_lan_enc, c_lan_enc, h_attention, c_attention, h_lan_gen, c_lan_gen]
         return scores, states, None
 
-    def forward(self, encoder_output, target_captions=None, decode_lengths=None):
-        """
-        Forward propagation.
-
-        :param encoder_output: output features of the encoder
-        :param target_captions: encoded target captions, shape: (batch_size, max_caption_length)
-        :param decode_lengths: caption lengths, shape: (batch_size, 1)
-        :return: scores for vocabulary, decode lengths, weights
-        """
+    def forward_joint(self, encoder_output, target_captions=None, decode_lengths=None):
+        """Forward pass for both ranking and caption generation."""
 
         batch_size = encoder_output.size(0)
 
-        assert (
-            not self.training
-        ), "This forward function should only be used for evaluation."
+        # Flatten image
+        encoder_output = encoder_output.view(batch_size, -1, encoder_output.size(-1))
 
-        decode_lengths = torch.full(
-            (batch_size,),
-            self.params["max_caption_len"],
-            dtype=torch.int64,
-            device=device,
+        if not self.training:
+            decode_lengths = torch.full(
+                (batch_size,),
+                self.params["max_caption_len"],
+                dtype=torch.int64,
+                device=device,
+            )
+
+        # Tensors to hold word prediction scores
+        scores = torch.zeros(
+            (batch_size, max(decode_lengths), self.vocab_size), device=device
+        )
+        lang_encoding_hidden_activations = None
+        if self.training:
+            # Tensor to store hidden activations of the language encoding LSTM of the last timestep, these will be the
+            # caption embedding
+            lang_encoding_hidden_activations = torch.zeros(
+                (batch_size, self.params["joint_embeddings_size"]), device=device
+            )
+
+        # At the start, all 'previous words' are the <start> token
+        prev_words = torch.full(
+            (batch_size,), self.word_map[TOKEN_START], dtype=torch.int64, device=device
         )
 
         # Embed images
@@ -193,27 +203,20 @@ class RankGenDecoder(CaptioningModelDecoder):
         # Initialize LSTM states
         states = self.init_hidden_states(v_mean_embedded)
 
-        # Tensors to hold word prediction scores and alphas
-        scores = torch.zeros(
-            (batch_size, max(decode_lengths), self.vocab_size), device=device
-        )
-
-        # At the start, all 'previous words' are the <start> token
-        prev_words = torch.full(
-            (batch_size,), self.word_map[TOKEN_START], dtype=torch.int64, device=device
-        )
-
         for t in range(max(decode_lengths)):
-            # Find all sequences where an <end> token has been produced in the last timestep
-            ind_end_token = (
-                torch.nonzero(prev_words == self.word_map[TOKEN_END]).view(-1).tolist()
-            )
+            if not self.training:
+                # Find all sequences where an <end> token has been produced in the last timestep
+                ind_end_token = (
+                    torch.nonzero(prev_words == self.word_map[TOKEN_END])
+                    .view(-1)
+                    .tolist()
+                )
 
-            # Update the decode lengths accordingly
-            decode_lengths[ind_end_token] = torch.min(
-                decode_lengths[ind_end_token],
-                torch.full_like(decode_lengths[ind_end_token], t, device=device),
-            )
+                # Update the decode lengths accordingly
+                decode_lengths[ind_end_token] = torch.min(
+                    decode_lengths[ind_end_token],
+                    torch.full_like(decode_lengths[ind_end_token], t, device=device),
+                )
 
             # Check if all sequences are finished:
             indices_incomplete_sequences = torch.nonzero(decode_lengths > t).view(-1)
@@ -233,59 +236,23 @@ class RankGenDecoder(CaptioningModelDecoder):
             scores[indices_incomplete_sequences, t, :] = scores_for_timestep[
                 indices_incomplete_sequences
             ]
+            if self.training:
+                h_lan_enc = states[0]
+                lang_encoding_hidden_activations[decode_lengths == t + 1] = h_lan_enc[
+                    decode_lengths == t + 1
+                ]
 
-        return scores, decode_lengths, None
+        captions_embedded = None
+        if self.training:
+            captions_embedded = l2_norm(lang_encoding_hidden_activations)
 
-    def forward_joint(self, encoder_output, target_captions, decode_lengths):
-        """Forward pass for both ranking and caption generation."""
-        batch_size = encoder_output.size(0)
-
-        # Tensor to hold word prediction scores
-        scores = torch.zeros(
-            (batch_size, max(decode_lengths), self.vocab_size), device=device
-        )
-
-        # Tensor to store hidden activations of the language encoding LSTM of the last timestep, these will be the
-        # caption embedding
-        lang_encoding_hidden_activations = torch.zeros(
-            (batch_size, self.params["joint_embeddings_size"]), device=device
-        )
-
-        # At the start, all 'previous words' are the <start> token
-        prev_words = torch.full(
-            (batch_size,), self.word_map[TOKEN_START], dtype=torch.int64, device=device
-        )
-
-        # Embed images
-        images_embedded, v_mean_embedded = self.image_embedding(encoder_output)
-
-        # Initialize LSTM states
-        states = self.init_hidden_states(v_mean_embedded)
-
-        for t in range(max(decode_lengths)):
-            # Check which sequences are finished:
-            indices_incomplete_sequences = torch.nonzero(decode_lengths > t).view(-1)
-
-            prev_words_embedded = self.word_embedding(prev_words)
-            scores_for_timestep, states, alphas_for_timestep = self.forward_step(
-                images_embedded, v_mean_embedded, prev_words_embedded, states
-            )
-
-            # Update the previously predicted words
-            prev_words = self.update_previous_word(
-                scores_for_timestep, target_captions, t
-            )
-
-            scores[indices_incomplete_sequences, t, :] = scores_for_timestep[
-                indices_incomplete_sequences
-            ]
-            h_lan_enc = states[0]
-            lang_encoding_hidden_activations[decode_lengths == t + 1] = h_lan_enc[
-                decode_lengths == t + 1
-            ]
-
-        captions_embedded = l2_norm(lang_encoding_hidden_activations)
         return scores, decode_lengths, v_mean_embedded, captions_embedded, None
+
+    def forward(self, encoder_output, target_captions=None, decode_lengths=None):
+        scores, decode_lengths, v_mean_embedded, captions_embedded, alphas = self.forward_joint(
+            encoder_output, target_captions, decode_lengths
+        )
+        return scores, decode_lengths, alphas
 
     def embed_captions(self, captions, decode_lengths):
         # Initialize LSTM state
