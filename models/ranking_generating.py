@@ -79,12 +79,8 @@ class RankGenDecoder(CaptioningModelDecoder):
     def __init__(self, word_map, params, pretrained_embeddings=None):
         super(RankGenDecoder, self).__init__(word_map, params, pretrained_embeddings)
 
-        self.linear_image_embedding_weights = nn.Linear(
-            self.params["joint_embeddings_size"], 1
-        )
-        self.softmax = nn.Softmax(dim=1)
-        self.image_embedding = nn.Linear(
-            self.params["image_features_size"], self.params["joint_embeddings_size"]
+        self.image_embedding = ImageEmbedding(
+            self.params["joint_embeddings_size"], self.params["image_features_size"]
         )
 
         self.attention_lstm = AttentionLSTM(
@@ -190,7 +186,7 @@ class RankGenDecoder(CaptioningModelDecoder):
         )
 
         # Embed images
-        images_embedded, v_mean_embedded = self.embed_images(encoder_output)
+        images_embedded, v_mean_embedded = self.image_embedding(encoder_output)
 
         # Initialize LSTM states
         states = self.init_hidden_states(v_mean_embedded)
@@ -259,7 +255,7 @@ class RankGenDecoder(CaptioningModelDecoder):
         )
 
         # Embed images
-        images_embedded, v_mean_embedded = self.embed_images(encoder_output)
+        images_embedded, v_mean_embedded = self.image_embedding(encoder_output)
 
         # Initialize LSTM states
         states = self.init_hidden_states(v_mean_embedded)
@@ -289,18 +285,6 @@ class RankGenDecoder(CaptioningModelDecoder):
         captions_embedded = l2_norm(lang_encoding_hidden_activations)
         return scores, decode_lengths, v_mean_embedded, captions_embedded, None
 
-    def embed_images(self, encoder_output):
-        images_embedded = self.image_embedding(encoder_output)
-
-        weights = self.linear_image_embedding_weights(images_embedded)
-        normalized_weights = self.softmax(weights)
-
-        weighted_image_boxes = normalized_weights * images_embedded
-        weighted_image_boxes_summed = weighted_image_boxes.sum(dim=1)
-
-        v_mean_embedded = l2_norm(weighted_image_boxes_summed)
-        return images_embedded, v_mean_embedded
-
     def embed_captions(self, captions, decode_lengths):
         # Initialize LSTM state
         batch_size = captions.size(0)
@@ -329,7 +313,7 @@ class RankGenDecoder(CaptioningModelDecoder):
         Forward propagation for the ranking task.
 
         """
-        _, v_mean_embedded = self.embed_images(encoder_output)
+        _, v_mean_embedded = self.image_embedding(encoder_output)
         captions_embedded = self.embed_captions(captions, decode_lengths)
 
         return v_mean_embedded, captions_embedded
@@ -424,3 +408,23 @@ class VisualAttention(nn.Module):
         weighted_feats = normalized_attention * image_features
         attention_weighted_image_features = weighted_feats.sum(dim=1)
         return attention_weighted_image_features
+
+
+class ImageEmbedding(nn.Module):
+    def __init__(self, joint_embeddings_size, image_features_size):
+        super(ImageEmbedding, self).__init__()
+        self.linear_image_embedding_weights = nn.Linear(joint_embeddings_size, 1)
+        self.softmax = nn.Softmax(dim=1)
+        self.image_embedding = nn.Linear(image_features_size, joint_embeddings_size)
+
+    def forward(self, encoder_output):
+        images_embedded = self.image_embedding(encoder_output)
+
+        weights = self.linear_image_embedding_weights(images_embedded)
+        normalized_weights = self.softmax(weights)
+
+        weighted_image_boxes = normalized_weights * images_embedded
+        weighted_image_boxes_summed = weighted_image_boxes.sum(dim=1)
+
+        v_mean_embedded = l2_norm(weighted_image_boxes_summed)
+        return images_embedded, v_mean_embedded
