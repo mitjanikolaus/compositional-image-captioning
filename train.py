@@ -75,23 +75,6 @@ def main(
 
     print("Starting training on device: ", device)
 
-    # Read word map
-    word_map_file = os.path.join(data_folder, WORD_MAP_FILENAME)
-    with open(word_map_file, "r") as json_file:
-        word_map = json.load(json_file)
-
-    # Read pretrained word embeddings
-    embeddings = None
-    if embeddings_file:
-        embeddings, model_params["embeddings_size"] = load_embeddings(
-            embeddings_file, word_map
-        )
-        print(
-            "Set embedding layer dimension to {}".format(
-                model_params["embeddings_size"]
-            )
-        )
-
     # Generate dataset splits
     train_images_split, val_images_split, _ = get_splits(
         occurrences_data, karpathy_json, val_set_size
@@ -120,8 +103,27 @@ def main(
             encoder.set_fine_tuning_enabled(fine_tune_encoder)
             encoder_optimizer = create_encoder_optimizer(encoder, model_params)
 
+        word_map = decoder.word_map
+
     # No checkpoint given, initialize the model
     else:
+        # Read word map
+        word_map_file = os.path.join(data_folder, WORD_MAP_FILENAME)
+        with open(word_map_file, "r") as json_file:
+            word_map = json.load(json_file)
+
+        # Read pretrained word embeddings
+        embeddings = None
+        if embeddings_file:
+            embeddings, model_params["embeddings_size"] = load_embeddings(
+                embeddings_file, word_map
+            )
+            print(
+                "Set embedding layer dimension to {}".format(
+                    model_params["embeddings_size"]
+                )
+            )
+
         if model_name == MODEL_SHOW_ATTEND_TELL:
             decoder = SATDecoder(word_map, model_params, embeddings)
             decoder_optimizer = create_decoder_optimizer(decoder, model_params)
