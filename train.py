@@ -190,11 +190,14 @@ def main(
             num_workers=workers,
             pin_memory=True,
         )
+        validation_batch_size = batch_size
+        if model_name == MODEL_RANKING_GENERATING:
+            validation_batch_size = 1
         val_images_loader = torch.utils.data.DataLoader(
             CaptionTestDataset(
                 data_folder, BOTTOM_UP_FEATURES_FILENAME, val_images_split
             ),
-            batch_size=1,
+            batch_size=validation_batch_size,
             shuffle=True,
             num_workers=workers,
             pin_memory=True,
