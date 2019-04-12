@@ -1,8 +1,9 @@
 import torch
 from torch import nn
 from torch.autograd import Variable
+import torch.nn.functional as F
 
-from models.captioning_model import CaptioningModelDecoder
+from models.captioning_model import CaptioningModelDecoder, print_current_beam
 from utils import TOKEN_START, TOKEN_END
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -305,9 +306,141 @@ class RankGenDecoder(CaptioningModelDecoder):
                 "Storage of alphas for this model is not supported"
             )
 
-        return super(RankGenDecoder, self).beam_search(
-            encoder_output, beam_size, store_alphas, store_beam, print_beam
+        current_beam_width = beam_size
+
+        enc_image_size = encoder_output.size(1)
+        encoder_dim = encoder_output.size()[-1]
+
+        # Flatten encoding
+        encoder_output = encoder_output.view(1, -1, encoder_dim)
+
+        # We'll treat the problem as having a batch size of k
+        encoder_output = encoder_output.expand(
+            beam_size, encoder_output.size(1), encoder_dim
         )
+
+        # Tensor to store top k sequences; now they're just <start>
+        top_k_sequences = torch.full(
+            (beam_size, 1), self.word_map[TOKEN_START], dtype=torch.int64, device=device
+        )
+
+        # Tensor to store top k sequences' scores; now they're just 0
+        top_k_scores = torch.zeros(beam_size, device=device)
+
+        if store_alphas:
+            # Tensor to store top k sequences' alphas; now they're just 1s
+            seqs_alpha = torch.ones(beam_size, 1, enc_image_size, enc_image_size).to(
+                device
+            )
+
+        # Lists to store completed sequences, scores, and alphas and the full decoding beam
+        complete_seqs = []
+        complete_seqs_alpha = []
+        complete_seqs_scores = []
+        beam = []
+
+        # Embed images
+        images_embedded, v_mean_embedded = self.image_embedding(encoder_output)
+
+        # Initialize LSTM states
+        states = self.init_hidden_states(v_mean_embedded)
+
+        # Start decoding
+        for step in range(0, self.params["max_caption_len"] - 1):
+            prev_words = top_k_sequences[:, step]
+
+            prev_word_embeddings = self.word_embedding(prev_words)
+            predictions, states, alpha = self.forward_step(
+                images_embedded, v_mean_embedded, prev_word_embeddings, states
+            )
+            scores = F.log_softmax(predictions, dim=1)
+
+            # Add the new scores
+            scores = top_k_scores.unsqueeze(1).expand_as(scores) + scores
+
+            # For the first timestep, the scores from previous decoding are all the same, so in order to create 5
+            # different sequences, we should only look at one branch
+            if step == 0:
+                scores = scores[0]
+
+            # Find the top k of the flattened scores
+            top_k_scores, top_k_words = scores.view(-1).topk(
+                current_beam_width, 0, largest=True, sorted=True
+            )
+
+            # Convert flattened indices to actual indices of scores
+            prev_seq_inds = top_k_words / self.vocab_size  # (k)
+            next_words = top_k_words % self.vocab_size  # (k)
+
+            # Add new words to sequences
+            top_k_sequences = torch.cat(
+                (top_k_sequences[prev_seq_inds], next_words.unsqueeze(1)), dim=1
+            )
+
+            if print_beam:
+                print_current_beam(top_k_sequences, top_k_scores, self.word_map)
+            if store_beam:
+                beam.append(top_k_sequences)
+
+            # Store the new alphas
+            if store_alphas:
+                alpha = alpha.view(-1, enc_image_size, enc_image_size)
+                seqs_alpha = torch.cat(
+                    (seqs_alpha[prev_seq_inds], alpha[prev_seq_inds].unsqueeze(1)),
+                    dim=1,
+                )
+
+            # Check for complete and incomplete sequences (based on the <end> token)
+            incomplete_inds = (
+                torch.nonzero(next_words != self.word_map[TOKEN_END]).view(-1).tolist()
+            )
+            complete_inds = (
+                torch.nonzero(next_words == self.word_map[TOKEN_END]).view(-1).tolist()
+            )
+
+            # Set aside complete sequences and reduce beam size accordingly
+            if len(complete_inds) > 0:
+                complete_seqs.extend(top_k_sequences[complete_inds].tolist())
+                complete_seqs_scores.extend(top_k_scores[complete_inds])
+                if store_alphas:
+                    complete_seqs_alpha.extend(seqs_alpha[complete_inds].tolist())
+
+            # Stop if k captions have been completely generated
+            current_beam_width = len(incomplete_inds)
+            if current_beam_width == 0:
+                break
+
+            # Proceed with incomplete sequences
+            top_k_sequences = top_k_sequences[incomplete_inds]
+            for i in range(len(states)):
+                states[i] = states[i][prev_seq_inds[incomplete_inds]]
+            images_embedded = images_embedded[prev_seq_inds[incomplete_inds]]
+            v_mean_embedded = v_mean_embedded[prev_seq_inds[incomplete_inds]]
+            top_k_scores = top_k_scores[incomplete_inds]
+            if store_alphas:
+                seqs_alpha = seqs_alpha[incomplete_inds]
+
+        if len(complete_seqs) < beam_size:
+            complete_seqs.extend(top_k_sequences[incomplete_inds].tolist())
+            complete_seqs_scores.extend(top_k_scores[incomplete_inds])
+            if store_alphas:
+                complete_seqs_alpha.extend(seqs_alpha[incomplete_inds])
+
+        sorted_sequences = [
+            sequence
+            for _, sequence in sorted(
+                zip(complete_seqs_scores, complete_seqs), reverse=True
+            )
+        ]
+        sorted_alphas = None
+        if store_alphas:
+            sorted_alphas = [
+                alpha
+                for _, alpha in sorted(
+                    zip(complete_seqs_scores, complete_seqs_alpha), reverse=True
+                )
+            ]
+        return sorted_sequences, sorted_alphas, beam
 
 
 class AttentionLSTM(nn.Module):
