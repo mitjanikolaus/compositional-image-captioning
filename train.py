@@ -215,13 +215,12 @@ def main(
     # Print configuration
     if encoder:
         print("Encoder params: {}".format(encoder.params))
-
     print("Decoder params: {}".format(decoder.params))
 
     # Move to GPU, if available
-    decoder = decoder.to(device)
     if encoder:
         encoder.to(device)
+    decoder = decoder.to(device)
 
     for epoch in range(start_epoch, epochs):
         if epochs_since_last_improvement >= epochs_early_stopping:
@@ -261,14 +260,9 @@ def main(
             current_checkpoint_is_best = (
                 current_ranking_metric_score > best_ranking_metric_score
             )
-        if objective == OBJECTIVE_GENERATION:
+        if objective == OBJECTIVE_GENERATION or objective == OBJECTIVE_JOINT:
             current_generation_metric_score = validate(
-                val_images_loader,
-                encoder,
-                decoder,
-                word_map,
-                occurrences_data,
-                print_freq,
+                val_images_loader, encoder, decoder, word_map, print_freq
             )
             current_checkpoint_is_best = (
                 current_generation_metric_score > best_generation_metric_score
@@ -285,7 +279,7 @@ def main(
                     epochs_since_last_improvement
                 )
             )
-            print("Best ranking score: {}\n".format(best_ranking_metric_score))
+            print("Best ranking score: {}".format(best_ranking_metric_score))
             print("Best generation score: {}\n".format(best_generation_metric_score))
 
         # Save checkpoint
@@ -348,7 +342,16 @@ def train(
                     images, target_captions, decode_lengths
                 )
                 loss = decoder.loss(scores, target_captions, decode_lengths, alphas)
-            if objective == OBJECTIVE_RANKING:
+            elif objective == OBJECTIVE_JOINT:
+                scores, decode_lengths, images_embedded, captions_embedded, alphas = decoder.forward_joint(
+                    images, target_captions, decode_lengths
+                )
+                loss_generation = decoder.loss(
+                    scores, target_captions, decode_lengths, alphas
+                )
+                loss_ranking = decoder.loss_ranking(images_embedded, captions_embedded)
+                loss = loss_generation + loss_ranking
+            elif objective == OBJECTIVE_RANKING:
                 images_embedded, captions_embedded = decoder.forward_ranking(
                     images, target_captions, decode_lengths
                 )
@@ -392,7 +395,7 @@ def train(
     print("\n * LOSS - {loss.avg:.3f}\n".format(loss=losses))
 
 
-def validate(data_loader, encoder, decoder, word_map, occurrences_data, print_freq):
+def validate(data_loader, encoder, decoder, word_map, print_freq):
     """
     Perform validation of one training epoch.
 
@@ -440,8 +443,6 @@ def validate(data_loader, encoder, decoder, word_map, occurrences_data, print_fr
     bleu4 = corpus_bleu(target_captions, generated_captions)
 
     print("\n * BLEU-4 - {bleu}\n".format(bleu=bleu4))
-
-    # recall_pairs(generated_captions, coco_ids, word_map, occurrences_data)
 
     return bleu4
 
