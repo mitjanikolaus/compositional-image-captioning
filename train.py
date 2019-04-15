@@ -32,7 +32,7 @@ from utils import (
 
 MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
 MODEL_BOTTOM_UP_TOP_DOWN = "BOTTOM_UP_TOP_DOWN"
-MODEL_RANKING_GENERATING = "BOTTOM_UP_TOP_DOWN_RANKING"
+MODEL_BOTTOM_UP_TOP_DOWN_RANKING = "BOTTOM_UP_TOP_DOWN_RANKING"
 
 OBJECTIVE_GENERATION = "GENERATION"
 OBJECTIVE_RANKING = "RANKING"
@@ -139,7 +139,7 @@ def main(
             decoder = TopDownDecoder(word_map, model_params, embeddings)
             decoder_optimizer = create_decoder_optimizer(decoder, model_params)
 
-        elif model_name == MODEL_RANKING_GENERATING:
+        elif model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING:
             encoder = None
             encoder_optimizer = None
             decoder = BottomUpTopDownRankingDecoder(word_map, model_params, embeddings)
@@ -180,7 +180,8 @@ def main(
         )
 
     elif (
-        model_name == MODEL_BOTTOM_UP_TOP_DOWN or model_name == MODEL_RANKING_GENERATING
+        model_name == MODEL_BOTTOM_UP_TOP_DOWN
+        or model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING
     ):
         train_images_loader = torch.utils.data.DataLoader(
             CaptionTrainDataset(
@@ -192,7 +193,7 @@ def main(
             pin_memory=True,
         )
         validation_batch_size = batch_size
-        if model_name == MODEL_RANKING_GENERATING:
+        if model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING:
             validation_batch_size = 1
         val_images_loader = torch.utils.data.DataLoader(
             CaptionTestDataset(
@@ -205,7 +206,7 @@ def main(
         )
 
     # Enable or disable training of image and caption embedding
-    if model_name == MODEL_RANKING_GENERATING:
+    if model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING:
         decoder.image_embedding.enable_fine_tuning(fine_tune_decoder_image_embeddings)
         decoder.language_encoding_lstm.enable_fine_tuning(
             fine_tune_decoder_caption_embeddings
@@ -341,7 +342,7 @@ def train(
             images = encoder(images)
         decode_lengths = caption_lengths.squeeze(1) - 1
 
-        if model_name == MODEL_RANKING_GENERATING:
+        if model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING:
             if objective == OBJECTIVE_GENERATION:
                 scores, decode_lengths, images_embedded, captions_embedded, alphas = decoder.forward_joint(
                     images, target_captions, decode_lengths
@@ -497,7 +498,7 @@ def check_args(args):
         choices=[
             MODEL_SHOW_ATTEND_TELL,
             MODEL_BOTTOM_UP_TOP_DOWN,
-            MODEL_RANKING_GENERATING,
+            MODEL_BOTTOM_UP_TOP_DOWN_RANKING,
         ],
     )
     parser.add_argument(

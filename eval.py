@@ -13,7 +13,7 @@ from tqdm import tqdm
 from train import (
     MODEL_SHOW_ATTEND_TELL,
     MODEL_BOTTOM_UP_TOP_DOWN,
-    MODEL_RANKING_GENERATING,
+    MODEL_BOTTOM_UP_TOP_DOWN_RANKING,
 )
 from utils import (
     get_caption_without_special_tokens,
@@ -84,7 +84,8 @@ def evaluate(
             pin_memory=True,
         )
     elif (
-        model_name == MODEL_BOTTOM_UP_TOP_DOWN or model_name == MODEL_RANKING_GENERATING
+        model_name == MODEL_BOTTOM_UP_TOP_DOWN
+        or model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING
     ):
         data_loader = torch.utils.data.DataLoader(
             CaptionTestDataset(

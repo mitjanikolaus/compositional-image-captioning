@@ -8,7 +8,7 @@ from datasets import *
 from tqdm import tqdm
 
 from metrics import recall_captions_from_images, recall_captions_from_images_pairs
-from train import MODEL_RANKING_GENERATING
+from train import MODEL_BOTTOM_UP_TOP_DOWN_RANKING
 from utils import (
     get_splits_from_occurrences_data,
     BOTTOM_UP_FEATURES_FILENAME,
@@ -60,7 +60,7 @@ def evaluate(data_folder, occurrences_data, karpathy_json, checkpoint, metrics):
     print("Test set size: {}".format(len(test_images_split)))
     print("Evaluating performance for {} samples.".format(len(test_indices)))
 
-    if model_name == MODEL_RANKING_GENERATING:
+    if model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING:
         data_loader = torch.utils.data.DataLoader(
             CaptionTestDataset(
                 data_folder, BOTTOM_UP_FEATURES_FILENAME, test_images_split
