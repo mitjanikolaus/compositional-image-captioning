@@ -440,7 +440,7 @@ def validate(data_loader, encoder, decoder, word_map, occurrences_data, print_fr
 
     print("\n * BLEU-4 - {bleu}\n".format(bleu=bleu4))
 
-    recall_pairs(generated_captions, coco_ids, word_map, occurrences_data)
+    # recall_pairs(generated_captions, coco_ids, word_map, occurrences_data)
 
     return bleu4
 
