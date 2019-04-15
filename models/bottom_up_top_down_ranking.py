@@ -68,7 +68,7 @@ def cosine_sim(images_embedded, captions_embedded):
     return images_embedded.mm(captions_embedded.t())
 
 
-class RankGenDecoder(CaptioningModelDecoder):
+class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
     DEFAULT_MODEL_PARAMS = {
         "teacher_forcing_ratio": 1,
         "dropout_ratio": 0.0,
@@ -84,7 +84,9 @@ class RankGenDecoder(CaptioningModelDecoder):
     DEFAULT_OPTIMIZER_PARAMS = {"decoder_learning_rate": 1e-4}
 
     def __init__(self, word_map, params, pretrained_embeddings=None):
-        super(RankGenDecoder, self).__init__(word_map, params, pretrained_embeddings)
+        super(BottomUpTopDownRankingDecoder, self).__init__(
+            word_map, params, pretrained_embeddings
+        )
 
         self.image_embedding = ImageEmbedding(
             self.params["joint_embeddings_size"], self.params["image_features_size"]

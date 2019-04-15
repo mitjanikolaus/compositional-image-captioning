@@ -9,8 +9,8 @@ from torchvision.transforms import transforms
 
 from metrics import recall_captions_from_images, recall_pairs
 from models.bottom_up_top_down import TopDownDecoder
+from models.bottom_up_top_down_ranking import BottomUpTopDownRankingDecoder
 from models.captioning_model import create_encoder_optimizer, create_decoder_optimizer
-from models.ranking_generating import RankGenDecoder
 from models.show_attend_tell import Encoder, SATDecoder
 from datasets import CaptionTrainDataset, CaptionTestDataset
 from nltk.translate.bleu_score import corpus_bleu
@@ -32,7 +32,7 @@ from utils import (
 
 MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
 MODEL_BOTTOM_UP_TOP_DOWN = "BOTTOM_UP_TOP_DOWN"
-MODEL_RANKING_GENERATING = "RANKING_GENERATING"
+MODEL_RANKING_GENERATING = "BOTTOM_UP_TOP_DOWN_RANKING"
 
 OBJECTIVE_GENERATION = "GENERATION"
 OBJECTIVE_RANKING = "RANKING"
@@ -142,7 +142,7 @@ def main(
         elif model_name == MODEL_RANKING_GENERATING:
             encoder = None
             encoder_optimizer = None
-            decoder = RankGenDecoder(word_map, model_params, embeddings)
+            decoder = BottomUpTopDownRankingDecoder(word_map, model_params, embeddings)
             decoder_optimizer = create_decoder_optimizer(decoder, model_params)
         else:
             raise RuntimeError("Unknown model name: {}".format(model_name))
