@@ -187,6 +187,33 @@ def get_splits_from_occurrences_data(occurrences_data_files):
     return train_images_split, val_images_split, test_images_split
 
 
+def get_ranking_splits_from_occurrences_data(occurrences_data_files):
+    evaluation_indices = []
+
+    for file in occurrences_data_files:
+        with open(file, "r") as json_file:
+            occurrences_data = json.load(json_file)
+
+        evaluation_indices.extend(
+            [
+                key
+                for key, value in occurrences_data[OCCURRENCE_DATA].items()
+                if value[PAIR_OCCURENCES] >= 1 and value[DATA_COCO_SPLIT] == "val2014"
+            ]
+        )
+
+    with open(occurrences_data_files[0], "r") as json_file:
+        occurrences_data = json.load(json_file)
+
+    test_images_indices = [
+        key
+        for key, value in occurrences_data[OCCURRENCE_DATA].items()
+        if key not in evaluation_indices and value[DATA_COCO_SPLIT] == "val2014"
+    ]
+
+    return test_images_indices, evaluation_indices
+
+
 def get_splits_from_karpathy_json(karpathy_json):
     with open(karpathy_json, "r") as json_file:
         images_data = json.load(json_file)["images"]

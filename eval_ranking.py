@@ -10,9 +10,9 @@ from tqdm import tqdm
 from metrics import recall_captions_from_images, recall_captions_from_images_pairs
 from train import MODEL_BOTTOM_UP_TOP_DOWN_RANKING
 from utils import (
-    get_splits_from_occurrences_data,
     BOTTOM_UP_FEATURES_FILENAME,
     get_splits_from_karpathy_json,
+    get_ranking_splits_from_occurrences_data,
 )
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -42,28 +42,24 @@ def evaluate(data_folder, occurrences_data, karpathy_json, checkpoint, metrics):
     print("Decoder params: {}".format(decoder.params))
 
     if occurrences_data and not karpathy_json:
-        indices_non_matching_samples, _, indices_matching_samples = get_splits_from_occurrences_data(
-            occurrences_data, 0
+        test_images_indices, evaluation_indices = get_ranking_splits_from_occurrences_data(
+            occurrences_data
         )
-        all_indices = indices_non_matching_samples + indices_matching_samples
-        test_images_split = all_indices
-        # Evaluate the model only on the matching samples
-        test_indices = indices_matching_samples
     elif karpathy_json and not occurrences_data:
-        _, _, test_images_split = get_splits_from_karpathy_json(karpathy_json)
-        test_indices = test_images_split
+        _, _, test_images_indices = get_splits_from_karpathy_json(karpathy_json)
+        evaluation_indices = test_images_indices
     elif occurrences_data and karpathy_json:
         return ValueError("Specify either karpathy_json or occurrences_data, not both!")
     else:
         return ValueError("Specify either karpathy_json or occurrences_data!")
 
-    print("Test set size: {}".format(len(test_images_split)))
-    print("Evaluating performance for {} samples.".format(len(test_indices)))
+    print("Test set size: {}".format(len(test_images_indices)))
+    print("Evaluating performance for {} samples.".format(len(evaluation_indices)))
 
     if model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING:
         data_loader = torch.utils.data.DataLoader(
             CaptionTestDataset(
-                data_folder, BOTTOM_UP_FEATURES_FILENAME, test_images_split
+                data_folder, BOTTOM_UP_FEATURES_FILENAME, test_images_indices
             ),
             batch_size=1,
             shuffle=False,
@@ -106,7 +102,7 @@ def evaluate(data_folder, occurrences_data, karpathy_json, checkpoint, metrics):
             metric,
             embedded_images,
             embedded_captions,
-            test_indices,
+            evaluation_indices,
             target_captions,
             word_map,
             occurrences_data,
@@ -120,7 +116,7 @@ def calculate_metric(
     test_indices,
     target_captions,
     word_map,
-    occurrences_data_file,
+    occurrences_data,
 ):
     if metric_name == METRIC_RECALL:
         recall_captions_from_images(embedded_images, embedded_captions, test_indices)
@@ -128,10 +124,9 @@ def calculate_metric(
         recall_captions_from_images_pairs(
             embedded_images,
             embedded_captions,
-            test_indices,
             target_captions,
             word_map,
-            occurrences_data_file,
+            occurrences_data,
         )
 
 
