@@ -1,4 +1,5 @@
 import json
+import os
 
 import matplotlib.pyplot as plt
 
@@ -21,36 +22,42 @@ from utils import (
 # stanfordnlp.download('en', confirm_if_exists=True)
 
 
-def recall_pairs(generated_captions, coco_ids, word_map, occurrences_data_file):
-    with open(occurrences_data_file, "r") as json_file:
-        occurrences_data = json.load(json_file)
+def recall_pairs(generated_captions, coco_ids, word_map, occurrences_data_files):
+    for file in occurrences_data_files:
+        with open(file, "r") as json_file:
+            occurrences_data = json.load(json_file)
 
-    nouns = set(occurrences_data[NOUNS])
+        nouns = set(occurrences_data[NOUNS])
 
-    if ADJECTIVES in occurrences_data:
-        adjectives = set(occurrences_data[ADJECTIVES])
-        return calc_recall(
-            generated_captions,
-            coco_ids,
-            word_map,
-            nouns,
-            adjectives,
-            occurrences_data,
-            contains_adjective_noun_pair,
-        )
-    elif VERBS in occurrences_data:
-        verbs = set(occurrences_data[VERBS])
-        return calc_recall(
-            generated_captions,
-            coco_ids,
-            word_map,
-            nouns,
-            verbs,
-            occurrences_data,
-            contains_verb_noun_pair,
-        )
-    else:
-        raise ValueError("No adjectives or verbs found in occurrences data!")
+        if ADJECTIVES in occurrences_data:
+            adjectives = set(occurrences_data[ADJECTIVES])
+            recall = calc_recall(
+                generated_captions,
+                coco_ids,
+                word_map,
+                nouns,
+                adjectives,
+                occurrences_data,
+                contains_adjective_noun_pair,
+            )
+        elif VERBS in occurrences_data:
+            verbs = set(occurrences_data[VERBS])
+            recall = calc_recall(
+                generated_captions,
+                coco_ids,
+                word_map,
+                nouns,
+                verbs,
+                occurrences_data,
+                contains_verb_noun_pair,
+            )
+        else:
+            raise ValueError("No adjectives or verbs found in occurrences data!")
+
+        name = os.path.basename(occurrences_data).split(".")[0]
+        print("Recall for {}".format(name))
+        print([float("%.3f" % elem) for elem in recall])
+        print("Mean of recalls: {}".format(recall.mean()))
 
 
 def calc_recall(
@@ -69,7 +76,6 @@ def calc_recall(
     for coco_id, top_k_captions in zip(coco_ids, generated_captions):
         count = occurrences_data[OCCURRENCE_DATA][coco_id][PAIR_OCCURENCES]
 
-        hit = False
         for caption in top_k_captions:
             caption = " ".join(
                 decode_caption(
@@ -77,15 +83,13 @@ def calc_recall(
                 )
             )
             pos_tagged_caption = nlp_pipeline(caption).sentences[0]
-            _, _, match = contains_pair_function(pos_tagged_caption, nouns, other)
-            if match:
-                hit = True
-
-        for j in range(count):
-            if hit:
-                true_positives[j] += 1
+            _, _, contains_pair = contains_pair_function(
+                pos_tagged_caption, nouns, other
+            )
+            if contains_pair:
+                true_positives[count] += 1
             else:
-                false_negatives[j] += 1
+                false_negatives[count] += 1
 
     recall = true_positives / (true_positives + false_negatives)
     return recall
