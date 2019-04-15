@@ -139,7 +139,8 @@ def check_args(args):
     )
     parser.add_argument(
         "--occurrences-data",
-        help="File containing occurrences statistics about adjective-noun or verb-noun pairs",
+        nargs="+",
+        help="Files containing occurrences statistics about adjective-noun or verb-noun pairs",
     )
     parser.add_argument(
         "--karpathy-json", help="File containing train/val/test split information"
