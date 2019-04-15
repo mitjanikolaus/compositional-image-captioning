@@ -114,12 +114,12 @@ def main(
         # Read pretrained word embeddings
         embeddings = None
         if embeddings_file:
-            embeddings, model_params["embeddings_size"] = load_embeddings(
+            embeddings, model_params["word_embeddings_size"] = load_embeddings(
                 embeddings_file, word_map
             )
             print(
                 "Set embedding layer dimension to {}".format(
-                    model_params["embeddings_size"]
+                    model_params["word_embeddings_size"]
                 )
             )
 
