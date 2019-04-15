@@ -7,7 +7,7 @@ import torch.optim
 import torch.utils.data
 from torchvision.transforms import transforms
 
-from metrics import recall_captions_from_images
+from metrics import recall_captions_from_images, recall_pairs
 from models.bottom_up_top_down import TopDownDecoder
 from models.captioning_model import create_encoder_optimizer, create_decoder_optimizer
 from models.ranking_generating import RankGenDecoder
@@ -66,7 +66,6 @@ def main(
     epochs_early_stopping=10,
     epochs_adjust_learning_rate=8,
     rate_adjust_learning_rate=0.8,
-    val_set_size=0.05,
     checkpoint=None,
     print_freq=100,
 ):
@@ -77,7 +76,7 @@ def main(
 
     # Generate dataset splits
     train_images_split, val_images_split, _ = get_splits(
-        occurrences_data, karpathy_json, val_set_size
+        occurrences_data, karpathy_json
     )
 
     current_generation_metric_score = 0.0
@@ -263,7 +262,12 @@ def main(
             )
         if objective == OBJECTIVE_GENERATION:
             current_generation_metric_score = validate(
-                val_images_loader, encoder, decoder, word_map, print_freq
+                val_images_loader,
+                encoder,
+                decoder,
+                word_map,
+                occurrences_data,
+                print_freq,
             )
             current_checkpoint_is_best = (
                 current_generation_metric_score > best_generation_metric_score
@@ -387,7 +391,7 @@ def train(
     print("\n * LOSS - {loss.avg:.3f}\n".format(loss=losses))
 
 
-def validate(data_loader, encoder, decoder, word_map, print_freq):
+def validate(data_loader, encoder, decoder, word_map, occurrences_data, print_freq):
     """
     Perform validation of one training epoch.
 
@@ -398,9 +402,10 @@ def validate(data_loader, encoder, decoder, word_map, print_freq):
 
     target_captions = []
     generated_captions = []
+    coco_ids = []
 
     # Loop over batches
-    for i, (images, all_captions_for_image, _, _) in enumerate(data_loader):
+    for i, (images, all_captions_for_image, _, coco_id) in enumerate(data_loader):
         images = images.to(device)
 
         # Forward propagation
@@ -427,11 +432,15 @@ def validate(data_loader, encoder, decoder, word_map, print_freq):
         ]
         generated_captions.extend(captions)
 
+        coco_ids.append(coco_id[0])
+
         assert len(target_captions) == len(generated_captions)
 
     bleu4 = corpus_bleu(target_captions, generated_captions)
 
     print("\n * BLEU-4 - {bleu}\n".format(bleu=bleu4))
+
+    recall_pairs(generated_captions, coco_ids, word_map, occurrences_data)
 
     return bleu4
 

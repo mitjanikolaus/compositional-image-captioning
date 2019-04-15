@@ -152,8 +152,9 @@ def invert_normalization(image):
     return inv_normalize(image)
 
 
-def get_splits_from_occurrences_data(occurrences_data_files, val_set_size=0.1):
+def get_splits_from_occurrences_data(occurrences_data_files):
     test_images_split = []
+    val_images_split = []
 
     for file in occurrences_data_files:
         with open(file, "r") as json_file:
@@ -163,22 +164,25 @@ def get_splits_from_occurrences_data(occurrences_data_files, val_set_size=0.1):
             [
                 key
                 for key, value in occurrences_data[OCCURRENCE_DATA].items()
-                if value[PAIR_OCCURENCES] >= 1
+                if value[PAIR_OCCURENCES] >= 1 and value[DATA_COCO_SPLIT] == "val2014"
+            ]
+        )
+        val_images_split.extend(
+            [
+                key
+                for key, value in occurrences_data[OCCURRENCE_DATA].items()
+                if value[PAIR_OCCURENCES] >= 1 and value[DATA_COCO_SPLIT] == "train2014"
             ]
         )
 
     with open(occurrences_data_files[0], "r") as json_file:
         occurrences_data = json.load(json_file)
 
-    train_val_indices_split = [
+    train_images_split = [
         key
         for key, value in occurrences_data[OCCURRENCE_DATA].items()
-        if key not in test_images_split
+        if key not in test_images_split and value[DATA_COCO_SPLIT] == "train2014"
     ]
-
-    train_val_split = int((1 - val_set_size) * len(train_val_indices_split))
-    train_images_split = train_val_indices_split[:train_val_split]
-    val_images_split = train_val_indices_split[train_val_split:]
 
     return train_images_split, val_images_split, test_images_split
 
@@ -202,10 +206,10 @@ def get_splits_from_karpathy_json(karpathy_json):
     return train_images_split, val_images_split, test_images_split
 
 
-def get_splits(occurrences_data, karpathy_json, val_set_size=0.1):
+def get_splits(occurrences_data, karpathy_json):
     if occurrences_data and not karpathy_json:
         train_images_split, val_images_split, test_images_split = get_splits_from_occurrences_data(
-            occurrences_data, val_set_size
+            occurrences_data
         )
     elif karpathy_json and not occurrences_data:
         train_images_split, val_images_split, test_images_split = get_splits_from_karpathy_json(
@@ -280,7 +284,7 @@ def save_checkpoint(
     :param is_best: True, if this is the best checkpoint so far (will save the model to a dedicated file)
     """
     if occurrences_data:
-        name = os.path.basename(occurrences_data).split(".")[0]
+        name = "heldout_pairs"
     elif karpathy_json:
         name = "karpathy"
     name += checkpoint_suffix
