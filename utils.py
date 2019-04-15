@@ -219,6 +219,10 @@ def get_splits(occurrences_data, karpathy_json):
         return ValueError("Specify either karpathy_json or occurrences_data, not both!")
     else:
         return ValueError("Specify either karpathy_json or occurrences_data!")
+
+    print("Train set size: {}".format(len(train_images_split)))
+    print("Val set size: {}".format(len(val_images_split)))
+    print("Test set size: {}".format(len(test_images_split)))
     return train_images_split, val_images_split, test_images_split
 
 
