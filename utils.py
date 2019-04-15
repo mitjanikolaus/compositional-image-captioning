@@ -152,25 +152,33 @@ def invert_normalization(image):
     return inv_normalize(image)
 
 
-def get_splits_from_occurrences_data(occurrences_data_file, val_set_size=0.1):
-    with open(occurrences_data_file, "r") as json_file:
+def get_splits_from_occurrences_data(occurrences_data_files, val_set_size=0.1):
+    test_images_split = []
+
+    for file in occurrences_data_files:
+        with open(file, "r") as json_file:
+            occurrences_data = json.load(json_file)
+
+        test_images_split.extend(
+            [
+                key
+                for key, value in occurrences_data[OCCURRENCE_DATA].items()
+                if value[PAIR_OCCURENCES] >= 1
+            ]
+        )
+
+    with open(occurrences_data_files[0], "r") as json_file:
         occurrences_data = json.load(json_file)
 
-    test_images_split = [
+    train_val_indices_split = [
         key
         for key, value in occurrences_data[OCCURRENCE_DATA].items()
-        if value[PAIR_OCCURENCES] >= 1
+        if key not in test_images_split
     ]
 
-    indices_without_test = [
-        key
-        for key, value in occurrences_data[OCCURRENCE_DATA].items()
-        if value[PAIR_OCCURENCES] == 0
-    ]
-
-    train_val_split = int((1 - val_set_size) * len(indices_without_test))
-    train_images_split = indices_without_test[:train_val_split]
-    val_images_split = indices_without_test[train_val_split:]
+    train_val_split = int((1 - val_set_size) * len(train_val_indices_split))
+    train_images_split = train_val_indices_split[:train_val_split]
+    val_images_split = train_val_indices_split[train_val_split:]
 
     return train_images_split, val_images_split, test_images_split
 
