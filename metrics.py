@@ -220,10 +220,10 @@ def recall_captions_from_images_pairs(
         with open(file, "r") as json_file:
             occurrences_data = json.load(json_file)
 
-        _, evaluation_indices = get_ranking_splits_from_occurrences_data(file)
+        _, evaluation_indices = get_ranking_splits_from_occurrences_data([file])
 
         print("Eval ranking for {}".format(file))
-        print("Test set size: {}".format(len(all_captions)))
+        print("Test set size: {}".format(len(embedded_images)))
         print("Evaluating performance for {} samples.".format(len(evaluation_indices)))
 
         all_captions = np.array(list(embedded_captions.values())).reshape(
