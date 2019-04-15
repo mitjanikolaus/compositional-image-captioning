@@ -181,7 +181,7 @@ def get_splits_from_occurrences_data(occurrences_data_files):
     train_images_split = [
         key
         for key, value in occurrences_data[OCCURRENCE_DATA].items()
-        if key not in test_images_split and value[DATA_COCO_SPLIT] == "train2014"
+        if key not in val_images_split and value[DATA_COCO_SPLIT] == "train2014"
     ]
 
     return train_images_split, val_images_split, test_images_split
