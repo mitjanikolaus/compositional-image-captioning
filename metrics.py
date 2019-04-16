@@ -224,6 +224,10 @@ def recall_captions_from_images_pairs(
     word_map,
     occurrences_data_files,
 ):
+    print("Recall@5 of pairs:")
+    print(
+        "Pair | Recall (n=1) | Recall (n=2) | Recall (n=3) | Recall (n=4) | Recall (n=5) | Mean Recall"
+    )
     nlp_pipeline = stanfordnlp.Pipeline()
 
     embedding_size = next(iter(embedded_captions.values())).shape[1]
@@ -242,8 +246,6 @@ def recall_captions_from_images_pairs(
         _, evaluation_indices = get_ranking_splits_from_occurrences_data([file])
 
         name = os.path.basename(file).split(".")[0]
-        print("Eval ranking for {}".format(name))
-        print("Evaluating performance for {} samples.".format(len(evaluation_indices)))
 
         nouns = set(occurrences_data[NOUNS])
         if ADJECTIVES in occurrences_data:
@@ -267,7 +269,6 @@ def recall_captions_from_images_pairs(
             count = occurrences_data[OCCURRENCE_DATA][coco_id][PAIR_OCCURENCES]
 
             # Look for pair occurrences in top 5 captions
-            hit = False
             for j in inds[:5]:
                 caption = " ".join(
                     decode_caption(
@@ -278,28 +279,25 @@ def recall_captions_from_images_pairs(
                     )
                 )
                 pos_tagged_caption = nlp_pipeline(caption).sentences[0]
-                match = False
+                contains_pair = False
                 if ADJECTIVES in occurrences_data:
-                    _, _, match = contains_adjective_noun_pair(
+                    _, _, contains_pair = contains_adjective_noun_pair(
                         pos_tagged_caption, nouns, adjectives
                     )
                 elif VERBS in occurrences_data:
-                    _, _, match = contains_verb_noun_pair(
+                    _, _, contains_pair = contains_verb_noun_pair(
                         pos_tagged_caption, nouns, verbs
                     )
 
-                if match:
-                    hit = True
-
-            for j in range(count):
-                if hit:
-                    true_positives[j] += 1
+                if contains_pair:
+                    true_positives[count - 1] += 1
                 else:
-                    false_negatives[j] += 1
+                    false_negatives[count - 1] += 1
 
         # Compute metrics
         recall = true_positives / (true_positives + false_negatives)
 
-        print("Recall@5 of pairs:")
+        print(name, end="")
         for n in range(len(recall)):
             print(str(float("%.2f" % recall[n])) + " | ", end="")
+        print(np.nan_to_num(recall).mean())
