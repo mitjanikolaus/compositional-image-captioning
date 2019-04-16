@@ -183,7 +183,7 @@ def calculate_metric(
             target_captions, generated_captions, weights=(0.25, 0.25, 0.25, 0.25)
         )
         bleu_scores = [bleu_1, bleu_2, bleu_3, bleu_4]
-        bleu_scores = [float("%.3f" % elem) for elem in bleu_scores]
+        bleu_scores = [float("%.2f" % elem) for elem in bleu_scores]
         print("\nBLEU score @ beam size {} is {}".format(beam_size, bleu_scores))
     elif metric_name == METRIC_RECALL:
         recall_pairs(generated_captions, word_map, occurrences_data)

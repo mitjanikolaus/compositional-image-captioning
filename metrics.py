@@ -64,7 +64,7 @@ def recall_pairs(generated_captions, word_map, occurrences_data_files):
         name = os.path.basename(occurrences_data_file).split(".")[0]
         print("Recall for {}".format(name))
         for n in range(len(recall)):
-            print(str(float("%.3f" % recall[n])) + " | ", end="")
+            print(str(float("%.2f" % recall[n])) + " | ", end="")
         print("Mean of recalls: {}".format(recall.mean()))
 
 
@@ -298,4 +298,4 @@ def recall_captions_from_images_pairs(
 
         print("Recall@5 of pairs:")
         for n in range(len(recall)):
-            print(str(float("%.3f" % recall[n])) + " | ", end="")
+            print(str(float("%.2f" % recall[n])) + " | ", end="")
