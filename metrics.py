@@ -68,7 +68,7 @@ def recall_pairs(generated_captions, word_map, occurrences_data_files):
         print(name, end=" | ")
         for n in range(len(recall)):
             print(float("%.2f" % recall[n]), end=" | ")
-        print(float("%.2f" % np.nan_to_num(recall).mean()))
+        print(float("%.2f" % np.nanmean(recall)))
 
 
 def calc_recall(
@@ -300,4 +300,4 @@ def recall_captions_from_images_pairs(
         print(name, end=" | ")
         for n in range(len(recall)):
             print(float("%.2f" % recall[n]), end=" | ")
-        print(float("%.2f" % np.nan_to_num(recall).mean()))
+        print(float("%.2f" % np.nanmean(recall)))
