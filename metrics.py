@@ -65,10 +65,10 @@ def recall_pairs(generated_captions, word_map, occurrences_data_files):
             raise ValueError("No adjectives or verbs found in occurrences data!")
 
         name = os.path.basename(occurrences_data_file).split(".")[0]
-        print(name, end="")
+        print(name, end=" | ")
         for n in range(len(recall)):
-            print(str(float("%.2f" % recall[n])) + " | ", end="")
-        print(np.nan_to_num(recall).mean())
+            print(float("%.2f" % recall[n]), end=" | ")
+        print(float("%.2f" % np.nan_to_num(recall).mean()))
 
 
 def calc_recall(
@@ -297,7 +297,7 @@ def recall_captions_from_images_pairs(
         # Compute metrics
         recall = true_positives / (true_positives + false_negatives)
 
-        print(name, end="")
+        print(name, end=" | ")
         for n in range(len(recall)):
-            print(str(float("%.2f" % recall[n])) + " | ", end="")
-        print(np.nan_to_num(recall).mean())
+            print(float("%.2f" % recall[n]), end=" | ")
+        print(float("%.2f" % np.nan_to_num(recall).mean()))
