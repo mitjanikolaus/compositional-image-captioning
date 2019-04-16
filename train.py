@@ -7,7 +7,7 @@ import torch.optim
 import torch.utils.data
 from torchvision.transforms import transforms
 
-from metrics import recall_captions_from_images, recall_pairs
+from metrics import recall_captions_from_images
 from models.bottom_up_top_down import TopDownDecoder
 from models.bottom_up_top_down_ranking import BottomUpTopDownRankingDecoder
 from models.captioning_model import create_encoder_optimizer, create_decoder_optimizer

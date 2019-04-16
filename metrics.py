@@ -23,18 +23,21 @@ from utils import (
 # stanfordnlp.download('en', confirm_if_exists=True)
 
 
-def recall_pairs(generated_captions, coco_ids, word_map, occurrences_data_files):
-    for file in occurrences_data_files:
-        with open(file, "r") as json_file:
+def recall_pairs(generated_captions, word_map, occurrences_data_files):
+    for occurrences_data_file in occurrences_data_files:
+        with open(occurrences_data_file, "r") as json_file:
             occurrences_data = json.load(json_file)
 
+        _, evaluation_indices = get_ranking_splits_from_occurrences_data(
+            [occurrences_data_file]
+        )
         nouns = set(occurrences_data[NOUNS])
 
         if ADJECTIVES in occurrences_data:
             adjectives = set(occurrences_data[ADJECTIVES])
             recall = calc_recall(
                 generated_captions,
-                coco_ids,
+                evaluation_indices,
                 word_map,
                 nouns,
                 adjectives,
@@ -45,7 +48,7 @@ def recall_pairs(generated_captions, coco_ids, word_map, occurrences_data_files)
             verbs = set(occurrences_data[VERBS])
             recall = calc_recall(
                 generated_captions,
-                coco_ids,
+                evaluation_indices,
                 word_map,
                 nouns,
                 verbs,
@@ -55,7 +58,7 @@ def recall_pairs(generated_captions, coco_ids, word_map, occurrences_data_files)
         else:
             raise ValueError("No adjectives or verbs found in occurrences data!")
 
-        name = os.path.basename(occurrences_data).split(".")[0]
+        name = os.path.basename(occurrences_data_file).split(".")[0]
         print("Recall for {}".format(name))
         print([float("%.3f" % elem) for elem in recall])
         print("Mean of recalls: {}".format(recall.mean()))
@@ -88,9 +91,9 @@ def calc_recall(
                 pos_tagged_caption, nouns, other
             )
             if contains_pair:
-                true_positives[count] += 1
+                true_positives[count - 1] += 1
             else:
-                false_negatives[count] += 1
+                false_negatives[count - 1] += 1
 
     recall = true_positives / (true_positives + false_negatives)
     return recall
@@ -214,7 +217,16 @@ def recall_captions_from_images_pairs(
     word_map,
     occurrences_data_files,
 ):
+    nlp_pipeline = stanfordnlp.Pipeline()
+
     embedding_size = next(iter(embedded_captions.values())).shape[1]
+
+    all_captions = np.array(list(embedded_captions.values())).reshape(
+        -1, embedding_size
+    )
+    target_captions = np.array(list(target_captions.values())).reshape(
+        len(all_captions), -1
+    )
 
     for file in occurrences_data_files:
         with open(file, "r") as json_file:
@@ -226,13 +238,6 @@ def recall_captions_from_images_pairs(
         print("Test set size: {}".format(len(embedded_images)))
         print("Evaluating performance for {} samples.".format(len(evaluation_indices)))
 
-        all_captions = np.array(list(embedded_captions.values())).reshape(
-            -1, embedding_size
-        )
-        target_captions = np.array(list(target_captions.values())).reshape(
-            len(all_captions), -1
-        )
-
         nouns = set(occurrences_data[NOUNS])
         if ADJECTIVES in occurrences_data:
             adjectives = set(occurrences_data[ADJECTIVES])
@@ -240,8 +245,6 @@ def recall_captions_from_images_pairs(
             verbs = set(occurrences_data[VERBS])
         else:
             raise ValueError("No adjectives or verbs found in occurrences data!")
-
-        nlp_pipeline = stanfordnlp.Pipeline()
 
         index_list = []
         true_positives = np.zeros(5)

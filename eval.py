@@ -152,12 +152,10 @@ def evaluate(
             target_captions,
             generated_captions,
             generated_beams,
-            coco_ids,
             word_map,
             occurrences_data,
             beam_size,
         )
-        print("\n{} score @ beam size {} is {}".format(metric, beam_size, metric_score))
 
 
 def calculate_metric(
@@ -165,7 +163,6 @@ def calculate_metric(
     target_captions,
     generated_captions,
     generated_beams,
-    coco_ids,
     word_map,
     occurrences_data,
     beam_size,
@@ -187,13 +184,18 @@ def calculate_metric(
         )
         bleu_scores = [bleu_1, bleu_2, bleu_3, bleu_4]
         bleu_scores = [float("%.3f" % elem) for elem in bleu_scores]
-        return bleu_scores
+        print("\nBLEU score @ beam size {} is {}".format(beam_size, bleu_scores))
     elif metric_name == METRIC_RECALL:
-        recall = recall_pairs(generated_captions, coco_ids, word_map, occurrences_data)
-        recall = [float("%.3f" % elem) for elem in recall]
-        return recall
+        recall_pairs(generated_captions, word_map, occurrences_data)
     elif metric_name == METRIC_BEAM_OCCURRENCES:
-        return beam_occurrences(generated_beams, beam_size, word_map, occurrences_data)
+        beam_occurrences_score = beam_occurrences(
+            generated_beams, beam_size, word_map, occurrences_data
+        )
+        print(
+            "\nBeam occurrences score @ beam size {} is {}".format(
+                beam_size, beam_occurrences_score
+            )
+        )
 
 
 def check_args(args):
@@ -205,7 +207,8 @@ def check_args(args):
     )
     parser.add_argument(
         "--occurrences-data",
-        help="File containing occurrences statistics about adjective-noun or verb-noun pairs",
+        nargs="+",
+        help="Files containing occurrences statistics about adjective-noun or verb-noun pairs",
     )
     parser.add_argument(
         "--karpathy-json", help="File containing train/val/test split information"
