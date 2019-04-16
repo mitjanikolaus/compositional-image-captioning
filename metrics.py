@@ -27,7 +27,7 @@ from utils import (
 def recall_pairs(generated_captions, word_map, occurrences_data_files):
     print("Recall:")
     print(
-        "Pair | Recall (n=1) | Recall (n=2) | Recall (n=3) | Recall (n=4) | Recall (n=5) | Mean Recall"
+        "Pair | Recall (n=1) | Recall (n=2) | Recall (n=3) | Recall (n=4) | Recall (n=5)"
     )
     nlp_pipeline = stanfordnlp.Pipeline()
     for occurrences_data_file in occurrences_data_files:
@@ -225,7 +225,7 @@ def recall_captions_from_images_pairs(
 ):
     print("Recall@5 of pairs:")
     print(
-        "Pair | Recall (n=1) | Recall (n=2) | Recall (n=3) | Recall (n=4) | Recall (n=5) | Mean Recall"
+        "Pair | Recall (n=1) | Recall (n=2) | Recall (n=3) | Recall (n=4) | Recall (n=5)"
     )
     nlp_pipeline = stanfordnlp.Pipeline()
 
