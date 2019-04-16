@@ -168,6 +168,7 @@ def calculate_metric(
             get_caption_without_special_tokens(top_k_captions[0], word_map)
             for top_k_captions in generated_captions.values()
         ]
+        target_captions = target_captions.values()
         bleu_1 = corpus_bleu(target_captions, generated_captions, weights=(1, 0, 0, 0))
         bleu_2 = corpus_bleu(
             target_captions, generated_captions, weights=(0.5, 0.5, 0, 0)
