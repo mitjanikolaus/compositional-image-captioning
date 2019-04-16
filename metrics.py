@@ -86,6 +86,7 @@ def calc_recall(
         top_k_captions = generated_captions[coco_id]
         count = occurrences_data[OCCURRENCE_DATA][coco_id][PAIR_OCCURENCES]
 
+        hit = False
         for caption in top_k_captions:
             caption = " ".join(
                 decode_caption(
@@ -97,9 +98,11 @@ def calc_recall(
                 pos_tagged_caption, nouns, other
             )
             if contains_pair:
-                true_positives[count - 1] += 1
-            else:
-                false_negatives[count - 1] += 1
+                hit = True
+        if hit:
+            true_positives[count - 1] += 1
+        else:
+            false_negatives[count - 1] += 1
 
     recall = true_positives / (true_positives + false_negatives)
     return recall
@@ -268,6 +271,7 @@ def recall_captions_from_images_pairs(
             count = occurrences_data[OCCURRENCE_DATA][coco_id][PAIR_OCCURENCES]
 
             # Look for pair occurrences in top 5 captions
+            hit = False
             for j in inds[:5]:
                 caption = " ".join(
                     decode_caption(
@@ -287,11 +291,13 @@ def recall_captions_from_images_pairs(
                     _, _, contains_pair = contains_verb_noun_pair(
                         pos_tagged_caption, nouns, verbs
                     )
-
                 if contains_pair:
-                    true_positives[count - 1] += 1
-                else:
-                    false_negatives[count - 1] += 1
+                    hit = True
+
+            if hit:
+                true_positives[count - 1] += 1
+            else:
+                false_negatives[count - 1] += 1
 
         # Compute metrics
         recall = true_positives / (true_positives + false_negatives)
