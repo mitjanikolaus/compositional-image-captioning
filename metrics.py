@@ -60,7 +60,8 @@ def recall_pairs(generated_captions, word_map, occurrences_data_files):
 
         name = os.path.basename(occurrences_data_file).split(".")[0]
         print("Recall for {}".format(name))
-        print([float("%.3f" % elem) for elem in recall])
+        for n in range(len(recall)):
+            print(str(float("%.3f" % recall[n])) + " | ", end="")
         print("Mean of recalls: {}".format(recall.mean()))
 
 
@@ -234,7 +235,8 @@ def recall_captions_from_images_pairs(
 
         _, evaluation_indices = get_ranking_splits_from_occurrences_data([file])
 
-        print("Eval ranking for {}".format(file))
+        name = os.path.basename(file).split(".")[0]
+        print("Eval ranking for {}".format(name))
         print("Evaluating performance for {} samples.".format(len(evaluation_indices)))
 
         nouns = set(occurrences_data[NOUNS])
@@ -292,4 +294,6 @@ def recall_captions_from_images_pairs(
         # Compute metrics
         recall = true_positives / (true_positives + false_negatives)
 
-        print("Recall@5 of pairs: {}".format(recall))
+        print("Recall@5 of pairs:")
+        for n in range(len(recall)):
+            print(str(float("%.3f" % recall[n])) + " | ", end="")
