@@ -25,6 +25,10 @@ from utils import (
 
 
 def recall_pairs(generated_captions, word_map, occurrences_data_files):
+    print("Recall:")
+    print(
+        "Pair | Recall (n=1) | Recall (n=2) | Recall (n=3) | Recall (n=4) | Recall (n=5) | Mean Recall"
+    )
     nlp_pipeline = stanfordnlp.Pipeline()
     for occurrences_data_file in occurrences_data_files:
         with open(occurrences_data_file, "r") as json_file:
@@ -61,10 +65,10 @@ def recall_pairs(generated_captions, word_map, occurrences_data_files):
             raise ValueError("No adjectives or verbs found in occurrences data!")
 
         name = os.path.basename(occurrences_data_file).split(".")[0]
-        print("Recall for {}".format(name))
+        print(name, end="")
         for n in range(len(recall)):
             print(str(float("%.2f" % recall[n])) + " | ", end="")
-        print("\nMean of recalls: {}".format(recall.mean()))
+        print(np.nan_to_num(recall).mean())
 
 
 def calc_recall(
