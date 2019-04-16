@@ -100,22 +100,20 @@ def evaluate(
         raise RuntimeError("Unknown model name: {}".format(model_name))
 
     # Lists for target captions and generated captions for each image
-    target_captions = []
-    generated_captions = []
-    generated_beams = []
-    coco_ids = []
+    target_captions = {}
+    generated_captions = {}
+    generated_beams = {}
 
     for image_features, all_captions_for_image, _, coco_id in tqdm(
         data_loader, desc="Evaluate with beam size " + str(beam_size)
     ):
+        coco_id = coco_id[0]
 
         # Target captions
-        target_captions.append(
-            [
-                get_caption_without_special_tokens(caption, word_map)
-                for caption in all_captions_for_image[0].tolist()
-            ]
-        )
+        target_captions[coco_id] = [
+            get_caption_without_special_tokens(caption, word_map)
+            for caption in all_captions_for_image[0].tolist()
+        ]
 
         # Generate captions
         encoded_features = image_features.to(device)
@@ -132,22 +130,20 @@ def evaluate(
             print_beam=print_beam,
         )
         if visualize:
-            print("Image COCO ID: {}".format(coco_id[0]))
+            print("Image COCO ID: {}".format(coco_id))
             for caption, alpha in zip(top_k_generated_captions, alphas):
                 visualize_attention(
                     image_features.squeeze(0), caption, alpha, word_map, smoothen=True
                 )
 
-        generated_captions.append(top_k_generated_captions)
-        generated_beams.append(beam)
-
-        coco_ids.append(coco_id[0])
+        generated_captions[coco_id] = top_k_generated_captions
+        generated_beams[coco_id] = beam
 
         assert len(target_captions) == len(generated_captions)
 
     # Calculate metric scores
     for metric in metrics:
-        metric_score = calculate_metric(
+        calculate_metric(
             metric,
             target_captions,
             generated_captions,
@@ -170,7 +166,7 @@ def calculate_metric(
     if metric_name == METRIC_BLEU:
         generated_captions = [
             get_caption_without_special_tokens(top_k_captions[0], word_map)
-            for top_k_captions in generated_captions
+            for top_k_captions in generated_captions.values()
         ]
         bleu_1 = corpus_bleu(target_captions, generated_captions, weights=(1, 0, 0, 0))
         bleu_2 = corpus_bleu(
@@ -188,6 +184,7 @@ def calculate_metric(
     elif metric_name == METRIC_RECALL:
         recall_pairs(generated_captions, word_map, occurrences_data)
     elif metric_name == METRIC_BEAM_OCCURRENCES:
+        # TODO fix for multiple occurrences data files
         beam_occurrences_score = beam_occurrences(
             generated_beams, beam_size, word_map, occurrences_data
         )

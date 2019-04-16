@@ -17,6 +17,7 @@ from utils import (
     VERBS,
     contains_verb_noun_pair,
     get_ranking_splits_from_occurrences_data,
+    get_splits_from_occurrences_data,
 )
 
 
@@ -29,16 +30,14 @@ def recall_pairs(generated_captions, word_map, occurrences_data_files):
         with open(occurrences_data_file, "r") as json_file:
             occurrences_data = json.load(json_file)
 
-        _, evaluation_indices = get_ranking_splits_from_occurrences_data(
-            [occurrences_data_file]
-        )
+        _, _, test_indices = get_splits_from_occurrences_data([occurrences_data_file])
         nouns = set(occurrences_data[NOUNS])
 
         if ADJECTIVES in occurrences_data:
             adjectives = set(occurrences_data[ADJECTIVES])
             recall = calc_recall(
                 generated_captions,
-                evaluation_indices,
+                test_indices,
                 word_map,
                 nouns,
                 adjectives,
@@ -50,7 +49,7 @@ def recall_pairs(generated_captions, word_map, occurrences_data_files):
             verbs = set(occurrences_data[VERBS])
             recall = calc_recall(
                 generated_captions,
-                evaluation_indices,
+                test_indices,
                 word_map,
                 nouns,
                 verbs,
@@ -65,12 +64,12 @@ def recall_pairs(generated_captions, word_map, occurrences_data_files):
         print("Recall for {}".format(name))
         for n in range(len(recall)):
             print(str(float("%.2f" % recall[n])) + " | ", end="")
-        print("Mean of recalls: {}".format(recall.mean()))
+        print("\nMean of recalls: {}".format(recall.mean()))
 
 
 def calc_recall(
     generated_captions,
-    coco_ids,
+    test_indices,
     word_map,
     nouns,
     other,
@@ -80,7 +79,8 @@ def calc_recall(
 ):
     true_positives = np.zeros(5)
     false_negatives = np.zeros(5)
-    for coco_id, top_k_captions in zip(coco_ids, generated_captions):
+    for coco_id in test_indices:
+        top_k_captions = generated_captions[coco_id]
         count = occurrences_data[OCCURRENCE_DATA][coco_id][PAIR_OCCURENCES]
 
         for caption in top_k_captions:
