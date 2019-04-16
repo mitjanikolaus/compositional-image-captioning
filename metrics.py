@@ -24,6 +24,7 @@ from utils import (
 
 
 def recall_pairs(generated_captions, word_map, occurrences_data_files):
+    nlp_pipeline = stanfordnlp.Pipeline()
     for occurrences_data_file in occurrences_data_files:
         with open(occurrences_data_file, "r") as json_file:
             occurrences_data = json.load(json_file)
@@ -43,6 +44,7 @@ def recall_pairs(generated_captions, word_map, occurrences_data_files):
                 adjectives,
                 occurrences_data,
                 contains_adjective_noun_pair,
+                nlp_pipeline,
             )
         elif VERBS in occurrences_data:
             verbs = set(occurrences_data[VERBS])
@@ -54,6 +56,7 @@ def recall_pairs(generated_captions, word_map, occurrences_data_files):
                 verbs,
                 occurrences_data,
                 contains_verb_noun_pair,
+                nlp_pipeline,
             )
         else:
             raise ValueError("No adjectives or verbs found in occurrences data!")
@@ -73,9 +76,8 @@ def calc_recall(
     other,
     occurrences_data,
     contains_pair_function,
+    nlp_pipeline,
 ):
-    nlp_pipeline = stanfordnlp.Pipeline()
-
     true_positives = np.zeros(5)
     false_negatives = np.zeros(5)
     for coco_id, top_k_captions in zip(coco_ids, generated_captions):
