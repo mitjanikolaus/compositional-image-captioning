@@ -235,7 +235,6 @@ def recall_captions_from_images_pairs(
         _, evaluation_indices = get_ranking_splits_from_occurrences_data([file])
 
         print("Eval ranking for {}".format(file))
-        print("Test set size: {}".format(len(embedded_images)))
         print("Evaluating performance for {} samples.".format(len(evaluation_indices)))
 
         nouns = set(occurrences_data[NOUNS])
@@ -293,4 +292,4 @@ def recall_captions_from_images_pairs(
         # Compute metrics
         recall = true_positives / (true_positives + false_negatives)
 
-        print("Recall of pairs: {}".format(recall))
+        print("Recall@5 of pairs: {}".format(recall))
