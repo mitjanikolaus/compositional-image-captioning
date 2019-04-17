@@ -139,3 +139,6 @@ sit_cat | 0.04 | 0.04 | 0.1 | 0.12 | 0.16 |
 small_plane | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 
 white_car | 0.06 | 0.08 | 0.23 | 0.14 | N/A | 
 wooden_table | 0.17 | 0.45 | 1.0 | 1.0 | N/A |
+
+Comparison with Bottom-Up-Top-Down model trained without heldout pairs:
+![Recalls](recall_comparison.png)
