@@ -51,44 +51,61 @@ small_plane | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
 white_car | 0.05 | 0.08 | 0.23 | 0.14 | N/A | 
 wooden_table | 0.11 | 0.18 | 0.0 | 0.0 | N/A |
 
-## First train on ranking objective, then generation
+## First train on ranking objective, then on generation objective
+Beam size 1:
 
-### Model trained with held out "white car"
+Pair | Recall (n=1) | Recall (n=2) | Recall (n=3) | Recall (n=4) | Recall (n=5)
+-----|--------------| -------------| -------------| -------------| -----------
+brown_dog | 0.0 | 0.03 | 0.0 | 0.0 | N/A | 
+eat_man | 0.09 | 0.21 | 0.12 | 0.46 | 0.67 | 
+green_bench | 0.05 | 0.0 | 0.2 | 0.67 | 0.0 | 
+red_chair | 0.1 | 0.25 | 0.17 | N/A | N/A | 
+ride_woman | 0.02 | 0.11 | 0.18 | 0.33 | 0.67 | 
+sit_cat | 0.01 | 0.04 | 0.06 | 0.08 | 0.12 | 
+small_plane | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 
+white_car | 0.04 | 0.03 | 0.16 | 0.14 | N/A | 
+wooden_table | 0.0 | 0.0 | 0.0 | 0.0 | N/A |
 
-Performance on held out test set ("white car"):
+Beam size 5:
 
-Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
-----------| --------------| --------------| --------------| --------------| -------------
-1         | 0.041         | 0.048         | 0.079         | 0             | N/A
-5         | 0.103         | 0.135         | 0.237         | 0             | N/A
+Pair | Recall (n=1) | Recall (n=2) | Recall (n=3) | Recall (n=4) | Recall (n=5)
+-----|--------------| -------------| -------------| -------------| -----------
+brown_dog | 0.03 | 0.03 | 0.07 | 0.0 | N/A | 
+eat_man | 0.12 | 0.23 | 0.18 | 0.46 | 0.0 | 
+green_bench | 0.1 | 0.12 | 0.0 | 0.67 | 1.0 | 
+red_chair | 0.21 | 0.25 | 0.33 | N/A | N/A | 
+ride_woman | 0.07 | 0.22 | 0.3 | 0.53 | 0.67 | 
+sit_cat | 0.04 | 0.07 | 0.13 | 0.1 | 0.23 | 
+small_plane | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 
+white_car | 0.08 | 0.08 | 0.23 | 0.29 | N/A | 
+wooden_table | 0.12 | 0.18 | 0.0 | 0.0 | N/A |
 
-### Model trained with held out "brown dog"
+## First train on ranking objective, then on generation objective with frozen embedding weights
 
-Performance on held out test set ("brown dog"):
+Beam size 1:
 
-Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
-----------| --------------| --------------| --------------| --------------| -------------
-1         | 0.01          | 0.02          | 0             | 0             | N/A
-5         | 0.031         | 0.057         | 0.133         | 0             | N/A
+Pair | Recall (n=1) | Recall (n=2) | Recall (n=3) | Recall (n=4) | Recall (n=5)
+-----|--------------| -------------| -------------| -------------| -----------
+brown_dog | 0.01 | 0.03 | 0.07 | 0.0 | N/A | 
+eat_man | 0.06 | 0.19 | 0.24 | 0.38 | 0.33 | 
+green_bench | 0.0 | 0.0 | 0.2 | 0.33 | 0.0 | 
+red_chair | 0.03 | 0.25 | 0.0 | N/A | N/A | 
+ride_woman | 0.05 | 0.14 | 0.21 | 0.27 | 0.33 | 
+sit_cat | 0.03 | 0.07 | 0.08 | 0.07 | 0.09 | 
+small_plane | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 
+white_car | 0.04 | 0.06 | 0.1 | 0.14 | N/A | 
+wooden_table | 0.0 | 0.0 | 0.0 | 0.0 | N/A |
 
+Beam size 5:
 
-## First train on ranking objective, then generation with frozen embedding weights
-
-### Model trained with held out "white car"
-
-Performance on held out test set ("white car"):
-
-Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
-----------| --------------| --------------| --------------| --------------| -------------
-1         | 0.038         | 0.063         | 0.105         | 0.125         | N/A
-5         | 0.093         | 0.159         | 0.289         | 0.25          | N/A
-
-### Model trained with held out "brown dog"
-
-Performance on held out test set ("brown dog"):
-
-Beam size | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
-----------| --------------| --------------| --------------| --------------| -------------
-1         | 0.014         | 0.034         | 0.067         | 0             | N/A
-5         | 0.03          | 0.046         | 0.067         | 0            | N/A
-
+Pair | Recall (n=1) | Recall (n=2) | Recall (n=3) | Recall (n=4) | Recall (n=5)
+-----|--------------| -------------| -------------| -------------| -----------
+brown_dog | 0.02 | 0.04 | 0.0 | 0.0 | N/A | 
+eat_man | 0.12 | 0.13 | 0.29 | 0.46 | 0.33 | 
+green_bench | 0.0 | 0.0 | 0.0 | 0.33 | 0.0 | 
+red_chair | 0.07 | 0.0 | 0.17 | N/A | N/A | 
+ride_woman | 0.11 | 0.25 | 0.27 | 0.2 | 0.67 | 
+sit_cat | 0.08 | 0.14 | 0.18 | 0.22 | 0.35 | 
+small_plane | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 
+white_car | 0.04 | 0.07 | 0.03 | 0.14 | N/A | 
+wooden_table | 0.06 | 0.09 | 0.0 | 1.0 | N/A |
