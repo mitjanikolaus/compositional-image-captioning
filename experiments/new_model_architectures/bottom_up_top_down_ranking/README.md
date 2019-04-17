@@ -20,7 +20,7 @@ small_plane | 0.39 | 0.76 | 0.81 | 0.8 | 0.5 |
 white_car | 0.3 | 0.51 | 0.55 | 1.0 | N/A | 
 wooden_table | 0.12 | 0.45 | 0.0 | 1.0 | N/A |
 
-## Training with joint objective
+## Training with joint objective (added losses)
 Generation performance:
 
 Beam size 1:
@@ -109,3 +109,33 @@ sit_cat | 0.08 | 0.14 | 0.18 | 0.22 | 0.35 |
 small_plane | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 
 white_car | 0.04 | 0.07 | 0.03 | 0.14 | N/A | 
 wooden_table | 0.06 | 0.09 | 0.0 | 1.0 | N/A |
+
+## First train on ranking objective, then on joint objective (added losses)
+
+Beam size 1:
+
+Pair | Recall (n=1) | Recall (n=2) | Recall (n=3) | Recall (n=4) | Recall (n=5)
+-----|--------------| -------------| -------------| -------------| -----------
+brown_dog | 0.0 | 0.01 | 0.0 | 0.0 | N/A | 
+eat_man | 0.08 | 0.13 | 0.29 | 0.38 | 0.33 | 
+green_bench | 0.05 | 0.0 | 0.0 | 0.67 | 0.0 | 
+red_chair | 0.03 | 0.0 | 0.33 | N/A | N/A | 
+ride_woman | 0.1 | 0.23 | 0.33 | 0.33 | 1.0 | 
+sit_cat | 0.02 | 0.01 | 0.03 | 0.01 | 0.02 | 
+small_plane | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 
+white_car | 0.03 | 0.01 | 0.23 | 0.0 | N/A | 
+wooden_table | 0.0 | 0.0 | 0.0 | 0.0 | N/A |
+
+Beam size 5:
+
+Pair | Recall (n=1) | Recall (n=2) | Recall (n=3) | Recall (n=4) | Recall (n=5)
+-----|--------------| -------------| -------------| -------------| -----------
+brown_dog | 0.04 | 0.06 | 0.07 | 0.0 | N/A | 
+eat_man | 0.09 | 0.11 | 0.29 | 0.46 | 0.33 | 
+green_bench | 0.1 | 0.12 | 0.2 | 1.0 | 1.0 | 
+red_chair | 0.03 | 0.25 | 0.17 | N/A | N/A | 
+ride_woman | 0.14 | 0.3 | 0.39 | 0.4 | 1.0 | 
+sit_cat | 0.04 | 0.04 | 0.1 | 0.12 | 0.16 | 
+small_plane | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 
+white_car | 0.06 | 0.08 | 0.23 | 0.14 | N/A | 
+wooden_table | 0.17 | 0.45 | 1.0 | 1.0 | N/A |
