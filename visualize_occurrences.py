@@ -14,7 +14,6 @@ from utils import (
     VERBS,
     VERB_OCCURRENCES,
     DATA_COCO_SPLIT,
-    NOUNS,
 )
 
 
@@ -35,7 +34,7 @@ def visualize_occurrences(occurrences_data_files):
                     [
                         key
                         for key, value in occurrences_data[OCCURRENCE_DATA].items()
-                        if value[NOUN_OCCURRENCES] > n
+                        if value[NOUN_OCCURRENCES] == n + 1
                         and value[DATA_COCO_SPLIT] == coco_split
                     ]
                 )
@@ -44,7 +43,7 @@ def visualize_occurrences(occurrences_data_files):
                         [
                             key
                             for key, value in occurrences_data[OCCURRENCE_DATA].items()
-                            if value[ADJECTIVE_OCCURRENCES] > n
+                            if value[ADJECTIVE_OCCURRENCES] == n + 1
                             and value[DATA_COCO_SPLIT] == coco_split
                         ]
                     )
@@ -53,7 +52,7 @@ def visualize_occurrences(occurrences_data_files):
                         [
                             key
                             for key, value in occurrences_data[OCCURRENCE_DATA].items()
-                            if value[VERB_OCCURRENCES] > n
+                            if value[VERB_OCCURRENCES] == n + 1
                             and value[DATA_COCO_SPLIT] == coco_split
                         ]
                     )
@@ -61,7 +60,7 @@ def visualize_occurrences(occurrences_data_files):
                     [
                         key
                         for key, value in occurrences_data[OCCURRENCE_DATA].items()
-                        if value[PAIR_OCCURENCES] > n
+                        if value[PAIR_OCCURENCES] == n + 1
                         and value[DATA_COCO_SPLIT] == coco_split
                     ]
                 )
