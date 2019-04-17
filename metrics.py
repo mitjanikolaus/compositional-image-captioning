@@ -116,11 +116,14 @@ def beam_occurrences(
             occurrences_data = json.load(json_file)
 
         nouns = set(occurrences_data[NOUNS])
-        adjectives = set(occurrences_data[ADJECTIVES])
+        if ADJECTIVES in occurrences_data:
+            adjectives = set(occurrences_data[ADJECTIVES])
+        if VERBS in occurrences_data:
+            verbs = set(occurrences_data[VERBS])
 
         max_length = max([beams[-1].size(1) for beams in generated_beams.values()])
         noun_occurrences = np.zeros(max_length)
-        adjective_occurrences = np.zeros(max_length)
+        other_occurrences = np.zeros(max_length)
         pair_occurrences = np.zeros(max_length)
 
         num_beams = np.zeros(max_length)
@@ -131,28 +134,37 @@ def beam_occurrences(
             beam = generated_beams[coco_id]
             for step, beam_timestep in enumerate(beam):
                 noun_match = False
-                adjective_match = False
+                other_match = False
                 pair_match = False
                 for branch in beam_timestep:
                     branch_words = set(decode_caption(branch.numpy(), word_map))
                     noun_occurs = bool(nouns & branch_words)
-                    adjective_occurs = bool(adjectives & branch_words)
+
+                    if ADJECTIVES in occurrences_data:
+                        adjective_occurs = bool(adjectives & branch_words)
+                        if adjective_occurs:
+                            other_match = True
+                    elif VERBS in occurrences_data:
+                        verb_occurs = bool(verbs & branch_words)
+                        if verb_occurs:
+                            other_match = True
                     if noun_occurs:
                         noun_match = True
-                    if adjective_occurs:
-                        adjective_match = True
-                    if noun_occurs and adjective_occurs:
+
+                    if noun_occurs and other_match:
                         pair_match = True
                 if noun_match:
                     noun_occurrences[step] += 1
-                if adjective_match:
-                    adjective_occurrences[step] += 1
+                if other_match:
+                    other_occurrences[step] += 1
                 if pair_match:
                     pair_occurrences[step] += 1
                 num_beams[step] += 1
 
+        name = os.path.basename(occurrences_data_file).split(".")[0]
+        print("Beam occurrences for {}".format(name))
         print("Nouns: {}".format(noun_occurrences))
-        print("Adjectives: {}".format(adjective_occurrences))
+        print("Adjectives/Verbs: {}".format(other_occurrences))
         print("Pairs: {}".format(pair_occurrences))
         print("Number of beams: {}".format(num_beams))
 
@@ -168,8 +180,8 @@ def beam_occurrences(
         )
         plt.plot(
             steps,
-            adjective_occurrences[:print_length] / num_beams[:print_length],
-            label="adjectives",
+            other_occurrences[:print_length] / num_beams[:print_length],
+            label="adjectives/verbs",
         )
         plt.plot(
             steps,
@@ -178,7 +190,7 @@ def beam_occurrences(
         )
         plt.legend()
         plt.xlabel("timestep")
-        plt.title("Recall@{} in the decoding beam".format(beam_size))
+        plt.title("Recall@{} for {} in the decoding beam".format(beam_size, name))
         plt.show()
 
 
