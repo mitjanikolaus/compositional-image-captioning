@@ -61,13 +61,14 @@ def recall_pairs(generated_captions, word_map, occurrences_data_files, checkpoin
         else:
             raise ValueError("No adjectives or verbs found in occurrences data!")
 
-        name = os.path.basename(occurrences_data_file).split(".")[0]
-        recall_scores[name] = recall_score
-        average_recall = np.sum(list(recall_score["true_positives"].values())) / np.sum(
-            list(recall_score["numbers"].values())
-        )
-        print("{}: {}".format(name, float("%.2f" % average_recall)))
+        pair = os.path.basename(occurrences_data_file).split(".")[0]
+        recall_scores[pair] = recall_score
+        average_pair_recall = np.sum(
+            list(recall_score["true_positives"].values())
+        ) / np.sum(list(recall_score["numbers"].values()))
+        print("{}: {}".format(pair, np.round(average_pair_recall, 2)))
 
+    print("Average: {}".format(average_recall(recall_scores)))
     result_file_name = "eval_" + checkpoint_name.split(".")[0] + ".json"
     with open(result_file_name, "w") as json_file:
         json.dump(recall_scores, json_file)
@@ -110,6 +111,18 @@ def calc_recall(
     recall_score["true_positives"] = true_positives
     recall_score["numbers"] = numbers
     return recall_score
+
+
+def average_recall(recall_scores):
+    true_positives = 0
+    numbers = 0
+
+    for i, pair in enumerate(recall_scores.keys()):
+        true_positives += np.sum(list(recall_scores[pair]["true_positives"].values()))
+        numbers += np.sum(list(recall_scores[pair]["numbers"].values()))
+
+    recall = true_positives / numbers
+    return recall
 
 
 def beam_occurrences(
