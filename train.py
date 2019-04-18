@@ -5,6 +5,7 @@ import sys
 import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
+from torch import nn
 from torchvision.transforms import transforms
 
 from metrics import recall_captions_from_images
@@ -144,6 +145,16 @@ def main(
             encoder_optimizer = None
             decoder = BottomUpTopDownRankingDecoder(word_map, model_params, embeddings)
             decoder_optimizer = create_decoder_optimizer(decoder, model_params)
+
+            if objective == OBJECTIVE_JOINT:
+                Weightloss1 = torch.tensor(torch.FloatTensor([1]), requires_grad=True)
+                Weightloss2 = torch.tensor(torch.FloatTensor([1]), requires_grad=True)
+                loss_weights = [Weightloss1, Weightloss2]
+                gradnorm_optimizer = torch.optim.Adam(
+                    loss_weights, lr=decoder_optimizer.defaults["lr"]
+                )  # TODO lr?
+                gradnorm_loss = nn.L1Loss().to(device)
+
         else:
             raise RuntimeError("Unknown model name: {}".format(model_name))
 
@@ -250,6 +261,9 @@ def main(
             objective,
             grad_clip,
             print_freq,
+            gradnorm_optimizer,
+            loss_weights,
+            gradnorm_loss,
         )
 
         # One epoch's validation
@@ -313,11 +327,19 @@ def train(
     objective,
     grad_clip,
     print_freq,
+    gradnorm_optimizer,
+    loss_weights,
+    gradnorm_loss,
+    gradnorm_alpha=0.16,  # TODO
 ):
     """
     Perform one training epoch.
 
     """
+
+    epoch_cost = 0
+    epoch_cost1 = 0
+    epoch_cost2 = 0
 
     decoder.train()
     if encoder:
@@ -346,11 +368,13 @@ def train(
                 scores, decode_lengths, images_embedded, captions_embedded, alphas = decoder.forward_joint(
                     images, target_captions, decode_lengths
                 )
-                loss_generation = decoder.loss(
+                loss_generation = loss_weights[0] * decoder.loss(
                     scores, target_captions, decode_lengths, alphas
                 )
-                loss_ranking = decoder.loss_ranking(images_embedded, captions_embedded)
-                loss = loss_generation + loss_ranking
+                loss_ranking = loss_weights[1] * decoder.loss_ranking(
+                    images_embedded, captions_embedded
+                )
+                loss = (loss_generation + loss_ranking) / 2
             elif objective == OBJECTIVE_RANKING:
                 images_embedded, captions_embedded = decoder.forward_ranking(
                     images, target_captions, decode_lengths
@@ -363,11 +387,61 @@ def train(
             )
             loss = decoder.loss(scores, target_captions, decode_lengths, alphas)
 
-        # Back propagation
-        decoder_optimizer.zero_grad()
-        if encoder_optimizer:
-            encoder_optimizer.zero_grad()
-        loss.backward()
+        if objective == OBJECTIVE_JOINT:
+            if epoch == 0:
+                l0 = loss.data
+
+            decoder_optimizer.zero_grad()
+            if encoder_optimizer:
+                encoder_optimizer.zero_grad()
+            loss.backward(retain_graph=True)
+
+            # Getting gradients of the first layers of each tower and calculate their l2-norm
+            named_params = dict(decoder.named_parameters())
+            shared_params = [
+                param
+                for param_name, param in named_params.items()
+                if param_name in decoder.SHARED_PARAMS
+            ]
+            G1R = torch.autograd.grad(
+                loss_generation, shared_params, retain_graph=True, create_graph=True
+            )
+            G1R_flattened = torch.cat([g.view(-1) for g in G1R])
+            G1 = torch.norm(G1R_flattened, 2)
+            G2R = torch.autograd.grad(
+                loss_ranking, shared_params, retain_graph=True, create_graph=True
+            )
+            G2R_flattened = torch.cat([g.view(-1) for g in G2R])
+            G2 = torch.norm(G2R_flattened, 2)
+            G_avg = torch.div(torch.add(G1, G2), 2)
+
+            # Calculating relative losses
+            lhat1 = torch.div(loss_generation, l0)
+            lhat2 = torch.div(loss_ranking, l0)
+            lhat_avg = torch.div(torch.add(lhat1, lhat2), 2)
+
+            # Calculating relative inverse training rates for tasks
+            inv_rate1 = torch.div(lhat1, lhat_avg)
+            inv_rate2 = torch.div(lhat2, lhat_avg)
+
+            # Calculating the constant target for Eq. 2 in the GradNorm paper
+            C1 = G_avg * (inv_rate1) ** gradnorm_alpha
+            C2 = G_avg * (inv_rate2) ** gradnorm_alpha
+            C1 = C1.detach()
+            C2 = C2.detach()
+
+            gradnorm_optimizer.zero_grad()
+            # Calculating the gradient loss according to Eq. 2 in the GradNorm paper
+            Lgrad = torch.add(gradnorm_loss(G1, C1), gradnorm_loss(G2, C2))
+            Lgrad.backward()
+
+            # Updating loss weights
+            gradnorm_optimizer.step()
+        else:
+            decoder_optimizer.zero_grad()
+            if encoder_optimizer:
+                encoder_optimizer.zero_grad()
+            loss.backward()
 
         # Clip gradients
         if grad_clip:
@@ -391,6 +465,16 @@ def train(
                     epoch, i, len(data_loader), loss=losses
                 )
             )
+
+        if objective == OBJECTIVE_JOINT:
+            # Renormalizing the losses weights
+            coef = 2 / torch.add(loss_weights[0], loss_weights[1])
+            params = [coef * loss_weights[0], coef * loss_weights[1]]
+            print("Weights are:", loss_weights[0], loss_weights[1])
+            print("params are:", params)
+            epoch_cost = epoch_cost + (loss / len(data_loader))
+            epoch_cost1 = epoch_cost1 + (loss_generation / len(data_loader))
+            epoch_cost2 = epoch_cost2 + (loss_ranking / len(data_loader))
 
     print("\n * LOSS - {loss.avg:.3f}\n".format(loss=losses))
 
