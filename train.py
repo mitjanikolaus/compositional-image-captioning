@@ -405,7 +405,7 @@ def train(
             shared_params = [
                 param
                 for param_name, param in named_params.items()
-                if param_name in decoder.SHARED_PARAMS
+                if param_name in decoder.SHARED_PARAMS and param.requires_grad
             ]
             G1R = torch.autograd.grad(
                 loss_generation, shared_params, retain_graph=True, create_graph=True
