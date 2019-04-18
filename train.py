@@ -147,8 +147,12 @@ def main(
             decoder_optimizer = create_decoder_optimizer(decoder, model_params)
 
             if objective == OBJECTIVE_JOINT:
-                Weightloss1 = torch.tensor(torch.FloatTensor([1]), requires_grad=True)
-                Weightloss2 = torch.tensor(torch.FloatTensor([1]), requires_grad=True)
+                Weightloss1 = torch.tensor(
+                    torch.FloatTensor([1]), requires_grad=True, device=device
+                )
+                Weightloss2 = torch.tensor(
+                    torch.FloatTensor([1]), requires_grad=True, device=device
+                )
                 loss_weights = [Weightloss1, Weightloss2]
                 gradnorm_optimizer = torch.optim.Adam(
                     loss_weights, lr=decoder_optimizer.defaults["lr"]
