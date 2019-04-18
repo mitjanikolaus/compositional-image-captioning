@@ -24,11 +24,8 @@ from utils import (
 # stanfordnlp.download('en', confirm_if_exists=True)
 
 
-def recall_pairs(generated_captions, word_map, occurrences_data_files):
-    print("Recall:")
-    print(
-        "Pair | Recall (n=1) | Recall (n=2) | Recall (n=3) | Recall (n=4) | Recall (n=5)"
-    )
+def recall_pairs(generated_captions, word_map, occurrences_data_files, checkpoint_name):
+    recall_scores = {}
     nlp_pipeline = stanfordnlp.Pipeline()
     for occurrences_data_file in occurrences_data_files:
         with open(occurrences_data_file, "r") as json_file:
@@ -39,7 +36,7 @@ def recall_pairs(generated_captions, word_map, occurrences_data_files):
 
         if ADJECTIVES in occurrences_data:
             adjectives = set(occurrences_data[ADJECTIVES])
-            recall = calc_recall(
+            recall_score = calc_recall(
                 generated_captions,
                 test_indices,
                 word_map,
@@ -51,7 +48,7 @@ def recall_pairs(generated_captions, word_map, occurrences_data_files):
             )
         elif VERBS in occurrences_data:
             verbs = set(occurrences_data[VERBS])
-            recall = calc_recall(
+            recall_score = calc_recall(
                 generated_captions,
                 test_indices,
                 word_map,
@@ -65,9 +62,15 @@ def recall_pairs(generated_captions, word_map, occurrences_data_files):
             raise ValueError("No adjectives or verbs found in occurrences data!")
 
         name = os.path.basename(occurrences_data_file).split(".")[0]
-        print("\n" + name, end=" | ")
-        for n in range(len(recall)):
-            print(float("%.2f" % recall[n]), end=" | ")
+        recall_scores[name] = recall_score
+        average_recall = np.sum(list(recall_score["true_positives"].values())) / np.sum(
+            list(recall_score["numbers"].values())
+        )
+        print("{}: {}".format(name, float("%.2f" % average_recall)))
+
+    result_file_name = "eval_" + checkpoint_name.split(".")[0] + ".json"
+    with open(result_file_name, "w") as json_file:
+        json.dump(recall_scores, json_file)
 
 
 def calc_recall(
@@ -80,8 +83,8 @@ def calc_recall(
     contains_pair_function,
     nlp_pipeline,
 ):
-    true_positives = np.zeros(5)
-    false_negatives = np.zeros(5)
+    true_positives = dict.fromkeys(["N=1", "N=2", "N=3", "N=4", "N=5"], 0)
+    numbers = dict.fromkeys(["N=1", "N=2", "N=3", "N=4", "N=5"], 0)
     for coco_id in test_indices:
         top_k_captions = generated_captions[coco_id]
         count = occurrences_data[OCCURRENCE_DATA][coco_id][PAIR_OCCURENCES]
@@ -100,12 +103,13 @@ def calc_recall(
             if contains_pair:
                 hit = True
         if hit:
-            true_positives[count - 1] += 1
-        else:
-            false_negatives[count - 1] += 1
+            true_positives["N={}".format(count)] += 1
+        numbers["N={}".format(count)] += 1
 
-    recall = true_positives / (true_positives + false_negatives)
-    return recall
+    recall_score = {}
+    recall_score["true_positives"] = true_positives
+    recall_score["numbers"] = numbers
+    return recall_score
 
 
 def beam_occurrences(

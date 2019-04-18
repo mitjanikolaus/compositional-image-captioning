@@ -37,14 +37,14 @@ def evaluate(
     data_folder,
     occurrences_data,
     karpathy_json,
-    checkpoint,
+    checkpoint_path,
     metrics,
     beam_size,
     visualize,
     print_beam,
 ):
     # Load model
-    checkpoint = torch.load(checkpoint, map_location=device)
+    checkpoint = torch.load(checkpoint_path, map_location=device)
 
     model_name = checkpoint["model_name"]
     print("Model: {}".format(model_name))
@@ -142,6 +142,7 @@ def evaluate(
         assert len(target_captions) == len(generated_captions)
 
     # Calculate metric scores
+    checkpoint_name = os.path.basename(checkpoint_path)
     for metric in metrics:
         calculate_metric(
             metric,
@@ -151,6 +152,7 @@ def evaluate(
             word_map,
             occurrences_data,
             beam_size,
+            checkpoint_name,
         )
 
 
@@ -162,6 +164,7 @@ def calculate_metric(
     word_map,
     occurrences_data,
     beam_size,
+    checkpoint_name,
 ):
     if metric_name == METRIC_BLEU:
         generated_captions = [
@@ -183,9 +186,8 @@ def calculate_metric(
         bleu_scores = [float("%.2f" % elem) for elem in bleu_scores]
         print("\nBLEU score @ beam size {} is {}".format(beam_size, bleu_scores))
     elif metric_name == METRIC_RECALL:
-        recall_pairs(generated_captions, word_map, occurrences_data)
+        recall_pairs(generated_captions, word_map, occurrences_data, checkpoint_name)
     elif metric_name == METRIC_BEAM_OCCURRENCES:
-        # TODO fix for multiple occurrences data files
         beam_occurrences_score = beam_occurrences(
             generated_beams, beam_size, word_map, occurrences_data
         )
@@ -249,7 +251,7 @@ if __name__ == "__main__":
         data_folder=parsed_args.data_folder,
         occurrences_data=parsed_args.occurrences_data,
         karpathy_json=parsed_args.karpathy_json,
-        checkpoint=parsed_args.checkpoint,
+        checkpoint_path=parsed_args.checkpoint,
         metrics=parsed_args.metrics,
         beam_size=parsed_args.beam_size,
         visualize=parsed_args.visualize_attention,
