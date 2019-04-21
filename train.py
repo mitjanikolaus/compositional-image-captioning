@@ -154,7 +154,7 @@ def main(
                     1, requires_grad=True, device=device, dtype=torch.float
                 )
                 gradnorm_optimizer = torch.optim.Adam(
-                    [loss_weight_generation, loss_weight_ranking], lr=0.001
+                    [loss_weight_generation, loss_weight_ranking], lr=0.025
                 )  # TODO lr?
                 gradnorm_loss = nn.L1Loss().to(device)
 
