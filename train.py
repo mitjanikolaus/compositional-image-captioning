@@ -473,9 +473,9 @@ def train(
         if objective == OBJECTIVE_JOINT:
             # Renormalizing the losses weights
             coef = 2 / torch.add(loss_weights[0], loss_weights[1])
-            params = [coef * loss_weights[0], coef * loss_weights[1]]
+            loss_weights = [coef * loss_weights[0], coef * loss_weights[1]]
             print("Weights are:", loss_weights[0], loss_weights[1])
-            print("params are:", params)
+            print("loss weights are:", loss_weights)
             epoch_cost = epoch_cost + (loss / len(data_loader))
             epoch_cost1 = epoch_cost1 + (loss_generation / len(data_loader))
             epoch_cost2 = epoch_cost2 + (loss_ranking / len(data_loader))
