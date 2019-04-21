@@ -84,15 +84,10 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
     DEFAULT_OPTIMIZER_PARAMS = {"decoder_learning_rate": 1e-4}
 
     SHARED_PARAMS = [
-        "word_embedding.weight",
         "image_embedding.linear_image_embedding_weights.weight",
         "image_embedding.linear_image_embedding_weights.bias",
         "image_embedding.image_embedding.weight",
         "image_embedding.image_embedding.bias",
-        "language_encoding_lstm.lstm_cell.weight_ih",
-        "language_encoding_lstm.lstm_cell.weight_hh",
-        "language_encoding_lstm.lstm_cell.bias_ih",
-        "language_encoding_lstm.lstm_cell.bias_hh",
     ]
 
     def __init__(self, word_map, params, pretrained_embeddings=None):
