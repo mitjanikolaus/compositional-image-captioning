@@ -147,15 +147,14 @@ def main(
             decoder_optimizer = create_decoder_optimizer(decoder, model_params)
 
             if objective == OBJECTIVE_JOINT:
-                Weightloss1 = torch.tensor(
-                    torch.FloatTensor([1]), requires_grad=True, device=device
+                loss_weight_generation = torch.ones(
+                    1, requires_grad=True, device=device, dtype=torch.float
                 )
-                Weightloss2 = torch.tensor(
-                    torch.FloatTensor([1]), requires_grad=True, device=device
+                loss_weight_ranking = torch.ones(
+                    1, requires_grad=True, device=device, dtype=torch.float
                 )
-                loss_weights = [Weightloss1, Weightloss2]
                 gradnorm_optimizer = torch.optim.Adam(
-                    loss_weights, lr=decoder_optimizer.defaults["lr"]
+                    [loss_weight_generation, loss_weight_ranking], lr=0.001
                 )  # TODO lr?
                 gradnorm_loss = nn.L1Loss().to(device)
 
@@ -266,7 +265,8 @@ def main(
             grad_clip,
             print_freq,
             gradnorm_optimizer,
-            loss_weights,
+            loss_weight_generation,
+            loss_weight_ranking,
             gradnorm_loss,
         )
 
@@ -332,7 +332,8 @@ def train(
     grad_clip,
     print_freq,
     gradnorm_optimizer,
-    loss_weights,
+    loss_weight_generation,
+    loss_weight_ranking,
     gradnorm_loss,
     gradnorm_alpha=0.16,  # TODO
 ):
@@ -344,6 +345,8 @@ def train(
     epoch_cost = 0
     epoch_cost1 = 0
     epoch_cost2 = 0
+
+    loss_weights = [loss_weight_generation, loss_weight_ranking]
 
     decoder.train()
     if encoder:
@@ -411,12 +414,12 @@ def train(
                 loss_generation, shared_params, retain_graph=True, create_graph=True
             )
             G1R_flattened = torch.cat([g.view(-1) for g in G1R])
-            G1 = torch.norm(G1R_flattened, 2)
+            G1 = torch.norm(G1R_flattened, 2).unsqueeze(0)
             G2R = torch.autograd.grad(
                 loss_ranking, shared_params, retain_graph=True, create_graph=True
             )
             G2R_flattened = torch.cat([g.view(-1) for g in G2R])
-            G2 = torch.norm(G2R_flattened, 2)
+            G2 = torch.norm(G2R_flattened, 2).unsqueeze(0)
             G_avg = torch.div(torch.add(G1, G2), 2)
 
             # Calculating relative losses
@@ -472,9 +475,9 @@ def train(
 
         if objective == OBJECTIVE_JOINT:
             # Renormalizing the losses weights
-            coef = 2 / torch.add(loss_weights[0], loss_weights[1])
-            loss_weights = [coef * loss_weights[0], coef * loss_weights[1]]
-            print("Weights are:", loss_weights[0], loss_weights[1])
+            coef = 2 / torch.add(loss_weight_generation, loss_weight_ranking)
+            loss_weights = [coef * loss_weight_generation, coef * loss_weight_ranking]
+            print("Weights are:", loss_weight_generation, loss_weight_ranking)
             print("loss weights are:", loss_weights)
             epoch_cost = epoch_cost + (loss / len(data_loader))
             epoch_cost1 = epoch_cost1 + (loss_generation / len(data_loader))
