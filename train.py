@@ -440,10 +440,16 @@ def train(
             gradnorm_optimizer.zero_grad()
             # Calculating the gradient loss according to Eq. 2 in the GradNorm paper
             Lgrad = torch.add(gradnorm_loss(G1, C1), gradnorm_loss(G2, C2))
+
+            for param in shared_params:
+                param.requires_grad = False
             Lgrad.backward()
 
             # Updating loss weights
             gradnorm_optimizer.step()
+
+            for param in shared_params:
+                param.requires_grad = True
         else:
             decoder_optimizer.zero_grad()
             if encoder_optimizer:
