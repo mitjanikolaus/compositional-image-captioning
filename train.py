@@ -402,6 +402,8 @@ def train(
             if epoch == 0 and i == 0:
                 loss_generation_t0 = loss_generation
                 loss_ranking_t0 = loss_ranking
+                print("Initial generation loss: {}".format(loss_generation_t0))
+                print("Initial ranking loss: {}".format(loss_ranking_t0))
 
             decoder_optimizer.zero_grad()
             if encoder_optimizer:
