@@ -70,24 +70,29 @@ def visualize_occurrences(occurrences_data_files):
             )
             print("\n" + noun_name, end=" | ")
             for n in range(len(pair_matches)):
-                print(str(noun_matches[n]) + " | ", end="")
+                print(noun_matches[n], end=" | ")
+            print(np.sum(noun_matches), end="")
 
             if ADJECTIVES in occurrences_data:
                 adjective_name = os.path.basename(occurrences_data_file).split("_")[0]
                 print("\n" + adjective_name, end=" | ")
                 for n in range(len(pair_matches)):
-                    print(str(adjective_matches[n]) + " | ", end="")
+                    print(adjective_matches[n], end=" | ")
+                print(np.sum(adjective_matches), end="")
 
             if VERBS in occurrences_data:
                 verb_name = os.path.basename(occurrences_data_file).split("_")[0]
                 print("\n" + verb_name, end=" | ")
                 for n in range(len(pair_matches)):
-                    print(str(verb_matches[n]) + " | ", end="")
+                    print(verb_matches[n], end=" | ")
+                print(np.sum(verb_matches), end="")
 
             name = os.path.basename(occurrences_data_file).split(".")[0]
             print("\n" + name, end=" | ")
             for n in range(len(pair_matches)):
-                print(str(pair_matches[n]) + " | ", end="")
+                print(pair_matches[n], end=" | ")
+            print(np.sum(pair_matches), end="")
+
         print("\n")
 
         # patches, texts, _ = plt.pie(pair_matches, autopct="%1.2f")
