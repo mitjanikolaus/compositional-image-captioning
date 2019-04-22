@@ -382,10 +382,10 @@ def train(
                 loss_generation = decoder.loss(
                     scores, target_captions, decode_lengths, alphas
                 )
-                loss_generation_weighted = loss_weights[0] * loss_generation
                 loss_ranking = decoder.loss_ranking(images_embedded, captions_embedded)
-                loss_ranking_weighted = loss_weights[1] * loss_ranking
-                loss = (loss_generation_weighted + loss_ranking_weighted) / 2
+                loss = (
+                    loss_weights[0] * loss_generation + loss_weights[1] * loss_ranking
+                )
             elif objective == OBJECTIVE_RANKING:
                 images_embedded, captions_embedded = decoder.forward_ranking(
                     images, target_captions, decode_lengths
