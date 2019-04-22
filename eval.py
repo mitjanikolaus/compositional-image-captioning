@@ -6,18 +6,22 @@ import torch.optim
 import torch.utils.data
 import torchvision.transforms as transforms
 from datasets import *
-from metrics import recall_adjective_noun_pairs, beam_occurrences
+from metrics import recall_pairs, beam_occurrences
 from nltk.translate.bleu_score import corpus_bleu
 from tqdm import tqdm
 
-from train import MODEL_SHOW_ATTEND_TELL, MODEL_BOTTOM_UP_TOP_DOWN
+from train import (
+    MODEL_SHOW_ATTEND_TELL,
+    MODEL_BOTTOM_UP_TOP_DOWN,
+    MODEL_BOTTOM_UP_TOP_DOWN_RANKING,
+)
 from utils import (
     get_caption_without_special_tokens,
     IMAGENET_IMAGES_MEAN,
     IMAGENET_IMAGES_STD,
-    get_splits_from_occurrences_data,
     IMAGES_FILENAME,
     BOTTOM_UP_FEATURES_FILENAME,
+    get_splits,
 )
 from visualize_attention import visualize_attention
 
@@ -30,10 +34,17 @@ METRIC_BEAM_OCCURRENCES = "beam-occurrences"
 
 
 def evaluate(
-    data_folder, occurrences_data, checkpoint, metrics, beam_size, visualize, print_beam
+    data_folder,
+    occurrences_data,
+    karpathy_json,
+    checkpoint_path,
+    metrics,
+    beam_size,
+    visualize,
+    print_beam,
 ):
     # Load model
-    checkpoint = torch.load(checkpoint, map_location=device)
+    checkpoint = torch.load(checkpoint_path, map_location=device)
 
     model_name = checkpoint["model_name"]
     print("Model: {}".format(model_name))
@@ -50,7 +61,7 @@ def evaluate(
 
     print("Decoder params: {}".format(decoder.params))
 
-    _, _, test_images_split = get_splits_from_occurrences_data(occurrences_data)
+    _, _, test_images_split = get_splits(occurrences_data, karpathy_json)
 
     if model_name == MODEL_SHOW_ATTEND_TELL:
         # Normalization
@@ -72,7 +83,10 @@ def evaluate(
             num_workers=1,
             pin_memory=True,
         )
-    elif model_name == MODEL_BOTTOM_UP_TOP_DOWN:
+    elif (
+        model_name == MODEL_BOTTOM_UP_TOP_DOWN
+        or model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING
+    ):
         data_loader = torch.utils.data.DataLoader(
             CaptionTestDataset(
                 data_folder, BOTTOM_UP_FEATURES_FILENAME, test_images_split
@@ -86,22 +100,20 @@ def evaluate(
         raise RuntimeError("Unknown model name: {}".format(model_name))
 
     # Lists for target captions and generated captions for each image
-    target_captions = []
-    generated_captions = []
-    generated_beams = []
-    coco_ids = []
+    target_captions = {}
+    generated_captions = {}
+    generated_beams = {}
 
-    for i, (image_features, all_captions_for_image, coco_id) in enumerate(
-        tqdm(data_loader, desc="Evaluate with beam size " + str(beam_size))
+    for image_features, all_captions_for_image, _, coco_id in tqdm(
+        data_loader, desc="Evaluate with beam size " + str(beam_size)
     ):
+        coco_id = coco_id[0]
 
         # Target captions
-        target_captions.append(
-            [
-                get_caption_without_special_tokens(caption, word_map)
-                for caption in all_captions_for_image[0].tolist()
-            ]
-        )
+        target_captions[coco_id] = [
+            get_caption_without_special_tokens(caption, word_map)
+            for caption in all_captions_for_image[0].tolist()
+        ]
 
         # Generate captions
         encoded_features = image_features.to(device)
@@ -118,32 +130,30 @@ def evaluate(
             print_beam=print_beam,
         )
         if visualize:
-            print("Image COCO ID: {}".format(coco_id[0]))
+            print("Image COCO ID: {}".format(coco_id))
             for caption, alpha in zip(top_k_generated_captions, alphas):
                 visualize_attention(
                     image_features.squeeze(0), caption, alpha, word_map, smoothen=True
                 )
 
-        generated_captions.append(top_k_generated_captions)
-        generated_beams.append(beam)
-
-        coco_ids.append(coco_id[0])
+        generated_captions[coco_id] = top_k_generated_captions
+        generated_beams[coco_id] = beam
 
         assert len(target_captions) == len(generated_captions)
 
     # Calculate metric scores
+    checkpoint_name = os.path.basename(checkpoint_path)
     for metric in metrics:
-        metric_score = calculate_metric(
+        calculate_metric(
             metric,
             target_captions,
             generated_captions,
             generated_beams,
-            coco_ids,
             word_map,
             occurrences_data,
             beam_size,
+            checkpoint_name,
         )
-        print("\n{} score @ beam size {} is {}".format(metric, beam_size, metric_score))
 
 
 def calculate_metric(
@@ -151,16 +161,17 @@ def calculate_metric(
     target_captions,
     generated_captions,
     generated_beams,
-    coco_ids,
     word_map,
     occurrences_data,
     beam_size,
+    checkpoint_name,
 ):
     if metric_name == METRIC_BLEU:
         generated_captions = [
             get_caption_without_special_tokens(top_k_captions[0], word_map)
-            for top_k_captions in generated_captions
+            for top_k_captions in generated_captions.values()
         ]
+        target_captions = target_captions.values()
         bleu_1 = corpus_bleu(target_captions, generated_captions, weights=(1, 0, 0, 0))
         bleu_2 = corpus_bleu(
             target_captions, generated_captions, weights=(0.5, 0.5, 0, 0)
@@ -172,16 +183,19 @@ def calculate_metric(
             target_captions, generated_captions, weights=(0.25, 0.25, 0.25, 0.25)
         )
         bleu_scores = [bleu_1, bleu_2, bleu_3, bleu_4]
-        bleu_scores = [float("%.3f" % elem) for elem in bleu_scores]
-        return bleu_scores
+        bleu_scores = [float("%.2f" % elem) for elem in bleu_scores]
+        print("\nBLEU score @ beam size {} is {}".format(beam_size, bleu_scores))
     elif metric_name == METRIC_RECALL:
-        recall = recall_adjective_noun_pairs(
-            generated_captions, coco_ids, word_map, occurrences_data
-        )
-        recall = [float("%.3f" % elem) for elem in recall]
-        return recall
+        recall_pairs(generated_captions, word_map, occurrences_data, checkpoint_name)
     elif metric_name == METRIC_BEAM_OCCURRENCES:
-        return beam_occurrences(generated_beams, beam_size, word_map, occurrences_data)
+        beam_occurrences_score = beam_occurrences(
+            generated_beams, beam_size, word_map, occurrences_data
+        )
+        print(
+            "\nBeam occurrences score @ beam size {} is {}".format(
+                beam_size, beam_occurrences_score
+            )
+        )
 
 
 def check_args(args):
@@ -193,8 +207,11 @@ def check_args(args):
     )
     parser.add_argument(
         "--occurrences-data",
-        help="File containing occurrences statistics about adjective noun pairs",
-        default="data/brown_dog.json",
+        nargs="+",
+        help="Files containing occurrences statistics about adjective-noun or verb-noun pairs",
+    )
+    parser.add_argument(
+        "--karpathy-json", help="File containing train/val/test split information"
     )
     parser.add_argument(
         "--checkpoint", help="Path to checkpoint of trained model", required=True
@@ -233,7 +250,8 @@ if __name__ == "__main__":
     evaluate(
         data_folder=parsed_args.data_folder,
         occurrences_data=parsed_args.occurrences_data,
-        checkpoint=parsed_args.checkpoint,
+        karpathy_json=parsed_args.karpathy_json,
+        checkpoint_path=parsed_args.checkpoint,
         metrics=parsed_args.metrics,
         beam_size=parsed_args.beam_size,
         visualize=parsed_args.visualize_attention,

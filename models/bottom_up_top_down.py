@@ -11,12 +11,12 @@ class TopDownDecoder(CaptioningModelDecoder):
         "teacher_forcing_ratio": 1,
         "dropout_ratio": 0.0,
         "image_features_size": 2048,
-        "embeddings_size": 1000,
+        "word_embeddings_size": 1000,
         "attention_lstm_size": 1000,
         "attention_layer_size": 512,
         "language_lstm_size": 1000,
         "max_caption_len": 50,
-        "fine_tune_decoder_embeddings": True,
+        "fine_tune_decoder_word_embeddings": True,
     }
     DEFAULT_OPTIMIZER_PARAMS = {"decoder_learning_rate": 1e-4}
 
@@ -24,7 +24,7 @@ class TopDownDecoder(CaptioningModelDecoder):
         super(TopDownDecoder, self).__init__(word_map, params, pretrained_embeddings)
 
         self.attention_lstm = AttentionLSTM(
-            self.params["embeddings_size"],
+            self.params["word_embeddings_size"],
             self.params["language_lstm_size"],
             self.params["image_features_size"],
             self.params["attention_lstm_size"],
@@ -45,7 +45,9 @@ class TopDownDecoder(CaptioningModelDecoder):
 
         # Linear layer to transform lstm hidden output to embedding size
         self.fully_connected = nn.Linear(
-            self.params["language_lstm_size"], self.params["embeddings_size"], bias=True
+            self.params["language_lstm_size"],
+            self.params["word_embeddings_size"],
+            bias=True,
         )
 
         # linear layers to find initial states of LSTMs
@@ -85,6 +87,9 @@ class TopDownDecoder(CaptioningModelDecoder):
         scores = self.inverse_word_embedding(fc)
         states = [h1, c1, h2, c2]
         return scores, states, None
+
+    def loss(self, scores, target_captions, decode_lengths, alphas):
+        return self.loss_cross_entropy(scores, target_captions, decode_lengths)
 
     def beam_search(
         self,

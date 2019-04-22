@@ -65,7 +65,7 @@ class Encoder(nn.Module):
 
 class SATDecoder(CaptioningModelDecoder):
     DEFAULT_MODEL_PARAMS = {
-        "embeddings_size": 512,
+        "word_embeddings_size": 512,
         "attention_dim": 512,
         "encoder_dim": 2048,
         "decoder_dim": 512,
@@ -73,7 +73,7 @@ class SATDecoder(CaptioningModelDecoder):
         "dropout_ratio": 0.5,
         "alpha_c": 1.0,
         "max_caption_len": 50,
-        "fine_tune_decoder_embeddings": True,
+        "fine_tune_decoder_word_embeddings": True,
     }
     DEFAULT_OPTIMIZER_PARAMS = {"decoder_learning_rate": 4e-4}
 
@@ -96,7 +96,7 @@ class SATDecoder(CaptioningModelDecoder):
 
         # LSTM
         self.decode_step = nn.LSTMCell(
-            self.params["embeddings_size"] + self.params["encoder_dim"],
+            self.params["word_embeddings_size"] + self.params["encoder_dim"],
             self.params["decoder_dim"],
             bias=True,
         )
@@ -105,11 +105,12 @@ class SATDecoder(CaptioningModelDecoder):
         self.dropout = nn.Dropout(p=self.params["dropout_ratio"])
 
         # Linear layers for output generation
+        self.linear_o = nn.Linear(self.params["word_embeddings_size"], self.vocab_size)
         self.linear_h = nn.Linear(
-            self.params["decoder_dim"], self.params["embeddings_size"]
+            self.params["decoder_dim"], self.params["word_embeddings_size"]
         )
         self.linear_z = nn.Linear(
-            self.params["encoder_dim"], self.params["embeddings_size"]
+            self.params["encoder_dim"], self.params["word_embeddings_size"]
         )
 
     def init_hidden_states(self, encoder_out):
@@ -157,6 +158,13 @@ class SATDecoder(CaptioningModelDecoder):
 
         states = [decoder_hidden_state, decoder_cell_state]
         return scores, states, alpha
+
+    def loss(self, scores, target_captions, decode_lengths, alphas):
+        loss = self.loss_cross_entropy(scores, target_captions, decode_lengths)
+
+        # Add doubly stochastic attention regularization
+        loss += self.params["alpha_c"] * ((1.0 - alphas.sum(dim=1)) ** 2).mean()
+        return loss
 
 
 class AttentionModule(nn.Module):
