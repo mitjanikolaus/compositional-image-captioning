@@ -237,6 +237,8 @@ def main(
         encoder.to(device)
     decoder = decoder.to(device)
 
+    loss_generation_t0 = None
+    loss_ranking_t0 = None
     for epoch in range(start_epoch, epochs):
         if epochs_since_last_improvement >= epochs_early_stopping:
             print(
@@ -254,7 +256,7 @@ def main(
                 adjust_learning_rate(encoder_optimizer, rate_adjust_learning_rate)
 
         # One epoch's training
-        train(
+        loss_generation_t0, loss_ranking_t0 = train(
             model_name,
             train_images_loader,
             encoder,
@@ -270,6 +272,8 @@ def main(
             loss_weight_ranking,
             gradnorm_loss,
             gradnorm_alpha,
+            loss_generation_t0,
+            loss_ranking_t0,
         )
 
         # One epoch's validation
@@ -338,6 +342,8 @@ def train(
     loss_weight_ranking,
     gradnorm_loss,
     gradnorm_alpha,
+    loss_generation_t0,
+    loss_ranking_t0,
 ):
     """
     Perform one training epoch.
@@ -479,6 +485,7 @@ def train(
             loss_weights = [coef * loss_weight_generation, coef * loss_weight_ranking]
 
     print("\n * LOSS - {loss.avg:.3f}\n".format(loss=losses))
+    return loss_generation_t0, loss_ranking_t0
 
 
 def validate(data_loader, encoder, decoder, word_map, print_freq):
