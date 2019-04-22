@@ -10,12 +10,12 @@ import matplotlib.cm as cm
 import skimage.transform
 import argparse
 
-from train import MODEL_SHOW_ATTEND_TELL
 from utils import (
     decode_caption,
     WORD_MAP_FILENAME,
     IMAGES_FILENAME,
     invert_normalization,
+    MODEL_SHOW_ATTEND_TELL,
 )
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

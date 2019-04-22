@@ -46,6 +46,10 @@ RELATION_CONJUNCT = "conj"
 RELATION_RELATIVE_CLAUSE_MODIFIER = "acl:relcl"
 RELATION_ADJECTIVAL_CLAUSE = "acl"
 
+MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
+MODEL_BOTTOM_UP_TOP_DOWN = "BOTTOM_UP_TOP_DOWN"
+MODEL_BOTTOM_UP_TOP_DOWN_RANKING = "BOTTOM_UP_TOP_DOWN_RANKING"
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -287,6 +291,22 @@ def clip_gradients(optimizer, grad_clip):
                 param.grad.data.clamp_(-grad_clip, grad_clip)
 
 
+def get_checkpoint_file_name(
+    model_name, occurrences_data, karpathy_json, checkpoint_suffix, is_best
+):
+    type = ""
+    if occurrences_data:
+        type = "heldout_pairs"
+    elif karpathy_json:
+        type = "karpathy"
+
+    name = "checkpoint_" + model_name + "_" + type + checkpoint_suffix + ".pth.tar"
+    if is_best:
+        return "best_" + name
+    else:
+        return name
+
+
 def save_checkpoint(
     model_name,
     occurrences_data,
@@ -314,11 +334,6 @@ def save_checkpoint(
     :param validation_metric_score: validation set score for this epoch
     :param is_best: True, if this is the best checkpoint so far (will save the model to a dedicated file)
     """
-    if occurrences_data:
-        name = "heldout_pairs"
-    elif karpathy_json:
-        name = "karpathy"
-    name += checkpoint_suffix
     state = {
         "model_name": model_name,
         "epoch": epoch,
@@ -330,11 +345,17 @@ def save_checkpoint(
         "encoder_optimizer": encoder_optimizer,
         "decoder_optimizer": decoder_optimizer,
     }
-    torch.save(state, "checkpoint_" + model_name + "_" + name + ".pth.tar")
+    file_name = get_checkpoint_file_name(
+        model_name, occurrences_data, karpathy_json, checkpoint_suffix, False
+    )
+    torch.save(state, file_name)
 
     # If this checkpoint is the best so far, store a copy so it doesn't get overwritten by a worse checkpoint
     if is_best:
-        torch.save(state, "checkpoint_" + model_name + "_" + name + "_best.pth.tar")
+        file_name = get_checkpoint_file_name(
+            model_name, occurrences_data, karpathy_json, checkpoint_suffix, True
+        )
+        torch.save(state, file_name)
 
 
 class AverageMeter(object):

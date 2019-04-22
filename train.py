@@ -7,6 +7,7 @@ import torch.optim
 import torch.utils.data
 from torchvision.transforms import transforms
 
+from eval import evaluate, METRIC_RECALL, METRIC_BLEU
 from metrics import recall_captions_from_images
 from models.bottom_up_top_down import TopDownDecoder
 from models.bottom_up_top_down_ranking import BottomUpTopDownRankingDecoder
@@ -28,11 +29,11 @@ from utils import (
     IMAGES_FILENAME,
     load_embeddings,
     get_splits,
+    get_checkpoint_file_name,
+    MODEL_SHOW_ATTEND_TELL,
+    MODEL_BOTTOM_UP_TOP_DOWN,
+    MODEL_BOTTOM_UP_TOP_DOWN_RANKING,
 )
-
-MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
-MODEL_BOTTOM_UP_TOP_DOWN = "BOTTOM_UP_TOP_DOWN"
-MODEL_BOTTOM_UP_TOP_DOWN_RANKING = "BOTTOM_UP_TOP_DOWN_RANKING"
 
 OBJECTIVE_GENERATION = "GENERATION"
 OBJECTIVE_RANKING = "RANKING"
@@ -300,6 +301,23 @@ def main(
         )
 
     print("\n\nFinished training.")
+
+    print("Evaluating:")
+    checkpoint_path = get_checkpoint_file_name(
+        model_name, occurrences_data, karpathy_json, checkpoint_suffix, True
+    )
+    metrics = [METRIC_BLEU, METRIC_RECALL]
+    beam_size = 5
+    evaluate(
+        data_folder,
+        occurrences_data,
+        karpathy_json,
+        checkpoint_path,
+        metrics,
+        beam_size,
+        False,
+        False,
+    )
 
 
 def train(
