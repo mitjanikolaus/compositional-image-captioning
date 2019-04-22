@@ -62,6 +62,7 @@ def main(
     fine_tune_decoder_image_embeddings,
     fine_tune_decoder_caption_embeddings,
     fine_tune_encoder,
+    gradnorm_alpha,
     workers=1,
     start_epoch=0,
     epochs_early_stopping=10,
@@ -268,6 +269,7 @@ def main(
             loss_weight_generation,
             loss_weight_ranking,
             gradnorm_loss,
+            gradnorm_alpha,
         )
 
         # One epoch's validation
@@ -335,7 +337,7 @@ def train(
     loss_weight_generation,
     loss_weight_ranking,
     gradnorm_loss,
-    gradnorm_alpha=0.16,  # TODO
+    gradnorm_alpha,
 ):
     """
     Perform one training epoch.
@@ -670,6 +672,9 @@ def check_args(args):
         dest="fine_tune_decoder_image_embeddings",
         action="store_false",
     )
+    parser.add_argument(
+        "--gradnorm-alpha", help="Gradnorm alpha", type=float, default=1.0
+    )
 
     parsed_args = parser.parse_args(args)
     print(parsed_args)
@@ -694,4 +699,5 @@ if __name__ == "__main__":
         fine_tune_decoder_image_embeddings=parsed_args.fine_tune_decoder_image_embeddings,
         fine_tune_decoder_caption_embeddings=parsed_args.fine_tune_decoder_caption_embeddings,
         fine_tune_encoder=parsed_args.fine_tune_encoder,
+        gradnorm_alpha=parsed_args.gradnorm_alpha,
     )
