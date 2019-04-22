@@ -469,13 +469,12 @@ def train(
                     epoch, i, len(data_loader), loss=losses
                 )
             )
+            print("Loss weights are:", loss_weights)
 
         if objective == OBJECTIVE_JOINT:
             # Renormalizing the losses weights
             coef = 2 / torch.add(loss_weight_generation, loss_weight_ranking)
             loss_weights = [coef * loss_weight_generation, coef * loss_weight_ranking]
-            print("Weights are:", loss_weight_generation, loss_weight_ranking)
-            print("Renormalized weights are:", loss_weights)
 
     print("\n * LOSS - {loss.avg:.3f}\n".format(loss=losses))
 
