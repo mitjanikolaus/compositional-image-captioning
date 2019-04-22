@@ -10,11 +10,6 @@ from metrics import recall_pairs, beam_occurrences
 from nltk.translate.bleu_score import corpus_bleu
 from tqdm import tqdm
 
-from train import (
-    MODEL_SHOW_ATTEND_TELL,
-    MODEL_BOTTOM_UP_TOP_DOWN,
-    MODEL_BOTTOM_UP_TOP_DOWN_RANKING,
-)
 from utils import (
     get_caption_without_special_tokens,
     IMAGENET_IMAGES_MEAN,
@@ -22,6 +17,9 @@ from utils import (
     IMAGES_FILENAME,
     BOTTOM_UP_FEATURES_FILENAME,
     get_splits,
+    MODEL_SHOW_ATTEND_TELL,
+    MODEL_BOTTOM_UP_TOP_DOWN,
+    MODEL_BOTTOM_UP_TOP_DOWN_RANKING,
 )
 from visualize_attention import visualize_attention
 

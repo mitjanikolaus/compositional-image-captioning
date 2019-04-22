@@ -8,11 +8,11 @@ from datasets import *
 from tqdm import tqdm
 
 from metrics import recall_captions_from_images, recall_captions_from_images_pairs
-from train import MODEL_BOTTOM_UP_TOP_DOWN_RANKING
 from utils import (
     BOTTOM_UP_FEATURES_FILENAME,
     get_splits_from_karpathy_json,
     get_ranking_splits_from_occurrences_data,
+    MODEL_BOTTOM_UP_TOP_DOWN_RANKING,
 )
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
