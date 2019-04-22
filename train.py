@@ -415,13 +415,13 @@ def train(
                 loss_generation, shared_params, retain_graph=True, create_graph=True
             )
             G1R_flattened = torch.cat([g.view(-1) for g in G1R])
-            G1R_flattened = G1R_flattened.detach()
+            G1R_flattened = G1R_flattened.data
             G1 = torch.norm(loss_weights[0] * G1R_flattened, 2).unsqueeze(0)
             G2R = torch.autograd.grad(
                 loss_ranking, shared_params, retain_graph=True, create_graph=True
             )
             G2R_flattened = torch.cat([g.view(-1) for g in G2R])
-            G2R_flattened = G2R_flattened.detach()
+            G2R_flattened = G2R_flattened.data
             G2 = torch.norm(loss_weights[1] * G2R_flattened, 2).unsqueeze(0)
             G_avg = torch.div(torch.add(G1, G2), 2)
 
@@ -437,8 +437,8 @@ def train(
             # Calculating the constant target for Eq. 2 in the GradNorm paper
             C1 = G_avg * (inv_rate1) ** gradnorm_alpha
             C2 = G_avg * (inv_rate2) ** gradnorm_alpha
-            C1 = C1.detach()
-            C2 = C2.detach()
+            C1 = C1.data
+            C2 = C2.data
 
             gradnorm_optimizer.zero_grad()
             # Calculating the gradient loss according to Eq. 2 in the GradNorm paper
@@ -481,7 +481,7 @@ def train(
             coef = 2 / torch.add(loss_weight_generation, loss_weight_ranking)
             loss_weights = [coef * loss_weight_generation, coef * loss_weight_ranking]
             print("Weights are:", loss_weight_generation, loss_weight_ranking)
-            print("loss weights are:", loss_weights)
+            print("Renormalized weights are:", loss_weights)
             epoch_cost = epoch_cost + (loss / len(data_loader))
             epoch_cost1 = epoch_cost1 + (loss_generation / len(data_loader))
             epoch_cost2 = epoch_cost2 + (loss_ranking / len(data_loader))
