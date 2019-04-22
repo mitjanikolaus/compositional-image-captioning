@@ -431,8 +431,8 @@ def train(
             inv_rate2 = torch.div(lhat2, lhat_avg)
 
             # Calculating the constant target for Eq. 2 in the GradNorm paper
-            C1 = G_avg * (inv_rate1) ** gradnorm_alpha
-            C2 = G_avg * (inv_rate2) ** gradnorm_alpha
+            C1 = G_avg * (inv_rate1 ** gradnorm_alpha)
+            C2 = G_avg * (inv_rate2 ** gradnorm_alpha)
             C1 = C1.data
             C2 = C2.data
 
