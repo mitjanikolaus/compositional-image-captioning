@@ -52,22 +52,22 @@ class TopDownDecoder(CaptioningModelDecoder):
         self.init_h1 = nn.Linear(
             self.params["image_features_size"],
             self.attention_lstm.lstm_cell.hidden_size,
-            bias=False,
+            bias=True,
         )
         self.init_c1 = nn.Linear(
             self.params["image_features_size"],
             self.attention_lstm.lstm_cell.hidden_size,
-            bias=False,
+            bias=True,
         )
         self.init_h2 = nn.Linear(
             self.params["image_features_size"],
             self.language_lstm.lstm_cell.hidden_size,
-            bias=False,
+            bias=True,
         )
         self.init_c2 = nn.Linear(
             self.params["image_features_size"],
             self.language_lstm.lstm_cell.hidden_size,
-            bias=False,
+            bias=True,
         )
 
     def init_hidden_states(self, encoder_output):
@@ -118,7 +118,7 @@ class AttentionLSTM(nn.Module):
     def __init__(self, dim_word_emb, dim_lang_lstm, dim_image_feats, hidden_size):
         super(AttentionLSTM, self).__init__()
         self.lstm_cell = nn.LSTMCell(
-            dim_lang_lstm + dim_image_feats + dim_word_emb, hidden_size, bias=False
+            dim_lang_lstm + dim_image_feats + dim_word_emb, hidden_size, bias=True
         )
 
     def forward(self, h1, c1, h2, v_mean, prev_words_embedded):
@@ -148,7 +148,7 @@ class VisualAttention(nn.Module):
         )
         self.linear_att_lstm = nn.Linear(dim_att_lstm, hidden_layer_size, bias=False)
         self.tanh = nn.Tanh()
-        self.linear_attention = nn.Linear(hidden_layer_size, 1, bias=False)
+        self.linear_attention = nn.Linear(hidden_layer_size, 1, bias=True)
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, image_features, h1):
