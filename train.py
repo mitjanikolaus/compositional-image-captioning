@@ -342,10 +342,6 @@ def train(
 
     """
 
-    epoch_cost = 0
-    epoch_cost1 = 0
-    epoch_cost2 = 0
-
     loss_weights = [loss_weight_generation, loss_weight_ranking]
 
     decoder.train()
@@ -478,13 +474,13 @@ def train(
 
         if objective == OBJECTIVE_JOINT:
             # Renormalizing the losses weights
-            coef = 2 / torch.add(loss_weight_generation, loss_weight_ranking)
-            loss_weights = [coef * loss_weight_generation, coef * loss_weight_ranking]
+            coef = 2 / torch.add(loss_weight_generation, loss_weight_ranking).data
+            loss_weights = [
+                coef * loss_weight_generation.data,
+                coef * loss_weight_ranking.data,
+            ]
             print("Weights are:", loss_weight_generation, loss_weight_ranking)
             print("Renormalized weights are:", loss_weights)
-            epoch_cost = epoch_cost + (loss / len(data_loader))
-            epoch_cost1 = epoch_cost1 + (loss_generation / len(data_loader))
-            epoch_cost2 = epoch_cost2 + (loss_ranking / len(data_loader))
 
     print("\n * LOSS - {loss.avg:.3f}\n".format(loss=losses))
 
