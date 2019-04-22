@@ -413,9 +413,7 @@ def train(
             G1R_flattened = torch.cat([g.view(-1) for g in G1R])
             G1R_flattened = G1R_flattened.data
             G1 = torch.norm(loss_weights[0] * G1R_flattened, 2).unsqueeze(0)
-            G2R = torch.autograd.grad(
-                loss_ranking, shared_params, retain_graph=True, create_graph=True
-            )
+            G2R = torch.autograd.grad(loss_ranking, shared_params)
             G2R_flattened = torch.cat([g.view(-1) for g in G2R])
             G2R_flattened = G2R_flattened.data
             G2 = torch.norm(loss_weights[1] * G2R_flattened, 2).unsqueeze(0)
