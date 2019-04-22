@@ -375,13 +375,13 @@ def train(
                 scores, decode_lengths, images_embedded, captions_embedded, alphas = decoder.forward_joint(
                     images, target_captions, decode_lengths
                 )
-                loss_generation = loss_weights[0] * decoder.loss(
+                loss_generation = decoder.loss(
                     scores, target_captions, decode_lengths, alphas
                 )
-                loss_ranking = loss_weights[1] * decoder.loss_ranking(
-                    images_embedded, captions_embedded
-                )
-                loss = (loss_generation + loss_ranking) / 2
+                loss_generation_weighted = loss_weights[0] * loss_generation
+                loss_ranking = decoder.loss_ranking(images_embedded, captions_embedded)
+                loss_ranking_weighted = loss_weights[1] * loss_ranking
+                loss = (loss_generation_weighted + loss_ranking_weighted) / 2
             elif objective == OBJECTIVE_RANKING:
                 images_embedded, captions_embedded = decoder.forward_ranking(
                     images, target_captions, decode_lengths
@@ -396,7 +396,8 @@ def train(
 
         if objective == OBJECTIVE_JOINT:
             if epoch == 0:
-                l0 = loss.data
+                loss_generation_t0 = loss_generation
+                loss_ranking_t0 = loss_ranking
 
             decoder_optimizer.zero_grad()
             if encoder_optimizer:
@@ -414,17 +415,19 @@ def train(
                 loss_generation, shared_params, retain_graph=True, create_graph=True
             )
             G1R_flattened = torch.cat([g.view(-1) for g in G1R])
-            G1 = torch.norm(G1R_flattened, 2).unsqueeze(0)
+            G1R_flattened = G1R_flattened.detach()
+            G1 = torch.norm(loss_weights[0] * G1R_flattened, 2).unsqueeze(0)
             G2R = torch.autograd.grad(
                 loss_ranking, shared_params, retain_graph=True, create_graph=True
             )
             G2R_flattened = torch.cat([g.view(-1) for g in G2R])
-            G2 = torch.norm(G2R_flattened, 2).unsqueeze(0)
+            G2R_flattened = G2R_flattened.detach()
+            G2 = torch.norm(loss_weights[1] * G2R_flattened, 2).unsqueeze(0)
             G_avg = torch.div(torch.add(G1, G2), 2)
 
             # Calculating relative losses
-            lhat1 = torch.div(loss_generation, l0)
-            lhat2 = torch.div(loss_ranking, l0)
+            lhat1 = torch.div(loss_generation, loss_generation_t0)
+            lhat2 = torch.div(loss_ranking, loss_ranking_t0)
             lhat_avg = torch.div(torch.add(lhat1, lhat2), 2)
 
             # Calculating relative inverse training rates for tasks
