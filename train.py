@@ -399,7 +399,7 @@ def train(
             loss = decoder.loss(scores, target_captions, decode_lengths, alphas)
 
         if objective == OBJECTIVE_JOINT:
-            if epoch == 0:
+            if epoch == 0 and i == 0:
                 loss_generation_t0 = loss_generation
                 loss_ranking_t0 = loss_ranking
 
