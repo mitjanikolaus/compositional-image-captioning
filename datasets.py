@@ -1,3 +1,5 @@
+import pickle
+
 import torch
 from torch.utils.data import Dataset
 import h5py
@@ -45,8 +47,8 @@ class CaptionDataset(Dataset):
         # Set pytorch transformation pipeline
         self.transform = normalize
 
-        with open(os.path.join(data_folder, "ids_no_adj.json"), "r") as json_file:
-            self.bad_indices = json.load(json_file)
+        with open(os.path.join(data_folder, "ids_no_adj.p"), "rb") as file:
+            self.bad_indices = pickle.load(file)
 
         for coco_id, indices in self.bad_indices.items():
             if len(indices) == self.captions_per_image:

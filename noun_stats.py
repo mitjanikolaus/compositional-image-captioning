@@ -66,10 +66,10 @@ def noun_stats(nouns_files, preprocessed_data_folder):
     with open(data_path, "w") as json_file:
         json.dump(data, json_file)
 
-    data_path = "ids_no_adj.json"
+    data_path = "ids_no_adj.p"
     print("\nSaving results to {}".format(data_path))
-    with open(data_path, "w") as json_file:
-        json.dump(ids_no_adj, json_file)
+    with open(data_path, "wb") as file:
+        pickle.dump(ids_no_adj, file)
 
 
 def check_args(args):
