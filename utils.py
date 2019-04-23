@@ -59,11 +59,15 @@ def get_adjectives_for_noun(pos_tagged_caption, nouns):
     caption_adjectives = {
         d[2].text
         for d in dependencies
-        if d[1] == RELATION_ADJECTIVAL_MODIFIER and d[0].text in nouns
+        if d[1] == RELATION_ADJECTIVAL_MODIFIER
+        and d[0].text in nouns
+        and d[2].upos == "ADJ"
     } | {
         d[0].text
         for d in dependencies
-        if d[1] == RELATION_NOMINAL_SUBJECT and d[2].text in nouns
+        if d[1] == RELATION_NOMINAL_SUBJECT
+        and d[2].text in nouns
+        and d[0].upos == "ADJ"
     }
     conjuncted_caption_adjectives = set()
     for adjective in caption_adjectives:
@@ -71,12 +75,16 @@ def get_adjectives_for_noun(pos_tagged_caption, nouns):
             {
                 d[2].text
                 for d in dependencies
-                if d[1] == RELATION_CONJUNCT and d[0].text == adjective
+                if d[1] == RELATION_CONJUNCT
+                and d[0].text == adjective
+                and d[2].upos == "ADJ"
             }
             | {
                 d[2].text
                 for d in dependencies
-                if d[1] == RELATION_ADJECTIVAL_MODIFIER and d[0].text == adjective
+                if d[1] == RELATION_ADJECTIVAL_MODIFIER
+                and d[0].text == adjective
+                and d[2].upos == "ADJ"
             }
         )
     return caption_adjectives | conjuncted_caption_adjectives
