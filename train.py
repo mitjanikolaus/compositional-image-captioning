@@ -17,7 +17,6 @@ from datasets import CaptionTrainDataset, CaptionTestDataset
 from nltk.translate.bleu_score import corpus_bleu
 
 from utils import (
-    adjust_learning_rate,
     save_checkpoint,
     AverageMeter,
     clip_gradients,
@@ -64,9 +63,7 @@ def main(
     fine_tune_encoder,
     workers=1,
     start_epoch=0,
-    epochs_early_stopping=10,
-    epochs_adjust_learning_rate=8,
-    rate_adjust_learning_rate=0.8,
+    epochs_early_stopping=5,
     checkpoint=None,
     print_freq=100,
 ):
@@ -231,13 +228,6 @@ def main(
                 )
             )
             break
-        if (
-            epochs_since_last_improvement > 0
-            and epochs_since_last_improvement % epochs_adjust_learning_rate == 0
-        ):
-            adjust_learning_rate(decoder_optimizer, rate_adjust_learning_rate)
-            if fine_tune_encoder:
-                adjust_learning_rate(encoder_optimizer, rate_adjust_learning_rate)
 
         # One epoch's training
         train(
