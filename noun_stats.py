@@ -15,47 +15,57 @@ from utils import (
 )
 
 
-def noun_stats(nouns_file, preprocessed_data_folder):
-    with open(nouns_file, "r") as json_file:
-        nouns = json.load(json_file)
+def noun_stats(nouns_files, preprocessed_data_folder):
+    data = {}
 
-    word_map_path = os.path.join(preprocessed_data_folder, WORD_MAP_FILENAME)
-    with open(word_map_path, "r") as json_file:
-        word_map = json.load(json_file)
+    for nouns_file in nouns_files:
+        with open(nouns_file, "r") as json_file:
+            nouns = json.load(json_file)
 
-    with open(
-        os.path.join(preprocessed_data_folder, POS_TAGGED_CAPTIONS_FILENAME), "rb"
-    ) as pickle_file:
-        captions = pickle.load(pickle_file)
+        word_map_path = os.path.join(preprocessed_data_folder, WORD_MAP_FILENAME)
+        with open(word_map_path, "r") as json_file:
+            word_map = json.load(json_file)
 
-    nouns = {noun for noun in nouns if noun in word_map}
+        with open(
+            os.path.join(preprocessed_data_folder, POS_TAGGED_CAPTIONS_FILENAME), "rb"
+        ) as pickle_file:
+            captions = pickle.load(pickle_file)
 
-    print("Noun stats for: {}".format(nouns))
+        first_noun = nouns[0]
 
-    adjective_frequencies = Counter()
+        nouns = {noun for noun in nouns if noun in word_map}
 
-    for coco_id, tagged_caption in tqdm(captions.items()):
-        for caption in tagged_caption["pos_tagged_captions"]:
-            noun_is_present = False
-            for token in caption.tokens:
-                if token.text in nouns:
-                    noun_is_present = True
-            if noun_is_present:
-                adjectives = get_adjectives_for_noun(caption, nouns)
-                print("Found adjectives:", adjectives)
-                if len(adjectives) == 0:
-                    adjective_frequencies["No adjective"] += 1
-                adjective_frequencies.update(adjectives)
+        print("Noun stats for: {}".format(nouns))
 
-    print(adjective_frequencies.most_common(100))
+        adjective_frequencies = Counter()
+
+        for coco_id, tagged_caption in tqdm(captions.items()):
+            for caption in tagged_caption["pos_tagged_captions"]:
+                noun_is_present = False
+                for token in caption.tokens:
+                    if token.text in nouns:
+                        noun_is_present = True
+                if noun_is_present:
+                    adjectives = get_adjectives_for_noun(caption, nouns)
+                    if len(adjectives) == 0:
+                        adjective_frequencies["No adjective"] += 1
+                    adjective_frequencies.update(adjectives)
+
+        print(adjective_frequencies.most_common(100))
+        data[first_noun] = adjective_frequencies
+
+    data_path = "noun_stats.json"
+    print("\nSaving results to {}".format(data_path))
+    with open(data_path, "w") as json_file:
+        json.dump(data, json_file)
 
 
 def check_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--nouns",
-        help="Path to file containing JSON-serialized list of nouns. ",
-        required=True,
+        nargs="+",
+        help="Path to files containing JSON-serialized list of nouns. ",
     )
     parser.add_argument(
         "--preprocessed-data-folder",
