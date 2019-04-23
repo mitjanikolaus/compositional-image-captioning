@@ -195,8 +195,7 @@ def check_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--nouns",
-        help="Path to file containing JSON-serialized list of nouns. "
-        "The first element needs to be a name of a COCO object type.",
+        help="Path to file containing JSON-serialized list of nouns. ",
         required=True,
     )
     parser.add_argument(
