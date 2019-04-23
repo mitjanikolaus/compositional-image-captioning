@@ -45,6 +45,15 @@ class CaptionDataset(Dataset):
         # Set pytorch transformation pipeline
         self.transform = normalize
 
+        with open(os.path.join(data_folder, "ids_no_adj.json"), "r") as json_file:
+            self.bad_indices = json.load(json_file)
+
+        for coco_id, indices in self.bad_indices.items():
+            if len(indices) == self.captions_per_image:
+                if coco_id in self.split:
+                    self.split.remove(coco_id)
+                    print("Remove")
+
         # Set size of the dataset
         self.dataset_size = len(self.split)
 
@@ -76,6 +85,10 @@ class CaptionTrainDataset(CaptionDataset):
         # Convert index depending on the dataset split
         coco_id = self.split[i // self.captions_per_image]
         caption_index = i % self.captions_per_image
+
+        if coco_id in self.bad_indices:
+            while caption_index in self.bad_indices[coco_id]:
+                caption_index = caption_index + 1 % self.captions_per_image
 
         image = self.get_image_features(coco_id)
         caption = torch.LongTensor(
