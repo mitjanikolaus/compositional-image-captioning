@@ -52,9 +52,9 @@ def noun_stats(nouns_files, preprocessed_data_folder):
                         adjective_frequencies["No adjective"] += 1
 
                         if coco_id in ids_no_adj:
-                            ids_no_adj[coco_id].append(i)
+                            ids_no_adj[coco_id].add(i)
                         else:
-                            ids_no_adj[coco_id] = [i]
+                            ids_no_adj[coco_id] = {1}
 
                     adjective_frequencies.update(adjectives)
 
