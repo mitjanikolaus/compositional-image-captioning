@@ -17,6 +17,7 @@ from utils import (
 
 def noun_stats(nouns_files, preprocessed_data_folder):
     data = {}
+    ids_no_adj = {}
 
     for nouns_file in nouns_files:
         with open(nouns_file, "r") as json_file:
@@ -40,7 +41,7 @@ def noun_stats(nouns_files, preprocessed_data_folder):
         adjective_frequencies = Counter()
 
         for coco_id, tagged_caption in tqdm(captions.items()):
-            for caption in tagged_caption["pos_tagged_captions"]:
+            for i, caption in enumerate(tagged_caption["pos_tagged_captions"]):
                 noun_is_present = False
                 for token in caption.tokens:
                     if token.text in nouns:
@@ -49,6 +50,12 @@ def noun_stats(nouns_files, preprocessed_data_folder):
                     adjectives = get_adjectives_for_noun(caption, nouns)
                     if len(adjectives) == 0:
                         adjective_frequencies["No adjective"] += 1
+
+                        if coco_id in ids_no_adj:
+                            ids_no_adj[coco_id].append(i)
+                        else:
+                            ids_no_adj[coco_id] = [i]
+
                     adjective_frequencies.update(adjectives)
 
         print(adjective_frequencies.most_common(100))
@@ -58,6 +65,11 @@ def noun_stats(nouns_files, preprocessed_data_folder):
     print("\nSaving results to {}".format(data_path))
     with open(data_path, "w") as json_file:
         json.dump(data, json_file)
+
+    data_path = "ids_no_adj.json"
+    print("\nSaving results to {}".format(data_path))
+    with open(data_path, "w") as json_file:
+        json.dump(ids_no_adj, json_file)
 
 
 def check_args(args):
