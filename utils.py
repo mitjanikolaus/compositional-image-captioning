@@ -53,6 +53,43 @@ MODEL_BOTTOM_UP_TOP_DOWN_RANKING = "BOTTOM_UP_TOP_DOWN_RANKING"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
+def get_adjectives_for_noun(pos_tagged_caption, nouns):
+    dependencies = pos_tagged_caption.dependencies
+
+    caption_adjectives = {
+        d[2].text
+        for d in dependencies
+        if d[1] == RELATION_ADJECTIVAL_MODIFIER
+        and d[0].text in nouns
+        and d[2].upos == "ADJ"
+    } | {
+        d[0].text
+        for d in dependencies
+        if d[1] == RELATION_NOMINAL_SUBJECT
+        and d[2].text in nouns
+        and d[0].upos == "ADJ"
+    }
+    conjuncted_caption_adjectives = set()
+    for adjective in caption_adjectives:
+        conjuncted_caption_adjectives.update(
+            {
+                d[2].text
+                for d in dependencies
+                if d[1] == RELATION_CONJUNCT
+                and d[0].text == adjective
+                and d[2].upos == "ADJ"
+            }
+            | {
+                d[2].text
+                for d in dependencies
+                if d[1] == RELATION_ADJECTIVAL_MODIFIER
+                and d[0].text == adjective
+                and d[2].upos == "ADJ"
+            }
+        )
+    return caption_adjectives | conjuncted_caption_adjectives
+
+
 def contains_adjective_noun_pair(pos_tagged_caption, nouns, adjectives):
     noun_is_present = False
     adjective_is_present = False
@@ -63,32 +100,7 @@ def contains_adjective_noun_pair(pos_tagged_caption, nouns, adjectives):
         if token.text in adjectives:
             adjective_is_present = True
 
-    dependencies = pos_tagged_caption.dependencies
-    caption_adjectives = {
-        d[2].text
-        for d in dependencies
-        if d[1] == RELATION_ADJECTIVAL_MODIFIER and d[0].text in nouns
-    } | {
-        d[0].text
-        for d in dependencies
-        if d[1] == RELATION_NOMINAL_SUBJECT and d[2].text in nouns
-    }
-    conjuncted_caption_adjectives = set()
-    for adjective in caption_adjectives:
-        conjuncted_caption_adjectives.update(
-            {
-                d[2].text
-                for d in dependencies
-                if d[1] == RELATION_CONJUNCT and d[0].text == adjective
-            }
-            | {
-                d[2].text
-                for d in dependencies
-                if d[1] == RELATION_ADJECTIVAL_MODIFIER and d[0].text == adjective
-            }
-        )
-
-    caption_adjectives |= conjuncted_caption_adjectives
+    caption_adjectives = get_adjectives_for_noun(pos_tagged_caption, nouns)
     combination_is_present = bool(adjectives & caption_adjectives)
 
     return noun_is_present, adjective_is_present, combination_is_present
