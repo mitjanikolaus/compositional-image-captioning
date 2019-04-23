@@ -114,14 +114,15 @@ def calc_recall(
 
 
 def average_recall(recall_scores):
-    true_positives = 0
-    numbers = 0
+    pair_recalls_summed = 0
 
     for i, pair in enumerate(recall_scores.keys()):
-        true_positives += np.sum(list(recall_scores[pair]["true_positives"].values()))
-        numbers += np.sum(list(recall_scores[pair]["numbers"].values()))
+        average_pair_recall = np.sum(
+            list(recall_scores[pair]["true_positives"].values())
+        ) / np.sum(list(recall_scores[pair]["numbers"].values()))
+        pair_recalls_summed += average_pair_recall
 
-    recall = true_positives / numbers
+    recall = pair_recalls_summed / len(recall_scores)
     return recall
 
 
