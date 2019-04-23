@@ -36,11 +36,16 @@ def noun_stats(nouns_file, preprocessed_data_folder):
 
     for coco_id, tagged_caption in tqdm(captions.items()):
         for caption in tagged_caption["pos_tagged_captions"]:
-            adjectives = get_adjectives_for_noun(caption, nouns)
-            print("Found adjectives:", adjectives)
-            if len(adjectives) == 0:
-                adjective_frequencies["No adjective"] += 1
-            adjective_frequencies.update(adjectives)
+            noun_is_present = False
+            for token in caption.tokens:
+                if token.text in nouns:
+                    noun_is_present = True
+            if noun_is_present:
+                adjectives = get_adjectives_for_noun(caption, nouns)
+                print("Found adjectives:", adjectives)
+                if len(adjectives) == 0:
+                    adjective_frequencies["No adjective"] += 1
+                adjective_frequencies.update(adjectives)
 
     print(adjective_frequencies.most_common(100))
 
