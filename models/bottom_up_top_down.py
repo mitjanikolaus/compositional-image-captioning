@@ -84,7 +84,10 @@ class TopDownDecoder(CaptioningModelDecoder):
         v_hat = self.attention(encoder_output, h1)
         h2, c2 = self.language_lstm(h2, c2, h1, v_hat)
         fc = self.fully_connected(self.dropout(h2))
-        scores = self.inverse_word_embedding(fc)
+
+        # Use the transposed word embedding weights for the output embeddings
+        scores = torch.matmul(fc, self.word_embedding.weight.t())
+
         states = [h1, c1, h2, c2]
         return scores, states, None
 

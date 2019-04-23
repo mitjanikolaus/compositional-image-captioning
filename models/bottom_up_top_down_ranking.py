@@ -116,7 +116,9 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
 
         # Linear layer to find scores over vocabulary
         self.fully_connected = nn.Linear(
-            self.params["language_generation_lstm_size"], self.vocab_size, bias=True
+            self.params["language_generation_lstm_size"],
+            self.params["word_embeddings_size"],
+            bias=True,
         )
 
         # linear layers to find initial states of LSTMs
@@ -167,7 +169,11 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         h_lan_gen, c_lan_gen = self.language_generation_lstm(
             h_lan_gen, c_lan_gen, h_attention, v_hat
         )
-        scores = self.fully_connected(self.dropout(h_lan_gen))
+        fc = self.fully_connected(self.dropout(h_lan_gen))
+
+        # Use the transposed word embedding weights for the output embeddings
+        scores = torch.matmul(fc, self.word_embedding.weight.t())
+
         states = [h_lan_enc, c_lan_enc, h_attention, c_attention, h_lan_gen, c_lan_gen]
         return scores, states, None
 

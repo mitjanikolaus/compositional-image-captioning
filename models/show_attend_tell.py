@@ -148,12 +148,14 @@ class SATDecoder(CaptioningModelDecoder):
         attention_weighted_encoding_embedded = self.linear_z(
             attention_weighted_encoding
         )
-        scores = self.inverse_word_embedding(
+        # Use the transposed word embedding weights for the output embeddings
+        scores = torch.matmul(
             self.dropout(
                 prev_word_embeddings
                 + decoder_hidden_state_embedded
                 + attention_weighted_encoding_embedded
-            )
+            ),
+            self.word_embedding.weight.t(),
         )
 
         states = [decoder_hidden_state, decoder_cell_state]

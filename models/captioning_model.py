@@ -24,15 +24,8 @@ class CaptioningModelDecoder(nn.Module):
             self.vocab_size, self.params["word_embeddings_size"]
         )
 
-        self.inverse_word_embedding = nn.Linear(
-            self.params["word_embeddings_size"], self.vocab_size, bias=False
-        )
-
         if pretrained_embeddings is not None:
             self.word_embedding.weight = nn.Parameter(pretrained_embeddings)
-            self.inverse_word_embedding.weight = nn.Parameter(pretrained_embeddings)
-            for p in self.inverse_word_embedding.parameters():
-                p.requires_grad = False
 
         self.set_fine_tune_embeddings(self.params["fine_tune_decoder_word_embeddings"])
 
