@@ -10,18 +10,7 @@ from tqdm import tqdm
 
 from utils import (
     WORD_MAP_FILENAME,
-    PAIR_OCCURENCES,
-    ADJECTIVE_OCCURRENCES,
-    NOUN_OCCURRENCES,
-    NOUNS,
-    ADJECTIVES,
-    contains_adjective_noun_pair,
-    OCCURRENCE_DATA,
-    DATA_COCO_SPLIT,
     POS_TAGGED_CAPTIONS_FILENAME,
-    VERBS,
-    contains_verb_noun_pair,
-    VERB_OCCURRENCES,
     get_adjectives_for_noun,
 )
 
@@ -48,9 +37,10 @@ def noun_stats(nouns_file, preprocessed_data_folder):
     for coco_id, tagged_caption in tqdm(captions.items()):
         for caption in tagged_caption["pos_tagged_captions"]:
             adjectives = get_adjectives_for_noun(caption, nouns)
+            print("Found adjectives:", adjectives)
             if len(adjectives) == 0:
                 adjective_frequencies["No adjective"] += 1
-            adjective_frequencies.update(caption)
+            adjective_frequencies.update(adjectives)
 
     print(adjective_frequencies.most_common(100))
 
