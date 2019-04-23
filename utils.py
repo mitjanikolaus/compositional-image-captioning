@@ -53,17 +53,9 @@ MODEL_BOTTOM_UP_TOP_DOWN_RANKING = "BOTTOM_UP_TOP_DOWN_RANKING"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def contains_adjective_noun_pair(pos_tagged_caption, nouns, adjectives):
-    noun_is_present = False
-    adjective_is_present = False
-
-    for token in pos_tagged_caption.tokens:
-        if token.text in nouns:
-            noun_is_present = True
-        if token.text in adjectives:
-            adjective_is_present = True
-
+def get_adjectives_for_noun(pos_tagged_caption, nouns):
     dependencies = pos_tagged_caption.dependencies
+
     caption_adjectives = {
         d[2].text
         for d in dependencies
@@ -87,8 +79,20 @@ def contains_adjective_noun_pair(pos_tagged_caption, nouns, adjectives):
                 if d[1] == RELATION_ADJECTIVAL_MODIFIER and d[0].text == adjective
             }
         )
+    return caption_adjectives | conjuncted_caption_adjectives
 
-    caption_adjectives |= conjuncted_caption_adjectives
+
+def contains_adjective_noun_pair(pos_tagged_caption, nouns, adjectives):
+    noun_is_present = False
+    adjective_is_present = False
+
+    for token in pos_tagged_caption.tokens:
+        if token.text in nouns:
+            noun_is_present = True
+        if token.text in adjectives:
+            adjective_is_present = True
+
+    caption_adjectives = get_adjectives_for_noun(pos_tagged_caption, nouns)
     combination_is_present = bool(adjectives & caption_adjectives)
 
     return noun_is_present, adjective_is_present, combination_is_present
