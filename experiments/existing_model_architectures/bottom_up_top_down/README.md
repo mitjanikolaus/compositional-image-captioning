@@ -1,98 +1,65 @@
-# Experiments
-
-## 1. Generalisation Capabilities
-
-**Research Question: How well do Multimodal Neural Language Models (MNLMs) generalise to unseen
-Adjective-Noun (Adj-N) pairs?**
-
-All images of the COCO dataset were annotated with information about how often a specific adjective-noun pair
-combination occurs in the corresponding captions. 
-
-Subsets of the COCO training set were created by removing all samples where a specific adjective-noun pair occurs at
-least once in the caption. For each of the training sets, a model was trained. 
-
-For the evaluation, data from the COCO validation set was annotated in the same way. This time, only samples that where
-the adjective-noun pair occurs are added to the test set.
-
-Notes on how to interpret the results:
-- "Recall (n>=1)" stands for the recall of the respective adjective noun pair,
-where n of the target captions contain the adjective noun pair.
-- For a beam size of n, the top n sentences are produced. If at least one of the sentences contains the target
-adjective-noun pair, the sample is counted as true positive (i.e. we are calculating the recall@n)
-
-### Bottom Up and Top Down Attention
+# Bottom Up and Top Down Attention
 
 BLEU-4 baseline (karpathy splits): 0.342
 
-#### Model trained with held out "brown dog"
+## Model trained with full coco training set
+Beam size 1:
 
-Performance on held out test set ("brown dog"):
+Pair | Recall (n=1) | Recall (n=2) | Recall (n=3) | Recall (n=4) | Recall (n=5)
+-----|--------------| -------------| -------------| -------------| -----------
+brown_dog | 0.02 | 0.01 | 0.07 | 0.0 | N/A
+eat_man | 0.22 | 0.4 | 0.44 | 0.77 | 0.33
+green_bench | 0.1 | 0.0 | 0.4 | 0.33 | 0.0
+red_chair | 0.14 | 0.5 | 0.67 | N/A | N/A
+ride_woman | 0.23 | 0.56 | 0.58 | 0.8 | 1.0
+sit_cat | 0.49 | 0.67 | 0.75 | 0.74 | 0.88
+small_plane | 0.29 | 0.66 | 0.65 | 0.8 | 0.5
+white_car | 0.18 | 0.25 | 0.45 | 0.57 | N/A
+wooden_table | 0.05 | 0.18 | 0.0 | 1.0 | N/A
 
-Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
-----------|--------| --------------| --------------| --------------| --------------| -------------
-1         | 0.313  | 0.003         | 0             | 0             | 0             | N/A
-5         | 0.318  | 0.041         | 0.057         | 0.067         | 0             | N/A
 
-Performance on "white car" data:
+Beam size 5:
 
-Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
-----------|--------| --------------| --------------| --------------| --------------| -------------
-1         | 0.266  | 0.187         | 0.262         | 0.342         | 0.375         | N/A
-5         | 0.264  | 0.380         | 0.476         | 0.632         | 0.75          | N/A
+Pair | Recall (n=1) | Recall (n=2) | Recall (n=3) | Recall (n=4) | Recall (n=5)
+-----|--------------| -------------| -------------| -------------| -----------
+brown_dog | 0.28 | 0.31 | 0.79 | 1.0 | N/A | 
+eat_man | 0.22 | 0.42 | 0.56 | 0.77 | 0.33 | 
+green_bench | 0.25 | 0.38 | 0.4 | 0.67 | 1.0 | 
+red_chair | 0.24 | 0.5 | 0.67 | N/A | N/A | 
+ride_woman | 0.34 | 0.61 | 0.76 | 0.87 | 1.0 | 
+sit_cat | 0.6 | 0.78 | 0.85 | 0.86 | 0.91 | 
+small_plane | 0.32 | 0.76 | 0.74 | 0.8 | 0.5 | 
+white_car | 0.42 | 0.53 | 0.77 | 0.71 | N/A | 
+wooden_table | 0.35 | 0.36 | 0.0 | 1.0 | N/A |
 
-Performance on "big car" data:
+## Model trained with heldout pairs
+Beam size 1:
 
-Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
-----------|--------| --------------| --------------| --------------| --------------| -------------
-1         | 0.283  | 0.055         | 0.144         | 0.231         | 0.5           | N/A
-5         | 0.321  | 0.154         | 0.304         | 0.538         | 0.5           | N/A
+Pair | Recall (n=1) | Recall (n=2) | Recall (n=3) | Recall (n=4) | Recall (n=5)
+-----|--------------| -------------| -------------| -------------| -----------
+brown_dog | 0.0 | 0.0 | 0.0 | 0.0 | N/A | 
+eat_man | 0.05 | 0.08 | 0.15 | 0.31 | 0.0 | 
+green_bench | 0.05 | 0.0 | 0.0 | 0.67 | 0.0 | 
+red_chair | 0.03 | 0.0 | 0.33 | N/A | N/A | 
+ride_woman | 0.04 | 0.08 | 0.15 | 0.4 | 0.67 | 
+sit_cat | 0.0 | 0.01 | 0.01 | 0.03 | 0.04 | 
+small_plane | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 
+white_car | 0.04 | 0.05 | 0.13 | 0.0 | N/A | 
+wooden_table | 0.0 | 0.0 | 0.0 | 0.0 | N/A |
 
-#### Model trained with held out "white car"
+Beam size 5:
 
-Performance on held out test set ("white car"):
-
-Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
-----------|--------| --------------| --------------| --------------| --------------| -------------
-1         | 0.271  | 0.045         | 0.063         | 0.053         | 0             | N/A
-5         | 0.262  | 0.045         | 0.063         | 0.132         | 0             | N/A
-
-Performance on "brown dog" data:
-
-Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
-----------|--------| --------------| --------------| --------------| --------------| -------------
-1         | 0.308  | 0.0724        | 0.115         | 0.267         | 0             | N/A                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
-5         | 0.359  | 0.334         | 0.402         | 0.533         | 0             | N/A
-
-Performance on "big car" data:
-
-Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
-----------|--------| --------------| --------------| --------------| --------------| -------------
-1         | 0.282  | 0.093         | 0.168         | 0.15384615    | 0             | N/A
-5         | 0.299  | 0.136         | 0.256         | 0.346         | 1             | N/A
-
-#### Model trained with held out "big car"
-
-Performance on held out test set ("big car"):
-
-Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
-----------|--------| --------------| --------------| --------------| --------------| -------------
-1         | 0.264  | 0.002         | 0.008         | 0.038         | 0             | N/A
-5         | 0.311  | 0             | 0             | 0             | 0             | N/A
-
-Performance on "brown dog" data:
-
-Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
-----------|--------| --------------| --------------| --------------| --------------| -------------
-1         | 0.329  | 0.031         | 0.023         | 0             | 0             | N/A
-5         | 0.357  | 0.341         | 0.414         | 0.6           | 0             | N/A
-
-Performance on "white car" data:
-
-Beam size | BLEU-4 | Recall (n>=1) | Recall (n>=2) | Recall (n>=3) | Recall (n>=4) | Recall (n>=5)
-----------|--------| --------------| --------------| --------------| --------------| -------------
-1         | 0.282  | 0.222         | 0.302         | 0.316         | 0.375         | N/A
-5         | 0.303  | 0.380         | 0.516         | 0.605         | 0.625         | N/A
-
+Pair | Recall (n=1) | Recall (n=2) | Recall (n=3) | Recall (n=4) | Recall (n=5)
+-----|--------------| -------------| -------------| -------------| -----------
+brown_dog | 0.01 | 0.03 | 0.0 | 0.0 | N/A | 
+eat_man | 0.06 | 0.09 | 0.15 | 0.23 | 0.33 | 
+green_bench | 0.1 | 0.0 | 0.0 | 0.67 | 0.0 | 
+red_chair | 0.17 | 0.25 | 0.17 | N/A | N/A | 
+ride_woman | 0.04 | 0.11 | 0.18 | 0.53 | 0.33 | 
+sit_cat | 0.01 | 0.0 | 0.02 | 0.02 | 0.04 | 
+small_plane | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 
+white_car | 0.05 | 0.03 | 0.16 | 0.0 | N/A | 
+wooden_table | 0.06 | 0.27 | 0.0 | 1.0 | N/A | 
 
 #### Beam Occurrences
 

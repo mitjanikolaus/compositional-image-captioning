@@ -3,6 +3,7 @@ import random
 import torch
 from torch import nn
 import torch.nn.functional as F
+from torch.nn.utils.rnn import pack_padded_sequence
 
 from utils import TOKEN_START, decode_caption, TOKEN_END
 
@@ -20,12 +21,14 @@ class CaptioningModelDecoder(nn.Module):
         self.word_map = word_map
 
         self.word_embedding = nn.Embedding(
-            self.vocab_size, self.params["embeddings_size"]
+            self.vocab_size, self.params["word_embeddings_size"]
         )
 
         if pretrained_embeddings is not None:
             self.word_embedding.weight = nn.Parameter(pretrained_embeddings)
-        self.set_fine_tune_embeddings(self.params["fine_tune_decoder_embeddings"])
+        self.set_fine_tune_embeddings(self.params["fine_tune_decoder_word_embeddings"])
+
+        self.loss_function = nn.CrossEntropyLoss().to(device)
 
     def set_fine_tune_embeddings(self, fine_tune=True):
         """
@@ -75,7 +78,7 @@ class CaptioningModelDecoder(nn.Module):
                 device=device,
             )
 
-        # Initialize LSTM state (output shape: (batch_size, decoder_dim))
+        # Initialize LSTM state
         states = self.init_hidden_states(encoder_output)
 
         # Tensors to hold word prediction scores and alphas
@@ -130,6 +133,21 @@ class CaptioningModelDecoder(nn.Module):
                 ]
 
         return scores, decode_lengths, alphas
+
+    def loss_cross_entropy(self, scores, target_captions, decode_lengths):
+        # Since we decoded starting with <start>, the targets are all words after <start>, up to <end>
+        target_captions = target_captions[:, 1:]
+
+        # Remove timesteps that we didn't decode at, or are pads
+        decode_lengths, sort_ind = decode_lengths.sort(dim=0, descending=True)
+        packed_scores, _ = pack_padded_sequence(
+            scores[sort_ind], decode_lengths, batch_first=True
+        )
+        packed_targets, _ = pack_padded_sequence(
+            target_captions[sort_ind], decode_lengths, batch_first=True
+        )
+
+        return self.loss_function(packed_scores, packed_targets)
 
     def beam_search(
         self,

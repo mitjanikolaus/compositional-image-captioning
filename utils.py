@@ -1,4 +1,5 @@
 import json
+import os
 
 import torch
 
@@ -22,6 +23,7 @@ WORD_MAP_FILENAME = "word_and_pos_tags_map.json"
 IMAGES_FILENAME = "images.hdf5"
 BOTTOM_UP_FEATURES_FILENAME = "bottom_up_features.hdf5"
 IMAGES_META_FILENAME = "images_meta.json"
+POS_TAGGED_CAPTIONS_FILENAME = "pos_tagged_captions.p"
 
 DATA_CAPTIONS = "captions"
 DATA_CAPTION_LENGTHS = "caption_lengths"
@@ -31,15 +33,23 @@ DATA_CAPTIONS_POS = "captions_pos"
 
 NOUNS = "nouns"
 ADJECTIVES = "adjectives"
+VERBS = "verbs"
 
 OCCURRENCE_DATA = "adjective_noun_occurrence_data"
 PAIR_OCCURENCES = "pair_occurrences"
 NOUN_OCCURRENCES = "noun_occurrences"
 ADJECTIVE_OCCURRENCES = "adjective_occurrences"
+VERB_OCCURRENCES = "verb_occurrences"
 
 RELATION_NOMINAL_SUBJECT = "nsubj"
 RELATION_ADJECTIVAL_MODIFIER = "amod"
 RELATION_CONJUNCT = "conj"
+RELATION_RELATIVE_CLAUSE_MODIFIER = "acl:relcl"
+RELATION_ADJECTIVAL_CLAUSE = "acl"
+
+MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
+MODEL_BOTTOM_UP_TOP_DOWN = "BOTTOM_UP_TOP_DOWN"
+MODEL_BOTTOM_UP_TOP_DOWN_RANKING = "BOTTOM_UP_TOP_DOWN_RANKING"
 
 UNIVERSAL_POS_TAGS = {
     "ADJ",
@@ -64,28 +74,21 @@ UNIVERSAL_POS_TAGS = {
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def contains_adjective_noun_pair(nlp_pipeline, caption, nouns, adjectives):
-    noun_is_present = False
-    adjective_is_present = False
+def get_adjectives_for_noun(pos_tagged_caption, nouns):
+    dependencies = pos_tagged_caption.dependencies
 
-    doc = nlp_pipeline(caption)
-    sentence = doc.sentences[0]
-
-    for token in sentence.tokens:
-        if token.text in nouns:
-            noun_is_present = True
-        if token.text in adjectives:
-            adjective_is_present = True
-
-    dependencies = sentence.dependencies
     caption_adjectives = {
         d[2].text
         for d in dependencies
-        if d[1] == RELATION_ADJECTIVAL_MODIFIER and d[0].text in nouns
+        if d[1] == RELATION_ADJECTIVAL_MODIFIER
+        and d[0].text in nouns
+        and d[2].upos == "ADJ"
     } | {
         d[0].text
         for d in dependencies
-        if d[1] == RELATION_NOMINAL_SUBJECT and d[2].text in nouns
+        if d[1] == RELATION_NOMINAL_SUBJECT
+        and d[2].text in nouns
+        and d[0].upos == "ADJ"
     }
     conjuncted_caption_adjectives = set()
     for adjective in caption_adjectives:
@@ -93,19 +96,76 @@ def contains_adjective_noun_pair(nlp_pipeline, caption, nouns, adjectives):
             {
                 d[2].text
                 for d in dependencies
-                if d[1] == RELATION_CONJUNCT and d[0].text == adjective
+                if d[1] == RELATION_CONJUNCT
+                and d[0].text == adjective
+                and d[2].upos == "ADJ"
             }
             | {
                 d[2].text
                 for d in dependencies
-                if d[1] == RELATION_ADJECTIVAL_MODIFIER and d[0].text == adjective
+                if d[1] == RELATION_ADJECTIVAL_MODIFIER
+                and d[0].text == adjective
+                and d[2].upos == "ADJ"
             }
         )
+    return caption_adjectives | conjuncted_caption_adjectives
 
-    caption_adjectives |= conjuncted_caption_adjectives
+
+def contains_adjective_noun_pair(pos_tagged_caption, nouns, adjectives):
+    noun_is_present = False
+    adjective_is_present = False
+
+    for token in pos_tagged_caption.tokens:
+        if token.text in nouns:
+            noun_is_present = True
+        if token.text in adjectives:
+            adjective_is_present = True
+
+    caption_adjectives = get_adjectives_for_noun(pos_tagged_caption, nouns)
     combination_is_present = bool(adjectives & caption_adjectives)
 
     return noun_is_present, adjective_is_present, combination_is_present
+
+
+def contains_verb_noun_pair(pos_tagged_caption, nouns, verbs):
+    noun_is_present = False
+    verb_is_present = False
+
+    for token in pos_tagged_caption.tokens:
+        if token.text in nouns:
+            noun_is_present = True
+        if token.text in verbs:
+            verb_is_present = True
+
+    dependencies = pos_tagged_caption.dependencies
+    combination_is_present = bool(
+        {
+            d
+            for d in dependencies
+            if d[1] == RELATION_NOMINAL_SUBJECT
+            and d[0].text in verbs
+            and d[2].text in nouns
+            and d[0].upos == "VERB"
+        }
+        | {
+            d
+            for d in dependencies
+            if d[1] == RELATION_RELATIVE_CLAUSE_MODIFIER
+            and d[0].text in nouns
+            and d[2].text in verbs
+            and d[2].upos == "VERB"
+        }
+        | {
+            d
+            for d in dependencies
+            if d[1] == RELATION_ADJECTIVAL_CLAUSE
+            and d[0].text in nouns
+            and d[2].text in verbs
+            and d[2].upos == "VERB"
+        }
+    )
+
+    return noun_is_present, verb_is_present, combination_is_present
 
 
 def read_image(path):
@@ -129,26 +189,104 @@ def invert_normalization(image):
     return inv_normalize(image)
 
 
-def get_splits_from_occurrences_data(occurrences_data_file, val_set_size=0):
-    with open(occurrences_data_file, "r") as json_file:
+def get_splits_from_occurrences_data(occurrences_data_files):
+    test_images_split = []
+    val_images_split = []
+
+    for file in occurrences_data_files:
+        with open(file, "r") as json_file:
+            occurrences_data = json.load(json_file)
+
+        test_images_split.extend(
+            [
+                key
+                for key, value in occurrences_data[OCCURRENCE_DATA].items()
+                if value[PAIR_OCCURENCES] >= 1 and value[DATA_COCO_SPLIT] == "val2014"
+            ]
+        )
+        val_images_split.extend(
+            [
+                key
+                for key, value in occurrences_data[OCCURRENCE_DATA].items()
+                if value[PAIR_OCCURENCES] >= 1 and value[DATA_COCO_SPLIT] == "train2014"
+            ]
+        )
+
+    with open(occurrences_data_files[0], "r") as json_file:
         occurrences_data = json.load(json_file)
 
+    train_images_split = [
+        key
+        for key, value in occurrences_data[OCCURRENCE_DATA].items()
+        if key not in val_images_split and value[DATA_COCO_SPLIT] == "train2014"
+    ]
+
+    return train_images_split, val_images_split, test_images_split
+
+
+def get_ranking_splits_from_occurrences_data(occurrences_data_files):
+    evaluation_indices = []
+
+    for file in occurrences_data_files:
+        with open(file, "r") as json_file:
+            occurrences_data = json.load(json_file)
+
+        evaluation_indices.extend(
+            [
+                key
+                for key, value in occurrences_data[OCCURRENCE_DATA].items()
+                if value[PAIR_OCCURENCES] >= 1 and value[DATA_COCO_SPLIT] == "val2014"
+            ]
+        )
+
+    with open(occurrences_data_files[0], "r") as json_file:
+        occurrences_data = json.load(json_file)
+
+    test_images_indices = [
+        key
+        for key, value in occurrences_data[OCCURRENCE_DATA].items()
+        if value[DATA_COCO_SPLIT] == "val2014"
+    ]
+
+    return test_images_indices, evaluation_indices
+
+
+def get_splits_from_karpathy_json(karpathy_json):
+    with open(karpathy_json, "r") as json_file:
+        images_data = json.load(json_file)["images"]
+
+    train_images_split = [
+        str(data["cocoid"]) for data in images_data if data["split"] == "train"
+    ]
+
+    val_images_split = [
+        str(data["cocoid"]) for data in images_data if data["split"] == "val"
+    ]
+
     test_images_split = [
-        key
-        for key, value in occurrences_data[OCCURRENCE_DATA].items()
-        if value[PAIR_OCCURENCES] >= 1
+        str(data["cocoid"]) for data in images_data if data["split"] == "test"
     ]
 
-    indices_without_test = [
-        key
-        for key, value in occurrences_data[OCCURRENCE_DATA].items()
-        if value[PAIR_OCCURENCES] == 0
-    ]
+    return train_images_split, val_images_split, test_images_split
 
-    train_val_split = int((1 - val_set_size) * len(indices_without_test))
-    train_images_split = indices_without_test[:train_val_split]
-    val_images_split = indices_without_test[train_val_split:]
 
+def get_splits(occurrences_data, karpathy_json):
+    if occurrences_data and not karpathy_json:
+        train_images_split, val_images_split, test_images_split = get_splits_from_occurrences_data(
+            occurrences_data
+        )
+    elif karpathy_json and not occurrences_data:
+        train_images_split, val_images_split, test_images_split = get_splits_from_karpathy_json(
+            karpathy_json
+        )
+    elif occurrences_data and karpathy_json:
+        return ValueError("Specify either karpathy_json or occurrences_data, not both!")
+    else:
+        return ValueError("Specify either karpathy_json or occurrences_data!")
+
+    print("Train set size: {}".format(len(train_images_split)))
+    print("Val set size: {}".format(len(val_images_split)))
+    print("Test set size: {}".format(len(test_images_split)))
     return train_images_split, val_images_split, test_images_split
 
 
@@ -196,17 +334,36 @@ def clip_gradients(optimizer, grad_clip):
                 param.grad.data.clamp_(-grad_clip, grad_clip)
 
 
+def get_checkpoint_file_name(
+    model_name, occurrences_data, karpathy_json, checkpoint_suffix, is_best
+):
+    type = ""
+    if occurrences_data:
+        type = "heldout_pairs"
+    elif karpathy_json:
+        type = "karpathy"
+
+    name = "checkpoint_" + model_name + "_POS_" + type + checkpoint_suffix + ".pth.tar"
+    if is_best:
+        return "best_" + name
+    else:
+        return name
+
+
 def save_checkpoint(
     model_name,
-    name,
+    occurrences_data,
+    karpathy_json,
     epoch,
     epochs_since_last_improvement,
     encoder,
     decoder,
     encoder_optimizer,
     decoder_optimizer,
-    bleu4,
+    ranking_metric_score,
+    generation_metric_score,
     is_best,
+    checkpoint_suffix,
 ):
     """
     Save a model checkpoint.
@@ -217,24 +374,31 @@ def save_checkpoint(
     :param decoder: decoder model
     :param encoder_optimizer: optimizer to update the encoder's weights
     :param decoder_optimizer: optimizer to update the decoder's weights
-    :param bleu4: validation set BLEU-4 score for this epoch
+    :param validation_metric_score: validation set score for this epoch
     :param is_best: True, if this is the best checkpoint so far (will save the model to a dedicated file)
     """
     state = {
         "model_name": model_name,
         "epoch": epoch,
         "epochs_since_improvement": epochs_since_last_improvement,
-        "bleu-4": bleu4,
+        "ranking_metric_score": ranking_metric_score,
+        "generation_metric_score": generation_metric_score,
         "encoder": encoder,
         "decoder": decoder,
         "encoder_optimizer": encoder_optimizer,
         "decoder_optimizer": decoder_optimizer,
     }
-    torch.save(state, "checkpoint_" + model_name + "_" + name + ".pth.tar")
+    file_name = get_checkpoint_file_name(
+        model_name, occurrences_data, karpathy_json, checkpoint_suffix, False
+    )
+    torch.save(state, file_name)
 
     # If this checkpoint is the best so far, store a copy so it doesn't get overwritten by a worse checkpoint
     if is_best:
-        torch.save(state, "checkpoint_" + model_name + "_" + name + "_best.pth.tar")
+        file_name = get_checkpoint_file_name(
+            model_name, occurrences_data, karpathy_json, checkpoint_suffix, True
+        )
+        torch.save(state, file_name)
 
 
 class AverageMeter(object):

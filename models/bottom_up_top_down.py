@@ -9,13 +9,14 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class TopDownDecoder(CaptioningModelDecoder):
     DEFAULT_MODEL_PARAMS = {
         "teacher_forcing_ratio": 1,
+        "dropout_ratio": 0.0,
         "image_features_size": 2048,
-        "embeddings_size": 1000,
+        "word_embeddings_size": 1000,
         "attention_lstm_size": 1000,
         "attention_layer_size": 512,
         "language_lstm_size": 1000,
-        "max_caption_len": 100,
-        "fine_tune_decoder_embeddings": True,
+        "max_caption_len": 40,
+        "fine_tune_decoder_word_embeddings": True,
     }
     DEFAULT_OPTIMIZER_PARAMS = {"decoder_learning_rate": 1e-4}
 
@@ -23,7 +24,7 @@ class TopDownDecoder(CaptioningModelDecoder):
         super(TopDownDecoder, self).__init__(word_map, params, pretrained_embeddings)
 
         self.attention_lstm = AttentionLSTM(
-            self.params["embeddings_size"],
+            self.params["word_embeddings_size"],
             self.params["language_lstm_size"],
             self.params["image_features_size"],
             self.params["attention_lstm_size"],
@@ -38,6 +39,9 @@ class TopDownDecoder(CaptioningModelDecoder):
             self.params["attention_lstm_size"],
             self.params["attention_layer_size"],
         )
+
+        # Dropout layer
+        self.dropout = nn.Dropout(p=self.params["dropout_ratio"])
 
         # Linear layer to find scores over vocabulary
         self.fully_connected = nn.Linear(
@@ -77,9 +81,12 @@ class TopDownDecoder(CaptioningModelDecoder):
         h1, c1 = self.attention_lstm(h1, c1, h2, v_mean, prev_words_embedded)
         v_hat = self.attention(encoder_output, h1)
         h2, c2 = self.language_lstm(h2, c2, h1, v_hat)
-        scores = self.fully_connected(h2)
+        scores = self.fully_connected(self.dropout(h2))
         states = [h1, c1, h2, c2]
         return scores, states, None
+
+    def loss(self, scores, target_captions, decode_lengths, alphas):
+        return self.loss_cross_entropy(scores, target_captions, decode_lengths)
 
     def beam_search(
         self,

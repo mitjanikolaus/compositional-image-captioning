@@ -2,17 +2,18 @@ import torch
 from torch import nn
 import torchvision
 
-from models.captioning_model import CaptioningModelDecoder
+from models.captioning_model import CaptioningModelDecoder, update_params
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class Encoder(nn.Module):
+    DEFAULT_MODEL_PARAMS = {"encoded_image_size": 14, "fine_tune_encoder": False}
     DEFAULT_OPTIMIZER_PARAMS = {"encoder_learning_rate": 1e-4}
 
-    def __init__(self, encoded_image_size=14):
+    def __init__(self, params):
         super(Encoder, self).__init__()
-        self.enc_image_size = encoded_image_size
+        self.params = update_params(self.DEFAULT_MODEL_PARAMS, params)
 
         resnet = torchvision.models.resnet101(pretrained=True)
 
@@ -22,7 +23,7 @@ class Encoder(nn.Module):
 
         # Resize input image to fixed size
         self.adaptive_pool = nn.AdaptiveAvgPool2d(
-            (encoded_image_size, encoded_image_size)
+            (self.params["encoded_image_size"], self.params["encoded_image_size"])
         )
 
         # Disable calculation of all gradients
@@ -30,7 +31,7 @@ class Encoder(nn.Module):
             p.requires_grad = False
 
         # Enable calculation of some gradients for fine tuning
-        self.set_fine_tuning_enabled()
+        self.set_fine_tuning_enabled(self.params["fine_tune_encoder"])
 
     def forward(self, images):
         """
@@ -50,7 +51,7 @@ class Encoder(nn.Module):
         )  # output shape: (batch_size, encoded_image_size, encoded_image_size, 2048)
         return out
 
-    def set_fine_tuning_enabled(self, enable_fine_tuning=True):
+    def set_fine_tuning_enabled(self, enable_fine_tuning):
         """
         Enable or disable the computation of gradients for the convolutional blocks 2-4 of the encoder.
 
@@ -64,15 +65,15 @@ class Encoder(nn.Module):
 
 class SATDecoder(CaptioningModelDecoder):
     DEFAULT_MODEL_PARAMS = {
-        "embeddings_size": 512,
+        "word_embeddings_size": 512,
         "attention_dim": 512,
         "encoder_dim": 2048,
         "decoder_dim": 512,
         "teacher_forcing_ratio": 1,
-        "dropout": 0.5,
+        "dropout_ratio": 0.5,
         "alpha_c": 1.0,
-        "max_caption_len": 100,
-        "fine_tune_decoder_embeddings": True,
+        "max_caption_len": 40,
+        "fine_tune_decoder_word_embeddings": True,
     }
     DEFAULT_OPTIMIZER_PARAMS = {"decoder_learning_rate": 4e-4}
 
@@ -95,16 +96,22 @@ class SATDecoder(CaptioningModelDecoder):
 
         # LSTM
         self.decode_step = nn.LSTMCell(
-            self.params["embeddings_size"] + self.params["encoder_dim"],
+            self.params["word_embeddings_size"] + self.params["encoder_dim"],
             self.params["decoder_dim"],
             bias=True,
         )
 
         # Dropout layer
-        self.dropout = nn.Dropout(p=self.params["dropout"])
+        self.dropout = nn.Dropout(p=self.params["dropout_ratio"])
 
-        # Fully connected layer to find scores over vocabulary
-        self.fully_connected = nn.Linear(self.params["decoder_dim"], self.vocab_size)
+        # Linear layers for output generation
+        self.linear_o = nn.Linear(self.params["word_embeddings_size"], self.vocab_size)
+        self.linear_h = nn.Linear(
+            self.params["decoder_dim"], self.params["word_embeddings_size"]
+        )
+        self.linear_z = nn.Linear(
+            self.params["encoder_dim"], self.params["word_embeddings_size"]
+        )
 
     def init_hidden_states(self, encoder_out):
         """
@@ -137,10 +144,27 @@ class SATDecoder(CaptioningModelDecoder):
             decoder_input, (decoder_hidden_state, decoder_cell_state)
         )
 
-        scores = self.fully_connected(self.dropout(decoder_hidden_state))
+        decoder_hidden_state_embedded = self.linear_h(decoder_hidden_state)
+        attention_weighted_encoding_embedded = self.linear_z(
+            attention_weighted_encoding
+        )
+        scores = self.linear_o(
+            self.dropout(
+                prev_word_embeddings
+                + decoder_hidden_state_embedded
+                + attention_weighted_encoding_embedded
+            )
+        )
 
         states = [decoder_hidden_state, decoder_cell_state]
         return scores, states, alpha
+
+    def loss(self, scores, target_captions, decode_lengths, alphas):
+        loss = self.loss_cross_entropy(scores, target_captions, decode_lengths)
+
+        # Add doubly stochastic attention regularization
+        loss += self.params["alpha_c"] * ((1.0 - alphas.sum(dim=1)) ** 2).mean()
+        return loss
 
 
 class AttentionModule(nn.Module):

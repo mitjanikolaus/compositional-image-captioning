@@ -121,6 +121,7 @@ class CaptionTestDataset(CaptionDataset):
         coco_id = self.split[i]
 
         image = self.get_image_features(coco_id)
+
         captions = self.images_meta[coco_id][DATA_CAPTIONS]
         pos_tags = self.images_meta[coco_id][DATA_CAPTIONS_POS]
 
@@ -130,4 +131,11 @@ class CaptionTestDataset(CaptionDataset):
         ]
         interleaved_captions = torch.LongTensor(interleaved_captions)
 
-        return image, interleaved_captions, coco_id
+        interleaved_caption_lengths = [
+            (caption_length - 2) * 2 + 2
+            for caption_length in self.images_meta[coco_id][DATA_CAPTION_LENGTHS]
+        ]
+
+        interleaved_caption_lengths = torch.LongTensor(interleaved_caption_lengths)
+
+        return image, interleaved_captions, interleaved_caption_lengths, coco_id
