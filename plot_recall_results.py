@@ -1,3 +1,4 @@
+import os
 import sys
 
 import argparse
@@ -13,6 +14,11 @@ MODE_AVERAGE_FOR_PAIR = "AVERAGE_FOR_PAIRS"
 
 
 def plot_recall_results(eval_files, mode, labels):
+    if not labels:
+        labels = [
+            os.path.basename(path).split("checkpoint_")[-1] for path in eval_files
+        ]
+
     eval_datas = []
 
     for file in eval_files:
@@ -21,9 +27,10 @@ def plot_recall_results(eval_files, mode, labels):
 
         eval_datas.append(eval_data)
 
-    print("Average recall values:")
-    for j, eval_data in enumerate(eval_datas):
-        print(average_recall(eval_data))
+    labels = [
+        label + " (Avg recall: {})".format(np.round(average_recall(eval_datas[i]), 2))
+        for i, label in enumerate(labels)
+    ]
 
     fig, axes = plt.subplots(nrows=len(eval_datas[0]), sharex=True, figsize=(8, 15))
     plt.suptitle("Recall")
@@ -56,7 +63,7 @@ def plot_recall_results(eval_files, mode, labels):
 
                 axis.bar(j * bar_width, recall, bar_width)
 
-                axis.text(x=j * bar_width, y=0.8, s=np.round(recall, 2), size=5)
+                axis.text(x=j * bar_width, y=0.8, s=np.round(recall, 2), size=7)
             axis.set_ylim(0, 1)
             axis.set_title(pair)
         plt.xticks([], [])
@@ -64,8 +71,7 @@ def plot_recall_results(eval_files, mode, labels):
     # Common ylabel
     fig.text(0.06, 0.5, "Recall", ha="center", va="center", rotation="vertical")
     # Common legend
-    if labels:
-        fig.legend(labels=labels, loc="upper right", borderaxespad=0.1)
+    fig.legend(labels=labels, loc="lower center", borderaxespad=0.1)
 
     plt.subplots_adjust(hspace=0.5)
 
