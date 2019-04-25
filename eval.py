@@ -62,7 +62,6 @@ def evaluate(
     print("Decoder params: {}".format(decoder.params))
 
     _, _, test_images_split = get_splits(occurrences_data, karpathy_json)
-    test_images_split = test_images_split[:3]
 
     if model_name == MODEL_SHOW_ATTEND_TELL:
         # Normalization
