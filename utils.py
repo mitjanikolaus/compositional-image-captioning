@@ -49,7 +49,6 @@ RELATION_ADJECTIVAL_CLAUSE = "acl"
 
 MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
 MODEL_BOTTOM_UP_TOP_DOWN = "BOTTOM_UP_TOP_DOWN"
-MODEL_BOTTOM_UP_TOP_DOWN_RANKING = "BOTTOM_UP_TOP_DOWN_RANKING"
 
 UNIVERSAL_POS_TAGS = {
     "ADJ",
@@ -224,33 +223,6 @@ def get_splits_from_occurrences_data(occurrences_data_files):
     return train_images_split, val_images_split, test_images_split
 
 
-def get_ranking_splits_from_occurrences_data(occurrences_data_files):
-    evaluation_indices = []
-
-    for file in occurrences_data_files:
-        with open(file, "r") as json_file:
-            occurrences_data = json.load(json_file)
-
-        evaluation_indices.extend(
-            [
-                key
-                for key, value in occurrences_data[OCCURRENCE_DATA].items()
-                if value[PAIR_OCCURENCES] >= 1 and value[DATA_COCO_SPLIT] == "val2014"
-            ]
-        )
-
-    with open(occurrences_data_files[0], "r") as json_file:
-        occurrences_data = json.load(json_file)
-
-    test_images_indices = [
-        key
-        for key, value in occurrences_data[OCCURRENCE_DATA].items()
-        if value[DATA_COCO_SPLIT] == "val2014"
-    ]
-
-    return test_images_indices, evaluation_indices
-
-
 def get_splits_from_karpathy_json(karpathy_json):
     with open(karpathy_json, "r") as json_file:
         images_data = json.load(json_file)["images"]
@@ -360,7 +332,6 @@ def save_checkpoint(
     decoder,
     encoder_optimizer,
     decoder_optimizer,
-    ranking_metric_score,
     generation_metric_score,
     is_best,
     checkpoint_suffix,
@@ -381,7 +352,6 @@ def save_checkpoint(
         "model_name": model_name,
         "epoch": epoch,
         "epochs_since_improvement": epochs_since_last_improvement,
-        "ranking_metric_score": ranking_metric_score,
         "generation_metric_score": generation_metric_score,
         "encoder": encoder,
         "decoder": decoder,

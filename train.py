@@ -8,9 +8,7 @@ import torch.utils.data
 from torchvision.transforms import transforms
 
 from eval import evaluate, METRIC_RECALL, METRIC_BLEU
-from metrics import recall_captions_from_images
 from models.bottom_up_top_down import TopDownDecoder
-from models.bottom_up_top_down_ranking import BottomUpTopDownRankingDecoder
 from models.captioning_model import create_encoder_optimizer, create_decoder_optimizer
 from models.show_attend_tell import Encoder, SATDecoder
 from datasets import CaptionTrainDataset, CaptionTestDataset
@@ -31,19 +29,13 @@ from utils import (
     get_checkpoint_file_name,
     MODEL_SHOW_ATTEND_TELL,
     MODEL_BOTTOM_UP_TOP_DOWN,
-    MODEL_BOTTOM_UP_TOP_DOWN_RANKING,
     get_caption_without_pos_tags,
 )
-
-OBJECTIVE_GENERATION = "GENERATION"
-OBJECTIVE_RANKING = "RANKING"
-OBJECTIVE_JOINT = "JOINT"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True  # improve performance if inputs to model are fixed size
 
 epochs_since_last_improvement = 0
-best_ranking_metric_score = 0.0
 best_generation_metric_score = 0.0
 
 
@@ -53,14 +45,11 @@ def main(
     data_folder,
     occurrences_data,
     karpathy_json,
-    objective,
     batch_size,
     embeddings_file,
     grad_clip,
     epochs,
     checkpoint_suffix,
-    fine_tune_decoder_image_embeddings,
-    fine_tune_decoder_caption_embeddings,
     fine_tune_encoder,
     workers=1,
     start_epoch=0,
@@ -69,7 +58,7 @@ def main(
     print_freq=100,
 ):
 
-    global best_ranking_metric_score, best_generation_metric_score, epochs_since_last_improvement
+    global best_generation_metric_score, epochs_since_last_improvement
 
     print("Starting training on device: ", device)
 
@@ -86,7 +75,6 @@ def main(
         checkpoint = torch.load(checkpoint, map_location=device)
         start_epoch = checkpoint["epoch"] + 1
         epochs_since_last_improvement = checkpoint["epochs_since_improvement"]
-        best_ranking_metric_score = checkpoint["ranking_metric_score"]
         best_generation_metric_score = checkpoint["generation_metric_score"]
         decoder = checkpoint["decoder"]
         decoder_optimizer = checkpoint["decoder_optimizer"]
@@ -138,11 +126,6 @@ def main(
             decoder = TopDownDecoder(word_map, model_params, embeddings)
             decoder_optimizer = create_decoder_optimizer(decoder, model_params)
 
-        elif model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING:
-            encoder = None
-            encoder_optimizer = None
-            decoder = BottomUpTopDownRankingDecoder(word_map, model_params, embeddings)
-            decoder_optimizer = create_decoder_optimizer(decoder, model_params)
         else:
             raise RuntimeError("Unknown model name: {}".format(model_name))
 
@@ -178,10 +161,7 @@ def main(
             pin_memory=True,
         )
 
-    elif (
-        model_name == MODEL_BOTTOM_UP_TOP_DOWN
-        or model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING
-    ):
+    elif model_name == MODEL_BOTTOM_UP_TOP_DOWN:
         train_images_loader = torch.utils.data.DataLoader(
             CaptionTrainDataset(
                 data_folder, BOTTOM_UP_FEATURES_FILENAME, train_images_split
@@ -192,8 +172,6 @@ def main(
             pin_memory=True,
         )
         validation_batch_size = batch_size
-        if model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING:
-            validation_batch_size = 1
         val_images_loader = torch.utils.data.DataLoader(
             CaptionTestDataset(
                 data_folder, BOTTOM_UP_FEATURES_FILENAME, val_images_split
@@ -202,13 +180,6 @@ def main(
             shuffle=True,
             num_workers=workers,
             pin_memory=True,
-        )
-
-    # Enable or disable training of image and caption embedding
-    if model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING:
-        decoder.image_embedding.enable_fine_tuning(fine_tune_decoder_image_embeddings)
-        decoder.language_encoding_lstm.enable_fine_tuning(
-            fine_tune_decoder_caption_embeddings
         )
 
     # Print configuration
@@ -232,37 +203,26 @@ def main(
 
         # One epoch's training
         train(
-            model_name,
             train_images_loader,
             encoder,
             decoder,
             encoder_optimizer,
             decoder_optimizer,
             epoch,
-            objective,
             grad_clip,
             print_freq,
         )
 
         # One epoch's validation
-        if objective == OBJECTIVE_RANKING:
-            current_ranking_metric_score = validate_ranking(
-                val_images_loader, encoder, decoder, val_images_split, print_freq
-            )
-            current_checkpoint_is_best = (
-                current_ranking_metric_score > best_ranking_metric_score
-            )
-        if objective == OBJECTIVE_GENERATION or objective == OBJECTIVE_JOINT:
-            current_generation_metric_score = validate(
-                val_images_loader, encoder, decoder, word_map, print_freq
-            )
-            current_checkpoint_is_best = (
-                current_generation_metric_score > best_generation_metric_score
-            )
+        current_generation_metric_score = validate(
+            val_images_loader, encoder, decoder, word_map, print_freq
+        )
+        current_checkpoint_is_best = (
+            current_generation_metric_score > best_generation_metric_score
+        )
 
         if current_checkpoint_is_best:
             best_generation_metric_score = current_generation_metric_score
-            best_ranking_metric_score = current_ranking_metric_score
             epochs_since_last_improvement = 0
         else:
             epochs_since_last_improvement += 1
@@ -271,7 +231,6 @@ def main(
                     epochs_since_last_improvement
                 )
             )
-            print("Best ranking score: {}".format(best_ranking_metric_score))
             print("Best generation score: {}\n".format(best_generation_metric_score))
 
         # Save checkpoint
@@ -285,7 +244,6 @@ def main(
             decoder,
             encoder_optimizer,
             decoder_optimizer,
-            current_ranking_metric_score,
             current_generation_metric_score,
             current_checkpoint_is_best,
             checkpoint_suffix,
@@ -312,14 +270,12 @@ def main(
 
 
 def train(
-    model_name,
     data_loader,
     encoder,
     decoder,
     encoder_optimizer,
     decoder_optimizer,
     epoch,
-    objective,
     grad_clip,
     print_freq,
 ):
@@ -345,32 +301,10 @@ def train(
             images = encoder(images)
         decode_lengths = caption_lengths.squeeze(1) - 1
 
-        if model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING:
-            if objective == OBJECTIVE_GENERATION:
-                scores, decode_lengths, images_embedded, captions_embedded, alphas = decoder.forward_joint(
-                    images, target_captions, decode_lengths
-                )
-                loss = decoder.loss(scores, target_captions, decode_lengths, alphas)
-            elif objective == OBJECTIVE_JOINT:
-                scores, decode_lengths, images_embedded, captions_embedded, alphas = decoder.forward_joint(
-                    images, target_captions, decode_lengths
-                )
-                loss_generation = decoder.loss(
-                    scores, target_captions, decode_lengths, alphas
-                )
-                loss_ranking = decoder.loss_ranking(images_embedded, captions_embedded)
-                loss = loss_generation + loss_ranking
-            elif objective == OBJECTIVE_RANKING:
-                images_embedded, captions_embedded = decoder.forward_ranking(
-                    images, target_captions, decode_lengths
-                )
-                loss = decoder.loss_ranking(images_embedded, captions_embedded)
-
-        else:
-            scores, decode_lengths, alphas = decoder(
-                images, target_captions, decode_lengths
-            )
-            loss = decoder.loss(scores, target_captions, decode_lengths, alphas)
+        scores, decode_lengths, alphas = decoder(
+            images, target_captions, decode_lengths
+        )
+        loss = decoder.loss(scores, target_captions, decode_lengths, alphas)
 
         # Back propagation
         decoder_optimizer.zero_grad()
@@ -460,60 +394,13 @@ def validate(data_loader, encoder, decoder, word_map, print_freq):
     return bleu4
 
 
-def validate_ranking(data_loader, encoder, decoder, testing_indices, print_freq):
-    """
-    Perform validation of one training epoch.
-
-    """
-    decoder.eval()
-    if encoder:
-        encoder.eval()
-
-    # Lists for target captions and generated captions for each image
-    embedded_captions = {}
-    embedded_images = {}
-
-    for i, (image_features, captions, caption_lengths, coco_id) in enumerate(
-        data_loader
-    ):
-        image_features = image_features.to(device)
-        coco_id = coco_id[0]
-        captions = captions[0]
-        captions = captions.to(device)
-        caption_lengths = caption_lengths.to(device)
-        decode_lengths = caption_lengths[0] - 1
-
-        if encoder:
-            image_features = encoder(image_features)
-
-        image_embedded, image_captions_embedded = decoder.forward_ranking(
-            image_features, captions, decode_lengths
-        )
-
-        embedded_images[coco_id] = image_embedded.detach().cpu().numpy()[0]
-        embedded_captions[coco_id] = image_captions_embedded.detach().cpu().numpy()
-
-        if i % print_freq == 0:
-            print("Validation: [Batch {0}/{1}]\t".format(i, len(data_loader)))
-
-    recalls_sum = recall_captions_from_images(
-        embedded_images, embedded_captions, testing_indices
-    )
-
-    return recalls_sum
-
-
 def check_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--model",
         help="Name of the model to be used",
         default=MODEL_SHOW_ATTEND_TELL,
-        choices=[
-            MODEL_SHOW_ATTEND_TELL,
-            MODEL_BOTTOM_UP_TOP_DOWN,
-            MODEL_BOTTOM_UP_TOP_DOWN_RANKING,
-        ],
+        choices=[MODEL_SHOW_ATTEND_TELL, MODEL_BOTTOM_UP_TOP_DOWN],
     )
     parser.add_argument(
         "--data-folder",
@@ -527,12 +414,6 @@ def check_args(args):
     )
     parser.add_argument(
         "--karpathy-json", help="File containing train/val/test split information"
-    )
-    parser.add_argument(
-        "--objective",
-        help="Training objective for which the loss is calculated",
-        default=OBJECTIVE_GENERATION,
-        choices=[OBJECTIVE_GENERATION, OBJECTIVE_RANKING, OBJECTIVE_JOINT],
     )
     parser.add_argument("--batch-size", help="Batch size", type=int, default=32)
     parser.add_argument(
@@ -587,18 +468,6 @@ def check_args(args):
         dest="fine_tune_decoder_word_embeddings",
         action="store_false",
     )
-    parser.add_argument(
-        "--dont-fine-tune-caption-embeddings",
-        help="Do not fine tune the decoder caption embeddings",
-        dest="fine_tune_decoder_caption_embeddings",
-        action="store_false",
-    )
-    parser.add_argument(
-        "--dont-fine-tune-image-embeddings",
-        help="Do not fine tune the decoder image embeddings",
-        dest="fine_tune_decoder_image_embeddings",
-        action="store_false",
-    )
 
     parsed_args = parser.parse_args(args)
     print(parsed_args)
@@ -613,14 +482,11 @@ if __name__ == "__main__":
         data_folder=parsed_args.data_folder,
         occurrences_data=parsed_args.occurrences_data,
         karpathy_json=parsed_args.karpathy_json,
-        objective=parsed_args.objective,
         batch_size=parsed_args.batch_size,
         embeddings_file=parsed_args.embeddings,
         grad_clip=parsed_args.grad_clip,
         checkpoint=parsed_args.checkpoint,
         epochs=parsed_args.epochs,
         checkpoint_suffix=parsed_args.checkpoint_suffix,
-        fine_tune_decoder_image_embeddings=parsed_args.fine_tune_decoder_image_embeddings,
-        fine_tune_decoder_caption_embeddings=parsed_args.fine_tune_decoder_caption_embeddings,
         fine_tune_encoder=parsed_args.fine_tune_encoder,
     )
