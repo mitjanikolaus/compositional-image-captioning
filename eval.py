@@ -152,10 +152,13 @@ def evaluate(
                 + [word_map[TOKEN_PADDING]]
                 * (max(lengths) + 1 - len(top_k_generated_caption))
                 for top_k_generated_caption in top_k_generated_captions
-            ]
+            ],
+            device=device,
         )
         image_embedded, image_captions_embedded = decoder.forward_ranking(
-            encoded_features, top_k_generated_captions, torch.tensor(lengths)
+            encoded_features,
+            top_k_generated_captions,
+            torch.tensor(lengths, device=device),
         )
         image_embedded = image_embedded.detach().cpu().numpy()[0]
         image_captions_embedded = image_captions_embedded.detach().cpu().numpy()
