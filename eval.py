@@ -6,7 +6,7 @@ import torch.optim
 import torch.utils.data
 import torchvision.transforms as transforms
 from datasets import *
-from metrics import recall_pairs, beam_occurrences
+from metrics import recall_pairs, beam_occurrences, get_top_ranked_captions_indices
 from nltk.translate.bleu_score import corpus_bleu
 from tqdm import tqdm
 
@@ -20,6 +20,8 @@ from utils import (
     MODEL_SHOW_ATTEND_TELL,
     MODEL_BOTTOM_UP_TOP_DOWN,
     MODEL_BOTTOM_UP_TOP_DOWN_RANKING,
+    TOKEN_PADDING,
+    decode_caption,
 )
 from visualize_attention import visualize_attention
 
@@ -60,6 +62,7 @@ def evaluate(
     print("Decoder params: {}".format(decoder.params))
 
     _, _, test_images_split = get_splits(occurrences_data, karpathy_json)
+    test_images_split = test_images_split[:3]
 
     if model_name == MODEL_SHOW_ATTEND_TELL:
         # Normalization
@@ -102,7 +105,7 @@ def evaluate(
     generated_captions = {}
     generated_beams = {}
 
-    for image_features, all_captions_for_image, _, coco_id in tqdm(
+    for image_features, all_captions_for_image, caption_lengths, coco_id in tqdm(
         data_loader, desc="Evaluate with beam size " + str(beam_size)
     ):
         coco_id = coco_id[0]
@@ -134,7 +137,44 @@ def evaluate(
                     image_features.squeeze(0), caption, alpha, word_map, smoothen=True
                 )
 
-        generated_captions[coco_id] = top_k_generated_captions
+        print("Before:")
+        for caption in top_k_generated_captions[:5]:
+            print(
+                decode_caption(
+                    get_caption_without_special_tokens(caption, word_map), word_map
+                )
+            )
+
+        lengths = [len(caption) - 1 for caption in top_k_generated_captions]
+        top_k_generated_captions = torch.tensor(
+            [
+                top_k_generated_caption
+                + [word_map[TOKEN_PADDING]]
+                * (max(lengths) + 1 - len(top_k_generated_caption))
+                for top_k_generated_caption in top_k_generated_captions
+            ]
+        )
+        image_embedded, image_captions_embedded = decoder.forward_ranking(
+            encoded_features, top_k_generated_captions, torch.tensor(lengths)
+        )
+        image_embedded = image_embedded.detach().cpu().numpy()[0]
+        image_captions_embedded = image_captions_embedded.detach().cpu().numpy()
+
+        indices = get_top_ranked_captions_indices(
+            image_embedded, image_captions_embedded
+        )
+        top_k_generated_captions = [top_k_generated_captions[i] for i in indices]
+
+        print("After:")
+        for caption in top_k_generated_captions[:5]:
+            print(
+                decode_caption(
+                    get_caption_without_special_tokens(caption.cpu().numpy(), word_map),
+                    word_map,
+                )
+            )
+
+        generated_captions[coco_id] = top_k_generated_captions[:5]
         generated_beams[coco_id] = beam
 
         assert len(target_captions) == len(generated_captions)

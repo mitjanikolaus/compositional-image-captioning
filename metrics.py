@@ -212,6 +212,13 @@ def beam_occurrences(
         plt.show()
 
 
+def get_top_ranked_captions_indices(embedded_image, embedded_captions):
+    # Compute similarity of image to all captions
+    d = np.dot(embedded_image, embedded_captions.T).flatten()
+    inds = np.argsort(d)[::-1]
+    return inds
+
+
 def recall_captions_from_images(embedded_images, embedded_captions, testing_indices):
     embedding_size = next(iter(embedded_captions.values())).shape[1]
     all_captions = np.array(list(embedded_captions.values())).reshape(
