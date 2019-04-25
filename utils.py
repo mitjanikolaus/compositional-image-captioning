@@ -281,7 +281,12 @@ def get_caption_without_special_tokens(caption, word_map):
         token
         for token in caption
         if token
-        not in {word_map[TOKEN_START], word_map[TOKEN_END], word_map[TOKEN_PADDING]}
+        not in {
+            word_map[TOKEN_START],
+            word_map[TOKEN_END],
+            word_map[TOKEN_PADDING],
+            word_map[TOKEN_POS_START],
+        }
     ]
 
 

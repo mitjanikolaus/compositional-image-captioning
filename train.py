@@ -139,6 +139,8 @@ def main(
                 data_folder,
                 IMAGES_FILENAME,
                 train_images_split,
+                decoder.params["max_caption_len"],
+                word_map,
                 transforms.Compose([normalize]),
                 features_scale_factor=1 / 255.0,
             ),
@@ -152,6 +154,8 @@ def main(
                 data_folder,
                 IMAGES_FILENAME,
                 val_images_split,
+                decoder.params["max_caption_len"],
+                word_map,
                 transforms.Compose([normalize]),
                 features_scale_factor=1 / 255.0,
             ),
@@ -164,7 +168,11 @@ def main(
     elif model_name == MODEL_BOTTOM_UP_TOP_DOWN:
         train_images_loader = torch.utils.data.DataLoader(
             CaptionTrainDataset(
-                data_folder, BOTTOM_UP_FEATURES_FILENAME, train_images_split
+                data_folder,
+                BOTTOM_UP_FEATURES_FILENAME,
+                train_images_split,
+                decoder.params["max_caption_len"],
+                word_map,
             ),
             batch_size=batch_size,
             shuffle=True,
@@ -174,7 +182,11 @@ def main(
         validation_batch_size = batch_size
         val_images_loader = torch.utils.data.DataLoader(
             CaptionTestDataset(
-                data_folder, BOTTOM_UP_FEATURES_FILENAME, val_images_split
+                data_folder,
+                BOTTOM_UP_FEATURES_FILENAME,
+                val_images_split,
+                decoder.params["max_caption_len"],
+                word_map,
             ),
             batch_size=validation_batch_size,
             shuffle=True,
