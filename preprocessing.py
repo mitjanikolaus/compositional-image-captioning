@@ -79,7 +79,7 @@ def preprocess_images_and_captions(
         word_freq = Counter()
         max_caption_len = 0
 
-        for img in tqdm(images[:10]):
+        for img in tqdm(images):
             captions = []
             pos_tags = []
 
@@ -145,8 +145,8 @@ def preprocess_images_and_captions(
         for coco_id, image_path in tqdm(image_paths.items()):
 
             # Discard any additional captions
-            captions = image_metas[coco_id]["captions"][:captions_per_image]
-            pos_tags = image_metas[coco_id]["captions_pos"][:captions_per_image]
+            captions = image_metas[coco_id][DATA_CAPTIONS][:captions_per_image]
+            pos_tags = image_metas[coco_id][DATA_CAPTIONS_POS][:captions_per_image]
 
             assert len(captions) == captions_per_image
 
