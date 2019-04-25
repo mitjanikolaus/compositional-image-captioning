@@ -98,7 +98,7 @@ class CaptionTrainDataset(CaptionDataset):
         image = self.get_image_features(coco_id)
         caption = self.images_meta[coco_id][DATA_CAPTIONS][caption_index]
         caption_length = self.images_meta[coco_id][DATA_CAPTION_LENGTHS][caption_index]
-        concatenated_caption_length = (caption_length - 2) * 2 + 2
+        concatenated_caption_length = (caption_length - 2) * 2 + 3
         concatenated_caption_length = torch.LongTensor([concatenated_caption_length])
         pos_tags = self.images_meta[coco_id][DATA_CAPTIONS_POS][caption_index]
 
@@ -138,7 +138,7 @@ class CaptionTestDataset(CaptionDataset):
         concatenated_captions = torch.LongTensor(concatenated_captions)
 
         concatenated_caption_lengths = [
-            (caption_length - 2) * 2 + 2
+            (caption_length - 2) * 2 + 3
             for caption_length in self.images_meta[coco_id][DATA_CAPTION_LENGTHS]
         ]
 
