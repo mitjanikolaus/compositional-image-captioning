@@ -24,6 +24,7 @@ from utils import (
     DATA_CAPTION_LENGTHS,
     DATA_CAPTIONS_POS,
     UNIVERSAL_POS_TAGS,
+    TOKEN_POS_START,
 )
 
 import stanfordnlp
@@ -37,6 +38,7 @@ def create_word_and_pos_map(words, pos_tags):
     word_map[TOKEN_UNKNOWN] = len(word_map) + 1
     word_map[TOKEN_START] = len(word_map) + 1
     word_map[TOKEN_END] = len(word_map) + 1
+    word_map[TOKEN_POS_START] = len(word_map) + 1
     word_map[TOKEN_PADDING] = 0
 
     pos_map = {p: i + len(word_map) for i, p in enumerate(pos_tags)}

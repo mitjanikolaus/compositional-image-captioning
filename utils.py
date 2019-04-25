@@ -14,6 +14,8 @@ TOKEN_START = "<start>"
 TOKEN_END = "<end>"
 TOKEN_PADDING = "<pad>"
 
+TOKEN_POS_START = "<start_pos>"
+
 # Normalization for images (cf. https://pytorch-zh.readthedocs.io/en/latest/torchvision/models.html)
 IMAGENET_IMAGES_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_IMAGES_STD = [0.229, 0.224, 0.225]
