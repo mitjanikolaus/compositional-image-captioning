@@ -177,7 +177,9 @@ def evaluate(
                 )
             )
 
-        generated_captions[coco_id] = top_k_generated_captions[:5].cpu().numpy()
+        generated_captions[coco_id] = [
+            caption.cpu().numpy() for caption in top_k_generated_captions[:5]
+        ]
         generated_beams[coco_id] = beam
 
         assert len(target_captions) == len(generated_captions)
