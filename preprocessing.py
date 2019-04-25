@@ -70,7 +70,7 @@ def preprocess_images_and_captions(
     image_paths = {}
     image_metas = {}
 
-    for coco_split in ["val2014"]:
+    for coco_split in ["train2014", "val2014"]:
         annFile = "{}/annotations/captions_{}.json".format(dataset_folder, coco_split)
         coco = COCO(annFile)
 
