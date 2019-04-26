@@ -68,7 +68,7 @@ def recall_pairs(generated_captions, word_map, occurrences_data_files, checkpoin
         average_pair_recall = np.sum(
             list(recall_score["true_positives"].values())
         ) / np.sum(list(recall_score["numbers"].values()))
-        print("{}: {}".format(pair, np.round(average_pair_recall, 2)), end="")
+        print("{}: {}".format(pair, np.round(average_pair_recall, 2)), end=" ")
         print(
             "Most common adjectives: ",
             recall_score["adjective_frequencies"].most_common(10),
