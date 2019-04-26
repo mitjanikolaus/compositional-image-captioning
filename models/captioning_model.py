@@ -5,7 +5,7 @@ from torch import nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence
 
-from utils import TOKEN_START, decode_caption, TOKEN_END
+from utils import TOKEN_POS_START, decode_caption, TOKEN_END
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -89,9 +89,12 @@ class CaptioningModelDecoder(nn.Module):
             batch_size, max(decode_lengths), encoder_output.size(1), device=device
         )
 
-        # At the start, all 'previous words' are the <start> token
+        # At the start, all 'previous words' are the <pos_start> token
         prev_words = torch.full(
-            (batch_size,), self.word_map[TOKEN_START], dtype=torch.int64, device=device
+            (batch_size,),
+            self.word_map[TOKEN_POS_START],
+            dtype=torch.int64,
+            device=device,
         )
 
         for t in range(max(decode_lengths)):
@@ -172,9 +175,12 @@ class CaptioningModelDecoder(nn.Module):
             beam_size, encoder_output.size(1), encoder_dim
         )
 
-        # Tensor to store top k sequences; now they're just <start>
+        # Tensor to store top k sequences; now they're just <pos_start>
         top_k_sequences = torch.full(
-            (beam_size, 1), self.word_map[TOKEN_START], dtype=torch.int64, device=device
+            (beam_size, 1),
+            self.word_map[TOKEN_POS_START],
+            dtype=torch.int64,
+            device=device,
         )
 
         # Tensor to store top k sequences' scores; now they're just 0
