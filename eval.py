@@ -177,11 +177,13 @@ def calculate_metric(
     checkpoint_name,
 ):
     if metric_name == METRIC_BLEU:
-        top_generated_captions = [captions[0] for captions in generated_captions]
+        top_generated_captions = [
+            captions[0] for captions in generated_captions.values()
+        ]
+        target_captions = target_captions.values()
         bleu_1 = corpus_bleu(
             target_captions, top_generated_captions, weights=(1, 0, 0, 0)
         )
-        target_captions = target_captions.values()
         bleu_2 = corpus_bleu(
             target_captions, top_generated_captions, weights=(0.5, 0.5, 0, 0)
         )
