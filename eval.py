@@ -73,6 +73,8 @@ def evaluate(
                 data_folder,
                 IMAGES_FILENAME,
                 test_images_split,
+                decoder.params["max_caption_len"],
+                word_map,
                 transforms.Compose([normalize]),
                 features_scale_factor=1 / 255.0,
             ),
@@ -84,7 +86,11 @@ def evaluate(
     elif model_name == MODEL_BOTTOM_UP_TOP_DOWN:
         data_loader = torch.utils.data.DataLoader(
             CaptionTestDataset(
-                data_folder, BOTTOM_UP_FEATURES_FILENAME, test_images_split
+                data_folder,
+                BOTTOM_UP_FEATURES_FILENAME,
+                test_images_split,
+                decoder.params["max_caption_len"],
+                word_map,
             ),
             batch_size=1,
             shuffle=True,
