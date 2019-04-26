@@ -1,5 +1,6 @@
 import json
 import os
+from collections import Counter
 
 import matplotlib.pyplot as plt
 
@@ -18,6 +19,7 @@ from utils import (
     contains_verb_noun_pair,
     get_ranking_splits_from_occurrences_data,
     get_splits_from_occurrences_data,
+    get_adjectives_for_noun,
 )
 
 
@@ -66,7 +68,11 @@ def recall_pairs(generated_captions, word_map, occurrences_data_files, checkpoin
         average_pair_recall = np.sum(
             list(recall_score["true_positives"].values())
         ) / np.sum(list(recall_score["numbers"].values()))
-        print("{}: {}".format(pair, np.round(average_pair_recall, 2)))
+        print("{}: {}".format(pair, np.round(average_pair_recall, 2)), end="")
+        print(
+            "Most common adjectives: ",
+            recall_score["adjective_frequencies"].most_common(10),
+        )
 
     print("Average: {}".format(average_recall(recall_scores)))
     result_file_name = "eval_" + checkpoint_name.split(".")[0] + ".json"
@@ -86,6 +92,7 @@ def calc_recall(
 ):
     true_positives = dict.fromkeys(["N=1", "N=2", "N=3", "N=4", "N=5"], 0)
     numbers = dict.fromkeys(["N=1", "N=2", "N=3", "N=4", "N=5"], 0)
+    adjective_frequencies = Counter()
     for coco_id in test_indices:
         top_k_captions = generated_captions[coco_id]
         count = occurrences_data[OCCURRENCE_DATA][coco_id][PAIR_OCCURENCES]
@@ -103,6 +110,17 @@ def calc_recall(
             )
             if contains_pair:
                 hit = True
+
+            noun_is_present = False
+            for token in pos_tagged_caption.tokens:
+                if token.text in nouns:
+                    noun_is_present = True
+            if noun_is_present:
+                adjectives = get_adjectives_for_noun(pos_tagged_caption, nouns)
+                if len(adjectives) == 0:
+                    adjective_frequencies["No adjective"] += 1
+                adjective_frequencies.update(adjectives)
+
         if hit:
             true_positives["N={}".format(count)] += 1
         numbers["N={}".format(count)] += 1
@@ -110,6 +128,7 @@ def calc_recall(
     recall_score = {}
     recall_score["true_positives"] = true_positives
     recall_score["numbers"] = numbers
+    recall_score["adjective_frequencies"] = adjective_frequencies
     return recall_score
 
 
