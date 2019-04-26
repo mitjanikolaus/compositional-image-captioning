@@ -7,7 +7,6 @@ import os
 from utils import (
     IMAGES_META_FILENAME,
     DATA_CAPTIONS,
-    DATA_CAPTION_LENGTHS,
     DATA_CAPTIONS_POS,
     TOKEN_POS_START,
     TOKEN_PADDING,
@@ -15,6 +14,7 @@ from utils import (
 
 
 def concat_pos_tags_and_caption(caption, pos_tags, max_caption_len, word_map):
+    pos_tags = [tag for tag in pos_tags if not tag == word_map["ADJ"]]
     concatenated = [word_map[TOKEN_POS_START]] + pos_tags + caption
 
     concatenated += [word_map[TOKEN_PADDING]] * (max_caption_len - len(concatenated))
@@ -97,16 +97,17 @@ class CaptionTrainDataset(CaptionDataset):
 
         image = self.get_image_features(coco_id)
         caption = self.images_meta[coco_id][DATA_CAPTIONS][caption_index]
-        caption_length = self.images_meta[coco_id][DATA_CAPTION_LENGTHS][caption_index]
-        concatenated_caption_length = (caption_length - 2) * 2 + 3
-        concatenated_caption_length = torch.LongTensor([concatenated_caption_length])
+
         pos_tags = self.images_meta[coco_id][DATA_CAPTIONS_POS][caption_index]
 
-        concatenated_caption = torch.LongTensor(
-            concat_pos_tags_and_caption(
-                caption, pos_tags, self.max_caption_len, self.word_map
-            )
+        concatenated_caption = concat_pos_tags_and_caption(
+            caption, pos_tags, self.max_caption_len, self.word_map
         )
+        concatenated_caption_length = len(
+            [t for t in concatenated_caption if not t == self.word_map[TOKEN_PADDING]]
+        )
+        concatenated_caption = torch.LongTensor(concatenated_caption)
+        concatenated_caption_length = torch.LongTensor([concatenated_caption_length])
 
         return image, concatenated_caption, concatenated_caption_length
 
@@ -135,12 +136,17 @@ class CaptionTestDataset(CaptionDataset):
             )
             for caption, pos_tags in zip(captions, pos_tags)
         ]
-        concatenated_captions = torch.LongTensor(concatenated_captions)
-
         concatenated_caption_lengths = [
-            (caption_length - 2) * 2 + 3
-            for caption_length in self.images_meta[coco_id][DATA_CAPTION_LENGTHS]
+            len(
+                [
+                    t
+                    for t in concatenated_caption
+                    if not t == self.word_map[TOKEN_PADDING]
+                ]
+            )
+            for concatenated_caption in concatenated_captions
         ]
+        concatenated_captions = torch.LongTensor(concatenated_captions)
 
         concatenated_caption_lengths = torch.LongTensor(concatenated_caption_lengths)
 
