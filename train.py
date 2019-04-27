@@ -66,9 +66,6 @@ def main(
         occurrences_data, karpathy_json
     )
 
-    current_generation_metric_score = 0.0
-    current_ranking_metric_score = 0.0
-
     # Load checkpoint
     if checkpoint:
         checkpoint = torch.load(checkpoint, map_location=device)
