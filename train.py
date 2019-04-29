@@ -47,6 +47,36 @@ best_ranking_metric_score = 0.0
 best_generation_metric_score = 0.0
 
 
+def calc_initial_losses(data_loader, encoder, decoder):
+
+    decoder.train()
+    if encoder:
+        encoder.train()
+
+    # Do only one batch
+    images, target_captions, caption_lengths = next(iter(data_loader))
+
+    target_captions = target_captions.to(device)
+    caption_lengths = caption_lengths.to(device)
+    images = images.to(device)
+
+    # Forward propagation
+    if encoder:
+        images = encoder(images)
+    decode_lengths = caption_lengths.squeeze(1) - 1
+
+    scores, decode_lengths, images_embedded, captions_embedded, alphas = decoder.forward_joint(
+        images, target_captions, decode_lengths
+    )
+    loss_generation = decoder.loss(scores, target_captions, decode_lengths, alphas)
+    loss_ranking = decoder.loss_ranking(images_embedded, captions_embedded)
+
+    print("Initial generation loss: {}".format(loss_generation))
+    print("Initial ranking loss: {}".format(loss_ranking))
+
+    return loss_generation, loss_ranking
+
+
 def main(
     model_params,
     model_name,
@@ -63,6 +93,7 @@ def main(
     fine_tune_decoder_caption_embeddings,
     fine_tune_encoder,
     gradnorm_alpha,
+    gradnorm_learning_rate,
     workers=1,
     start_epoch=0,
     epochs_early_stopping=10,
@@ -155,8 +186,9 @@ def main(
                     1, requires_grad=True, device=device, dtype=torch.float
                 )
                 gradnorm_optimizer = torch.optim.Adam(
-                    [loss_weight_generation, loss_weight_ranking], lr=0.025
-                )  # TODO lr?
+                    [loss_weight_generation, loss_weight_ranking],
+                    lr=gradnorm_learning_rate,
+                )
                 gradnorm_loss = nn.L1Loss().to(device)
 
         else:
@@ -237,8 +269,12 @@ def main(
         encoder.to(device)
     decoder = decoder.to(device)
 
-    loss_generation_t0 = None
-    loss_ranking_t0 = None
+    initial_generation_loss = None
+    initial_ranking_loss = None
+    if model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING and objective == OBJECTIVE_JOINT:
+        initial_generation_loss, initial_ranking_loss = calc_initial_losses(
+            train_images_loader, encoder, decoder
+        )
     for epoch in range(start_epoch, epochs):
         if epochs_since_last_improvement >= epochs_early_stopping:
             print(
@@ -256,7 +292,7 @@ def main(
                 adjust_learning_rate(encoder_optimizer, rate_adjust_learning_rate)
 
         # One epoch's training
-        loss_generation_t0, loss_ranking_t0 = train(
+        train(
             model_name,
             train_images_loader,
             encoder,
@@ -272,8 +308,8 @@ def main(
             loss_weight_ranking,
             gradnorm_loss,
             gradnorm_alpha,
-            loss_generation_t0,
-            loss_ranking_t0,
+            initial_generation_loss,
+            initial_ranking_loss,
         )
 
         # One epoch's validation
@@ -342,8 +378,8 @@ def train(
     loss_weight_ranking,
     gradnorm_loss,
     gradnorm_alpha,
-    loss_generation_t0,
-    loss_ranking_t0,
+    initial_generation_loss,
+    initial_ranking_loss,
 ):
     """
     Perform one training epoch.
@@ -399,12 +435,6 @@ def train(
             loss = decoder.loss(scores, target_captions, decode_lengths, alphas)
 
         if objective == OBJECTIVE_JOINT:
-            if epoch == 0 and i == 0:
-                loss_generation_t0 = loss_generation
-                loss_ranking_t0 = loss_ranking
-                print("Initial generation loss: {}".format(loss_generation_t0))
-                print("Initial ranking loss: {}".format(loss_ranking_t0))
-
             decoder_optimizer.zero_grad()
             if encoder_optimizer:
                 encoder_optimizer.zero_grad()
@@ -430,8 +460,8 @@ def train(
             G_avg = torch.div(torch.add(G1, G2), 2)
 
             # Calculating relative losses
-            lhat1 = torch.div(loss_generation, loss_generation_t0)
-            lhat2 = torch.div(loss_ranking, loss_ranking_t0)
+            lhat1 = torch.div(loss_generation, initial_generation_loss)
+            lhat2 = torch.div(loss_ranking, initial_ranking_loss)
             lhat_avg = torch.div(torch.add(lhat1, lhat2), 2)
 
             # Calculating relative inverse training rates for tasks
@@ -475,11 +505,15 @@ def train(
         if i % print_freq == 0:
             print(
                 "Epoch: {0}[Batch {1}/{2}]\t"
-                "Loss {loss.val:.4f} (Average: {loss.avg:.4f})\t".format(
-                    epoch, i, len(data_loader), loss=losses
+                "Loss: {loss.val:.4f} (Average: {loss.avg:.4f})\t Loss weights: Generation: {3:.4f} Ranking: {4:.4f}".format(
+                    epoch,
+                    i,
+                    len(data_loader),
+                    loss_weights[0].item(),
+                    loss_weights[1].item(),
+                    loss=losses,
                 )
             )
-            print("Loss weights are:", loss_weights)
 
         if objective == OBJECTIVE_JOINT:
             # Renormalizing the losses weights
@@ -487,7 +521,6 @@ def train(
             loss_weights = [coef * loss_weight_generation, coef * loss_weight_ranking]
 
     print("\n * LOSS - {loss.avg:.3f}\n".format(loss=losses))
-    return loss_generation_t0, loss_ranking_t0
 
 
 def validate(data_loader, encoder, decoder, word_map, print_freq):
@@ -684,6 +717,12 @@ def check_args(args):
     parser.add_argument(
         "--gradnorm-alpha", help="Gradnorm alpha", type=float, default=1.0
     )
+    parser.add_argument(
+        "--gradnorm-learning-rate",
+        help="Initial learning rate for the decoder",
+        type=float,
+        default=0.025,
+    )
 
     parsed_args = parser.parse_args(args)
     print(parsed_args)
@@ -709,4 +748,5 @@ if __name__ == "__main__":
         fine_tune_decoder_caption_embeddings=parsed_args.fine_tune_decoder_caption_embeddings,
         fine_tune_encoder=parsed_args.fine_tune_encoder,
         gradnorm_alpha=parsed_args.gradnorm_alpha,
+        gradnorm_learning_rate=parsed_args.gradnorm_learning_rate,
     )
