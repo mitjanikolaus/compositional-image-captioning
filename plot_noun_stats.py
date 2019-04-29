@@ -13,20 +13,34 @@ def plot_noun_stats_results(noun_stats_file):
 
     for noun, stats in noun_stats.items():
 
-        stats = Counter(stats)
+        adjective_frequencies = Counter(stats["adjective_frequencies"])
+        verb_frequencies = Counter(stats["verb_frequencies"])
 
-        total = sum(stats.values())
-        no_adjective_freq = int(stats["No adjective"] / total * 100)
-        del stats["No adjective"]
-        top_stats = stats.most_common(20)
+        total = sum(adjective_frequencies.values())
+        no_adjective_freq = int(adjective_frequencies["No adjective"] / total * 100)
+        del adjective_frequencies["No adjective"]
 
-        plt.figure(figsize=(15, 8))
-        plt.title(
-            "Noun: {}".format(noun)
-            + " ({} captions)".format(total)
-            + " (captions w/o adjective: {}%)".format(no_adjective_freq)
+        total = sum(verb_frequencies.values())
+        no_verb_freq = int(verb_frequencies["No verb"] / total * 100)
+        del verb_frequencies["No verb"]
+
+        fig, axes = plt.subplots(nrows=2, figsize=(30, 15))
+        plt.suptitle("{}".format(noun) + " ({} captions)".format(total))
+
+        axes[0].bar(
+            [adj for adj, freq in adjective_frequencies.most_common(20)],
+            [freq for adj, freq in adjective_frequencies.most_common(20)],
         )
-        plt.bar([adj for adj, freq in top_stats], [freq for adj, freq in top_stats])
+        axes[0].set_title(
+            "Adjectives (captions w/o adjective: {}%)".format(no_adjective_freq)
+        )
+        axes[1].bar(
+            [adj for adj, freq in verb_frequencies.most_common(20)],
+            [freq for adj, freq in verb_frequencies.most_common(20)],
+        )
+        axes[1].set_title("Verbs (captions w/o verb: {}%)".format(no_verb_freq))
+
+        # plt.bar
         plt.show()
 
 
