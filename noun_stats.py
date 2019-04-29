@@ -12,6 +12,7 @@ from utils import (
     WORD_MAP_FILENAME,
     POS_TAGGED_CAPTIONS_FILENAME,
     get_adjectives_for_noun,
+    get_verbs_for_noun,
 )
 
 
@@ -33,17 +34,16 @@ def noun_stats(nouns_files, preprocessed_data_folder):
 
         first_noun = nouns[0]
 
-        nouns = {noun for noun in nouns if noun in word_map}
-
         print("Noun stats for: {}".format(nouns))
 
         adjective_frequencies = Counter()
+        verb_frequencies = Counter()
 
         for coco_id, tagged_caption in tqdm(captions.items()):
             for caption in tagged_caption["pos_tagged_captions"]:
                 noun_is_present = False
-                for token in caption.tokens:
-                    if token.text in nouns:
+                for word in caption.words:
+                    if word.lemma in nouns:
                         noun_is_present = True
                 if noun_is_present:
                     adjectives = get_adjectives_for_noun(caption, nouns)
@@ -51,8 +51,16 @@ def noun_stats(nouns_files, preprocessed_data_folder):
                         adjective_frequencies["No adjective"] += 1
                     adjective_frequencies.update(adjectives)
 
-        print(adjective_frequencies.most_common(100))
-        data[first_noun] = adjective_frequencies
+                    verbs = get_verbs_for_noun(caption, nouns)
+                    if len(verbs) == 0:
+                        verb_frequencies["No verb"] += 1
+                    verb_frequencies.update(verbs)
+
+        print(adjective_frequencies.most_common(20))
+        print(verb_frequencies.most_common(20))
+        data[first_noun] = {}
+        data[first_noun]["adjective_frequencies"] = adjective_frequencies
+        data[first_noun]["verb_frequencies"] = verb_frequencies
 
     data_path = "noun_stats.json"
     print("\nSaving results to {}".format(data_path))
