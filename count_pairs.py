@@ -7,7 +7,6 @@ import sys
 from tqdm import tqdm
 
 from utils import (
-    WORD_MAP_FILENAME,
     PAIR_OCCURENCES,
     ADJECTIVE_OCCURRENCES,
     NOUN_OCCURRENCES,
@@ -30,10 +29,6 @@ def count_adjective_noun_pairs(nouns_file, adjectives_file, preprocessed_data_fo
     with open(adjectives_file, "r") as json_file:
         adjectives = json.load(json_file)
 
-    word_map_path = os.path.join(preprocessed_data_folder, WORD_MAP_FILENAME)
-    with open(word_map_path, "r") as json_file:
-        word_map = json.load(json_file)
-
     with open(
         os.path.join(preprocessed_data_folder, POS_TAGGED_CAPTIONS_FILENAME), "rb"
     ) as pickle_file:
@@ -42,14 +37,11 @@ def count_adjective_noun_pairs(nouns_file, adjectives_file, preprocessed_data_fo
     first_noun = nouns[0]
     first_adjective = adjectives[0]
 
-    nouns = {noun for noun in nouns if noun in word_map}
-    adjectives = {adjective for adjective in adjectives if adjective in word_map}
-
     print("Looking for pairs: {} - {}".format(adjectives, nouns))
 
     data = {}
-    data[NOUNS] = list(nouns)
-    data[ADJECTIVES] = list(adjectives)
+    data[NOUNS] = nouns
+    data[ADJECTIVES] = adjectives
 
     occurrence_data = {}
 
@@ -114,10 +106,6 @@ def count_verb_noun_pairs(nouns_file, verbs_file, preprocessed_data_folder):
     with open(verbs_file, "r") as json_file:
         verbs = json.load(json_file)
 
-    word_map_path = os.path.join(preprocessed_data_folder, WORD_MAP_FILENAME)
-    with open(word_map_path, "r") as json_file:
-        word_map = json.load(json_file)
-
     with open(
         os.path.join(preprocessed_data_folder, POS_TAGGED_CAPTIONS_FILENAME), "rb"
     ) as pickle_file:
@@ -126,14 +114,11 @@ def count_verb_noun_pairs(nouns_file, verbs_file, preprocessed_data_folder):
     first_noun = nouns[0]
     first_verb = verbs[0]
 
-    nouns = {noun for noun in nouns if noun in word_map}
-    verbs = {verb for verb in verbs if verb in word_map}
-
     print("Looking for pairs: {} - {}".format(verbs, nouns))
 
     data = {}
-    data[NOUNS] = list(nouns)
-    data[VERBS] = list(verbs)
+    data[NOUNS] = nouns
+    data[VERBS] = verbs
 
     occurrence_data = {}
 
@@ -195,8 +180,7 @@ def check_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--nouns",
-        help="Path to file containing JSON-serialized list of nouns. "
-        "The first element needs to be a name of a COCO object type.",
+        help="Path to file containing JSON-serialized list of nouns.",
         required=True,
     )
     parser.add_argument(

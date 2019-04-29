@@ -78,7 +78,7 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         "attention_lstm_size": 1000,
         "attention_layer_size": 512,
         "language_generation_lstm_size": 1000,
-        "max_caption_len": 50,
+        "max_caption_len": 20,
         "fine_tune_decoder_word_embeddings": True,
     }
     DEFAULT_OPTIMIZER_PARAMS = {"decoder_learning_rate": 1e-4}
@@ -439,10 +439,10 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
                 seqs_alpha = seqs_alpha[incomplete_inds]
 
         if len(complete_seqs) < beam_size:
-            complete_seqs.extend(top_k_sequences[incomplete_inds].tolist())
-            complete_seqs_scores.extend(top_k_scores[incomplete_inds])
+            complete_seqs.extend(top_k_sequences.tolist())
+            complete_seqs_scores.extend(top_k_scores)
             if store_alphas:
-                complete_seqs_alpha.extend(seqs_alpha[incomplete_inds])
+                complete_seqs_alpha.extend(seqs_alpha)
 
         sorted_sequences = [
             sequence

@@ -1,3 +1,4 @@
+import os
 import sys
 
 import argparse
@@ -12,7 +13,12 @@ MODE_VERBOSE = "VERBOSE"
 MODE_AVERAGE_FOR_PAIR = "AVERAGE_FOR_PAIRS"
 
 
-def plot_recall_results(eval_files, mode, labels):
+def plot_recall_results(eval_files, mode, labels, min_importance):
+    if not labels:
+        labels = [
+            os.path.basename(path).split("checkpoint_")[-1] for path in eval_files
+        ]
+
     eval_datas = []
 
     for file in eval_files:
@@ -21,42 +27,54 @@ def plot_recall_results(eval_files, mode, labels):
 
         eval_datas.append(eval_data)
 
-    print("Average recall values:")
-    for j, eval_data in enumerate(eval_datas):
-        print(average_recall(eval_data))
+    labels = [
+        label
+        + " (Avg recall: {})".format(
+            np.round(average_recall(eval_datas[i], min_importance), 2)
+        )
+        for i, label in enumerate(labels)
+    ]
 
     fig, axes = plt.subplots(nrows=len(eval_datas[0]), sharex=True, figsize=(8, 15))
     plt.suptitle("Recall")
-    bar_width = 0.2
+    bar_width = 0.1
     if mode == MODE_VERBOSE:
-        index = np.arange(5)
+        index = np.arange(5 - (min_importance - 1))
 
         for i, pair in enumerate(eval_datas[0].keys()):
             axis = axes[i]
 
             for j, eval_data in enumerate(eval_datas):
                 recall = np.array(
-                    list(eval_data[pair]["true_positives"].values())
-                ) / np.array(list(eval_data[pair]["numbers"].values()))
+                    list(eval_data[pair]["true_positives"].values())[
+                        min_importance - 1 :
+                    ]
+                ) / np.array(
+                    list(eval_data[pair]["numbers"].values())[min_importance - 1 :]
+                )
                 axis.bar(index + j * bar_width, recall, bar_width)
 
             axis.set_ylim(0, 1)
             axis.set_title(pair)
 
-        plt.xticks(index + bar_width, index + 1)
-        plt.xlabel("Agreement within reference captions")
+        plt.xticks(index + bar_width, index + min_importance)
+        plt.xlabel("Importance (Agreement within reference captions)")
 
     elif mode == MODE_AVERAGE_FOR_PAIR:
         for i, pair in enumerate(eval_datas[0].keys()):
             axis = axes[i]
             for j, eval_data in enumerate(eval_datas):
                 recall = np.sum(
-                    list(eval_data[pair]["true_positives"].values())
-                ) / np.sum(list(eval_data[pair]["numbers"].values()))
+                    list(eval_data[pair]["true_positives"].values())[
+                        min_importance - 1 :
+                    ]
+                ) / np.sum(
+                    list(eval_data[pair]["numbers"].values())[min_importance - 1 :]
+                )
 
                 axis.bar(j * bar_width, recall, bar_width)
 
-                axis.text(x=j * bar_width, y=0.8, s=np.round(recall, 2), size=5)
+                axis.text(x=j * bar_width, y=0.8, s=np.round(recall, 2), size=7)
             axis.set_ylim(0, 1)
             axis.set_title(pair)
         plt.xticks([], [])
@@ -64,8 +82,7 @@ def plot_recall_results(eval_files, mode, labels):
     # Common ylabel
     fig.text(0.06, 0.5, "Recall", ha="center", va="center", rotation="vertical")
     # Common legend
-    if labels:
-        fig.legend(labels=labels, loc="upper right", borderaxespad=0.1)
+    fig.legend(labels=labels, loc="lower center", borderaxespad=0.1)
 
     plt.subplots_adjust(hspace=0.5)
 
@@ -87,6 +104,12 @@ def check_args(args):
     parser.add_argument(
         "--labels", nargs="+", help="Labels for each model that was evaluated"
     )
+    parser.add_argument(
+        "--min-importance",
+        help="Minimum importance (agreement between the reference captions)",
+        type=int,
+        default=1,
+    )
     parsed_args = parser.parse_args(args)
     print(parsed_args)
     return parsed_args
@@ -94,4 +117,9 @@ def check_args(args):
 
 if __name__ == "__main__":
     parsed_args = check_args(sys.argv[1:])
-    plot_recall_results(parsed_args.eval_files, parsed_args.mode, parsed_args.labels)
+    plot_recall_results(
+        parsed_args.eval_files,
+        parsed_args.mode,
+        parsed_args.labels,
+        parsed_args.min_importance,
+    )

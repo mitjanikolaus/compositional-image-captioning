@@ -46,46 +46,92 @@ RELATION_CONJUNCT = "conj"
 RELATION_RELATIVE_CLAUSE_MODIFIER = "acl:relcl"
 RELATION_ADJECTIVAL_CLAUSE = "acl"
 
+MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
+MODEL_BOTTOM_UP_TOP_DOWN = "BOTTOM_UP_TOP_DOWN"
+MODEL_BOTTOM_UP_TOP_DOWN_RANKING = "BOTTOM_UP_TOP_DOWN_RANKING"
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+def get_adjectives_for_noun(pos_tagged_caption, nouns):
+    dependencies = pos_tagged_caption.dependencies
+
+    adjectives = {
+        d[2].lemma
+        for d in dependencies
+        if d[1] == RELATION_ADJECTIVAL_MODIFIER
+        and d[0].lemma in nouns
+        and d[2].upos == "ADJ"
+    } | {
+        d[0].lemma
+        for d in dependencies
+        if d[1] == RELATION_NOMINAL_SUBJECT
+        and d[2].lemma in nouns
+        and d[0].upos == "ADJ"
+    }
+    conjuncted_adjectives = set()
+    for adjective in adjectives:
+        conjuncted_adjectives.update(
+            {
+                d[2].lemma
+                for d in dependencies
+                if d[1] == RELATION_CONJUNCT
+                and d[0].lemma == adjective
+                and d[2].upos == "ADJ"
+            }
+            | {
+                d[2].lemma
+                for d in dependencies
+                if d[1] == RELATION_ADJECTIVAL_MODIFIER
+                and d[0].lemma == adjective
+                and d[2].upos == "ADJ"
+            }
+        )
+    return adjectives | conjuncted_adjectives
+
+
+def get_verbs_for_noun(pos_tagged_caption, nouns):
+    dependencies = pos_tagged_caption.dependencies
+
+    verbs = (
+        {
+            d[0].lemma
+            for d in dependencies
+            if d[1] == RELATION_NOMINAL_SUBJECT
+            and d[2].lemma in nouns
+            and d[0].upos == "VERB"
+        }
+        | {
+            d[2].lemma
+            for d in dependencies
+            if d[1] == RELATION_RELATIVE_CLAUSE_MODIFIER
+            and d[0].lemma in nouns
+            and d[2].upos == "VERB"
+        }
+        | {
+            d[2].lemma
+            for d in dependencies
+            if d[1] == RELATION_ADJECTIVAL_CLAUSE
+            and d[0].lemma in nouns
+            and d[2].upos == "VERB"
+        }
+    )
+
+    return verbs
 
 
 def contains_adjective_noun_pair(pos_tagged_caption, nouns, adjectives):
     noun_is_present = False
     adjective_is_present = False
 
-    for token in pos_tagged_caption.tokens:
-        if token.text in nouns:
+    for word in pos_tagged_caption.words:
+        if word.lemma in nouns:
             noun_is_present = True
-        if token.text in adjectives:
+        if word.lemma in adjectives:
             adjective_is_present = True
 
-    dependencies = pos_tagged_caption.dependencies
-    caption_adjectives = {
-        d[2].text
-        for d in dependencies
-        if d[1] == RELATION_ADJECTIVAL_MODIFIER and d[0].text in nouns
-    } | {
-        d[0].text
-        for d in dependencies
-        if d[1] == RELATION_NOMINAL_SUBJECT and d[2].text in nouns
-    }
-    conjuncted_caption_adjectives = set()
-    for adjective in caption_adjectives:
-        conjuncted_caption_adjectives.update(
-            {
-                d[2].text
-                for d in dependencies
-                if d[1] == RELATION_CONJUNCT and d[0].text == adjective
-            }
-            | {
-                d[2].text
-                for d in dependencies
-                if d[1] == RELATION_ADJECTIVAL_MODIFIER and d[0].text == adjective
-            }
-        )
-
-    caption_adjectives |= conjuncted_caption_adjectives
-    combination_is_present = bool(adjectives & caption_adjectives)
+    caption_adjectives = get_adjectives_for_noun(pos_tagged_caption, nouns)
+    combination_is_present = bool(set(adjectives) & caption_adjectives)
 
     return noun_is_present, adjective_is_present, combination_is_present
 
@@ -94,39 +140,14 @@ def contains_verb_noun_pair(pos_tagged_caption, nouns, verbs):
     noun_is_present = False
     verb_is_present = False
 
-    for token in pos_tagged_caption.tokens:
-        if token.text in nouns:
+    for word in pos_tagged_caption.words:
+        if word.lemma in nouns:
             noun_is_present = True
-        if token.text in verbs:
+        if word.lemma in verbs:
             verb_is_present = True
 
-    dependencies = pos_tagged_caption.dependencies
-    combination_is_present = bool(
-        {
-            d
-            for d in dependencies
-            if d[1] == RELATION_NOMINAL_SUBJECT
-            and d[0].text in verbs
-            and d[2].text in nouns
-            and d[0].upos == "VERB"
-        }
-        | {
-            d
-            for d in dependencies
-            if d[1] == RELATION_RELATIVE_CLAUSE_MODIFIER
-            and d[0].text in nouns
-            and d[2].text in verbs
-            and d[2].upos == "VERB"
-        }
-        | {
-            d
-            for d in dependencies
-            if d[1] == RELATION_ADJECTIVAL_CLAUSE
-            and d[0].text in nouns
-            and d[2].text in verbs
-            and d[2].upos == "VERB"
-        }
-    )
+    caption_verbs = get_verbs_for_noun(pos_tagged_caption, nouns)
+    combination_is_present = bool(set(verbs) & caption_verbs)
 
     return noun_is_present, verb_is_present, combination_is_present
 
@@ -287,6 +308,22 @@ def clip_gradients(optimizer, grad_clip):
                 param.grad.data.clamp_(-grad_clip, grad_clip)
 
 
+def get_checkpoint_file_name(
+    model_name, occurrences_data, karpathy_json, checkpoint_suffix, is_best
+):
+    type = ""
+    if occurrences_data:
+        type = "heldout_pairs"
+    elif karpathy_json:
+        type = "karpathy"
+
+    name = "checkpoint_" + model_name + "_" + type + checkpoint_suffix + ".pth.tar"
+    if is_best:
+        return "best_" + name
+    else:
+        return name
+
+
 def save_checkpoint(
     model_name,
     occurrences_data,
@@ -314,11 +351,6 @@ def save_checkpoint(
     :param validation_metric_score: validation set score for this epoch
     :param is_best: True, if this is the best checkpoint so far (will save the model to a dedicated file)
     """
-    if occurrences_data:
-        name = "heldout_pairs"
-    elif karpathy_json:
-        name = "karpathy"
-    name += checkpoint_suffix
     state = {
         "model_name": model_name,
         "epoch": epoch,
@@ -330,11 +362,17 @@ def save_checkpoint(
         "encoder_optimizer": encoder_optimizer,
         "decoder_optimizer": decoder_optimizer,
     }
-    torch.save(state, "checkpoint_" + model_name + "_" + name + ".pth.tar")
+    file_name = get_checkpoint_file_name(
+        model_name, occurrences_data, karpathy_json, checkpoint_suffix, False
+    )
+    torch.save(state, file_name)
 
     # If this checkpoint is the best so far, store a copy so it doesn't get overwritten by a worse checkpoint
     if is_best:
-        torch.save(state, "checkpoint_" + model_name + "_" + name + "_best.pth.tar")
+        file_name = get_checkpoint_file_name(
+            model_name, occurrences_data, karpathy_json, checkpoint_suffix, True
+        )
+        torch.save(state, file_name)
 
 
 class AverageMeter(object):
