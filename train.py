@@ -448,7 +448,7 @@ def train(
                 encoder_optimizer.zero_grad()
             loss.backward(retain_graph=True)
 
-            # Getting gradients of the first layers of each tower and calculate their l2-norm
+            # Get the gradients of the shared layers and calculate their l2-norm
             named_params = dict(decoder.named_parameters())
             shared_params = [
                 param
@@ -459,35 +459,33 @@ def train(
                 loss_generation, shared_params, retain_graph=True, create_graph=True
             )
             G1R_flattened = torch.cat([g.view(-1) for g in G1R])
-            G1R_flattened = G1R_flattened.data
-            G1 = torch.norm(loss_weights[0] * G1R_flattened, 2).unsqueeze(0)
+            G1 = torch.norm(loss_weights[0] * G1R_flattened.data, 2).unsqueeze(0)
             G2R = torch.autograd.grad(loss_ranking, shared_params)
             G2R_flattened = torch.cat([g.view(-1) for g in G2R])
-            G2R_flattened = G2R_flattened.data
-            G2 = torch.norm(loss_weights[1] * G2R_flattened, 2).unsqueeze(0)
+            G2 = torch.norm(loss_weights[1] * G2R_flattened.data, 2).unsqueeze(0)
+
+            # Calculate the average gradient norm across all tasks
             G_avg = torch.div(torch.add(G1, G2), 2)
 
-            # Calculating relative losses
+            # Calculate relative losses
             lhat1 = torch.div(loss_generation, initial_generation_loss)
             lhat2 = torch.div(loss_ranking, initial_ranking_loss)
             lhat_avg = torch.div(torch.add(lhat1, lhat2), 2)
 
-            # Calculating relative inverse training rates for tasks
+            # Calculate relative inverse training rates
             inv_rate1 = torch.div(lhat1, lhat_avg)
             inv_rate2 = torch.div(lhat2, lhat_avg)
 
-            # Calculating the constant target for Eq. 2 in the GradNorm paper
+            # Calculate the gradient norm target for this batch
             C1 = G_avg * (inv_rate1 ** gradnorm_alpha)
             C2 = G_avg * (inv_rate2 ** gradnorm_alpha)
-            C1 = C1.data
-            C2 = C2.data
 
+            # Calculate the gradnorm loss
+            Lgrad = torch.add(gradnorm_loss(G1, C1.data), gradnorm_loss(G2, C2.data))
+
+            # Backprop and perform an optimization step
             gradnorm_optimizer.zero_grad()
-            # Calculating the gradient loss according to Eq. 2 in the GradNorm paper
-            Lgrad = torch.add(gradnorm_loss(G1, C1), gradnorm_loss(G2, C2))
             Lgrad.backward()
-
-            # Updating loss weights
             gradnorm_optimizer.step()
         else:
             decoder_optimizer.zero_grad()
@@ -524,7 +522,7 @@ def train(
             )
 
         if objective == OBJECTIVE_JOINT:
-            # Renormalizing the losses weights
+            # Renormalize the gradnorm weights
             coef = 2 / torch.add(loss_weight_generation, loss_weight_ranking)
             loss_weights = [coef * loss_weight_generation, coef * loss_weight_ranking]
 
