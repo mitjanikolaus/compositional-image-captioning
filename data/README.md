@@ -14,11 +14,11 @@ where the adjective is also describing the target noun (using the
 
 Pair | #Matches (N=1) |  #Matches (N=2) | #Matches (N=3) | #Matches (N=4) | #Matches (N=5) |  #Matches (Total)
 -----|----------------| ---------------|-----------------|----------------|--------------- | ----------------
-big_bird | 168 | 40 | 20 | 0 | 1 | 229
-big_cat | 185 | 20 | 6 | 1 | 0 | 212
-big_dog | 325 | 78 | 13 | 4 | 0 | 420
-big_horse | 116 | 14 | 1 | 0 | 0 | 131
-big_plane | 580 | 292 | 79 | 16 | 3 | 970
+big_bird | 156 | 40 | 18 | 0 | 1 | 215
+big_cat | 162 | 16 | 5 | 1 | 0 | 184
+big_dog | 316 | 65 | 9 | 0 | 0 | 390
+big_horse | 113 | 14 | 1 | 0 | 0 | 128
+big_plane | 582 | 288 | 78 | 16 | 3 | 967
 black_cat | 372 | 209 | 151 | 82 | 26 | 840
 black_dog | 319 | 122 | 68 | 43 | 4 | 556
 blue_car | 58 | 17 | 7 | 2 | 0 | 84
@@ -52,11 +52,11 @@ young_woman | 1744 | 445 | 95 | 11 | 0 | 2295
 
 Pair | #Matches (N=1) |  #Matches (N=2) | #Matches (N=3) | #Matches (N=4) | #Matches (N=5) |  #Matches (Total)  
 -----|----------------| ---------------|-----------------|----------------|--------------  | ---------------- 
-big_bird | 87 | 32 | 7 | 3 | 0 | 129
-big_cat | 115 | 6 | 0 | 0 | 0 | 121
-big_dog | 184 | 30 | 8 | 2 | 0 | 224
-big_horse | 68 | 10 | 2 | 0 | 0 | 80
-big_plane | 212 | 117 | 22 | 5 | 1 | 357
+big_bird | 85 | 30 | 5 | 3 | 0 | 123
+big_cat | 98 | 5 | 0 | 0 | 0 | 103
+big_dog | 177 | 19 | 6 | 0 | 0 | 202
+big_horse | 67 | 10 | 2 | 0 | 0 | 79
+big_plane | 213 | 116 | 22 | 5 | 1 | 357
 black_cat | 203 | 105 | 79 | 45 | 16 | 448
 black_dog | 178 | 95 | 26 | 13 | 3 | 315
 blue_car | 34 | 9 | 4 | 0 | 0 | 47
