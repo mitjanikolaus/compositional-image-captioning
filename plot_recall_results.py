@@ -82,9 +82,11 @@ def plot_recall_results(eval_files, mode, labels, min_importance):
     # Common ylabel
     fig.text(0.06, 0.5, "Recall", ha="center", va="center", rotation="vertical")
     # Common legend
-    fig.legend(labels=labels, loc="lower center", borderaxespad=0.1)
+    fig.legend(
+        labels=labels, loc="lower center", borderaxespad=0.1, bbox_to_anchor=(0.5, 0)
+    )
 
-    plt.subplots_adjust(hspace=0.5)
+    plt.subplots_adjust(hspace=0.5, bottom=0.18)
 
     plt.show()
 
