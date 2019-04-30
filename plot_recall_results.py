@@ -36,7 +36,7 @@ def plot_recall_results(eval_files, mode, labels, min_importance):
     ]
 
     fig, axes = plt.subplots(nrows=len(eval_datas[0]), sharex=True, figsize=(8, 15))
-    plt.suptitle("Recall")
+    plt.suptitle("Performance (min importance={})".format(min_importance))
     bar_width = 0.1
     if mode == MODE_VERBOSE:
         index = np.arange(5 - (min_importance - 1))
