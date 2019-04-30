@@ -9,16 +9,19 @@ from utils import (
     DATA_CAPTIONS,
     DATA_CAPTION_LENGTHS,
     DATA_CAPTIONS_POS,
-    TOKEN_POS_START,
     TOKEN_PADDING,
 )
 
 
-def concat_pos_tags_and_caption(caption, pos_tags, max_caption_len, word_map):
-    concatenated = [word_map[TOKEN_POS_START]] + pos_tags + caption
-
-    concatenated += [word_map[TOKEN_PADDING]] * (max_caption_len - len(concatenated))
-    return concatenated
+def interleave_pos_tags_and_caption(caption, pos_tags, max_caption_len, word_map):
+    interleaved = []
+    for token, pos_tag in zip(caption, pos_tags):
+        interleaved.append(token)
+        interleaved.append(pos_tag)
+    interleaved.append(caption[len(pos_tags)])
+    interleaved.append(caption[len(pos_tags) + 1])
+    interleaved += [word_map[TOKEN_PADDING]] * (max_caption_len - len(interleaved))
+    return interleaved
 
 
 class CaptionDataset(Dataset):
@@ -98,12 +101,12 @@ class CaptionTrainDataset(CaptionDataset):
         image = self.get_image_features(coco_id)
         caption = self.images_meta[coco_id][DATA_CAPTIONS][caption_index]
         caption_length = self.images_meta[coco_id][DATA_CAPTION_LENGTHS][caption_index]
-        concatenated_caption_length = (caption_length - 2) * 2 + 3
+        concatenated_caption_length = (caption_length - 2) * 2 + 2
         concatenated_caption_length = torch.LongTensor([concatenated_caption_length])
         pos_tags = self.images_meta[coco_id][DATA_CAPTIONS_POS][caption_index]
 
         concatenated_caption = torch.LongTensor(
-            concat_pos_tags_and_caption(
+            interleave_pos_tags_and_caption(
                 caption, pos_tags, self.max_caption_len, self.word_map
             )
         )
@@ -130,7 +133,7 @@ class CaptionTestDataset(CaptionDataset):
         pos_tags = self.images_meta[coco_id][DATA_CAPTIONS_POS]
 
         concatenated_captions = [
-            concat_pos_tags_and_caption(
+            interleave_pos_tags_and_caption(
                 caption, pos_tags, self.max_caption_len, self.word_map
             )
             for caption, pos_tags in zip(captions, pos_tags)
@@ -138,7 +141,7 @@ class CaptionTestDataset(CaptionDataset):
         concatenated_captions = torch.LongTensor(concatenated_captions)
 
         concatenated_caption_lengths = [
-            (caption_length - 2) * 2 + 3
+            (caption_length - 2) * 2 + 2
             for caption_length in self.images_meta[coco_id][DATA_CAPTION_LENGTHS]
         ]
 
