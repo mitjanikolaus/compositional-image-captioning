@@ -31,7 +31,9 @@ def recall_pairs(generated_captions, word_map, heldout_pairs, checkpoint_name):
     recall_scores = {}
     nlp_pipeline = stanfordnlp.Pipeline()
     for pair in heldout_pairs:
-        occurrences_data_file = os.path.join(base_dir, pair, ".json")
+        occurrences_data_file = os.path.join(
+            base_dir, "data", "occurrences", pair + ".json"
+        )
         occurrences_data = json.load(open(occurrences_data_file, "r"))
 
         _, _, test_indices = get_splits_from_occurrences_data([occurrences_data_file])
@@ -158,7 +160,9 @@ def beam_occurrences(
     generated_beams, beam_size, word_map, heldout_pairs, max_print_length=20
 ):
     for pair in heldout_pairs:
-        occurrences_data_file = os.path.join(base_dir, pair, ".json")
+        occurrences_data_file = os.path.join(
+            base_dir, "data", "occurrences", pair + ".json"
+        )
         occurrences_data = json.load(open(occurrences_data_file, "r"))
 
         nouns = set(occurrences_data[NOUNS])
