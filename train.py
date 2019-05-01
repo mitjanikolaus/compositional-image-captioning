@@ -42,8 +42,7 @@ def main(
     model_params,
     model_name,
     data_folder,
-    occurrences_data,
-    karpathy_json,
+    dataset_splits,
     batch_size,
     embeddings_file,
     grad_clip,
@@ -61,10 +60,10 @@ def main(
 
     print("Starting training on device: ", device)
 
-    # Generate dataset splits
-    train_images_split, val_images_split, _ = get_splits(
-        occurrences_data, karpathy_json
-    )
+    # Get the dataset splits
+    dataset_splits_dict = json.load(open(dataset_splits, "r"))
+    train_images_split = dataset_splits_dict["train_images_split"]
+    val_images_split = dataset_splits_dict["val_images_split"]
 
     # Load checkpoint
     if checkpoint:
@@ -232,8 +231,7 @@ def main(
         # Save checkpoint
         save_checkpoint(
             model_name,
-            occurrences_data,
-            karpathy_json,
+            dataset_splits,
             epoch,
             epochs_since_last_improvement,
             encoder,
@@ -249,19 +247,12 @@ def main(
 
     print("Evaluating:")
     checkpoint_path = get_checkpoint_file_name(
-        model_name, occurrences_data, karpathy_json, checkpoint_suffix, True
+        model_name, dataset_splits, checkpoint_suffix, True
     )
     metrics = [METRIC_BLEU, METRIC_RECALL]
     beam_size = 5
     evaluate(
-        data_folder,
-        occurrences_data,
-        karpathy_json,
-        checkpoint_path,
-        metrics,
-        beam_size,
-        False,
-        False,
+        data_folder, dataset_splits, checkpoint_path, metrics, beam_size, False, False
     )
 
 
@@ -400,12 +391,7 @@ def check_args(args):
         default=os.path.expanduser("../datasets/coco2014_preprocessed/"),
     )
     parser.add_argument(
-        "--occurrences-data",
-        nargs="+",
-        help="Files containing occurrences statistics about adjective noun pairs",
-    )
-    parser.add_argument(
-        "--karpathy-json", help="File containing train/val/test split information"
+        "--dataset-splits", help="Pickled file containing the dataset splits"
     )
     parser.add_argument("--batch-size", help="Batch size", type=int, default=32)
     parser.add_argument(
@@ -472,8 +458,7 @@ if __name__ == "__main__":
         model_params=vars(parsed_args),
         model_name=parsed_args.model,
         data_folder=parsed_args.data_folder,
-        occurrences_data=parsed_args.occurrences_data,
-        karpathy_json=parsed_args.karpathy_json,
+        dataset_splits=parsed_args.dataset_splits,
         batch_size=parsed_args.batch_size,
         embeddings_file=parsed_args.embeddings,
         grad_clip=parsed_args.grad_clip,

@@ -22,16 +22,17 @@ from utils import (
     get_verbs_for_noun,
 )
 
-
 # stanfordnlp.download('en', confirm_if_exists=True)
 
+base_dir = os.path.dirname(os.path.abspath(__file__))
 
-def recall_pairs(generated_captions, word_map, occurrences_data_files, checkpoint_name):
+
+def recall_pairs(generated_captions, word_map, heldout_pairs, checkpoint_name):
     recall_scores = {}
     nlp_pipeline = stanfordnlp.Pipeline()
-    for occurrences_data_file in occurrences_data_files:
-        with open(occurrences_data_file, "r") as json_file:
-            occurrences_data = json.load(json_file)
+    for pair in heldout_pairs:
+        occurrences_data_file = os.path.join(base_dir, pair, ".json")
+        occurrences_data = json.load(open(occurrences_data_file, "r"))
 
         _, _, test_indices = get_splits_from_occurrences_data([occurrences_data_file])
         nouns = set(occurrences_data[NOUNS])
@@ -154,11 +155,11 @@ def average_recall(recall_scores, min_importance=1):
 
 
 def beam_occurrences(
-    generated_beams, beam_size, word_map, occurrences_data_files, max_print_length=20
+    generated_beams, beam_size, word_map, heldout_pairs, max_print_length=20
 ):
-    for occurrences_data_file in occurrences_data_files:
-        with open(occurrences_data_file, "r") as json_file:
-            occurrences_data = json.load(json_file)
+    for pair in heldout_pairs:
+        occurrences_data_file = os.path.join(base_dir, pair, ".json")
+        occurrences_data = json.load(open(occurrences_data_file, "r"))
 
         nouns = set(occurrences_data[NOUNS])
         if ADJECTIVES in occurrences_data:

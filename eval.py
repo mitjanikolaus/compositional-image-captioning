@@ -16,7 +16,6 @@ from utils import (
     IMAGENET_IMAGES_STD,
     IMAGES_FILENAME,
     BOTTOM_UP_FEATURES_FILENAME,
-    get_splits,
     MODEL_SHOW_ATTEND_TELL,
     MODEL_BOTTOM_UP_TOP_DOWN,
 )
@@ -32,8 +31,7 @@ METRIC_BEAM_OCCURRENCES = "beam-occurrences"
 
 def evaluate(
     data_folder,
-    occurrences_data,
-    karpathy_json,
+    dataset_splits,
     checkpoint_path,
     metrics,
     beam_size,
@@ -58,7 +56,9 @@ def evaluate(
 
     print("Decoder params: {}".format(decoder.params))
 
-    _, _, test_images_split = get_splits(occurrences_data, karpathy_json)
+    # Get the dataset splits
+    dataset_splits_dict = json.load(open(dataset_splits, "r"))
+    test_images_split = dataset_splits_dict["test_images_split"]
 
     if model_name == MODEL_SHOW_ATTEND_TELL:
         # Normalization
@@ -144,7 +144,7 @@ def evaluate(
             generated_captions,
             generated_beams,
             word_map,
-            occurrences_data,
+            dataset_splits["heldout_pairs"],
             beam_size,
             checkpoint_name,
         )
@@ -156,7 +156,7 @@ def calculate_metric(
     generated_captions,
     generated_beams,
     word_map,
-    occurrences_data,
+    heldout_pairs,
     beam_size,
     checkpoint_name,
 ):
@@ -180,10 +180,10 @@ def calculate_metric(
         bleu_scores = [float("%.2f" % elem) for elem in bleu_scores]
         print("\nBLEU score @ beam size {} is {}".format(beam_size, bleu_scores))
     elif metric_name == METRIC_RECALL:
-        recall_pairs(generated_captions, word_map, occurrences_data, checkpoint_name)
+        recall_pairs(generated_captions, word_map, heldout_pairs, checkpoint_name)
     elif metric_name == METRIC_BEAM_OCCURRENCES:
         beam_occurrences_score = beam_occurrences(
-            generated_beams, beam_size, word_map, occurrences_data
+            generated_beams, beam_size, word_map, heldout_pairs
         )
         print(
             "\nBeam occurrences score @ beam size {} is {}".format(
@@ -200,9 +200,7 @@ def check_args(args):
         default=os.path.expanduser("../datasets/coco2014_preprocessed/"),
     )
     parser.add_argument(
-        "--occurrences-data",
-        nargs="+",
-        help="Files containing occurrences statistics about adjective-noun or verb-noun pairs",
+        "--dataset-splits", help="Pickled file containing the dataset splits"
     )
     parser.add_argument(
         "--karpathy-json", help="File containing train/val/test split information"
@@ -243,8 +241,7 @@ if __name__ == "__main__":
     parsed_args = check_args(sys.argv[1:])
     evaluate(
         data_folder=parsed_args.data_folder,
-        occurrences_data=parsed_args.occurrences_data,
-        karpathy_json=parsed_args.karpathy_json,
+        dataset_splits=parsed_args.dataset_splits,
         checkpoint_path=parsed_args.checkpoint,
         metrics=parsed_args.metrics,
         beam_size=parsed_args.beam_size,

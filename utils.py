@@ -49,6 +49,40 @@ RELATION_ADJECTIVAL_CLAUSE = "acl"
 MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
 MODEL_BOTTOM_UP_TOP_DOWN = "BOTTOM_UP_TOP_DOWN"
 
+HELDOUT_PAIRS_SET_1 = {
+    "black_cat.json",
+    "big_bird.json",
+    "red_bus.json",
+    "small_plane.json",
+    "eat_man.json",
+    "smile_woman.json",
+}
+HELDOUT_PAIRS_SET_2 = {
+    "brown_dog.json",
+    "small_cat.json",
+    "white_truck.json",
+    "big_plane.json",
+    "ride_woman.json",
+    "fly_bird.json",
+}
+HELDOUT_PAIRS_SET_3 = {
+    "white_horse.json",
+    "big_cat.json",
+    "blue_bus.json",
+    "small_table.json",
+    "hold_child.json",
+    "stand_bird.json",
+}
+HELDOUT_PAIRS_SET_4 = {
+    "black_bird.json",
+    "small_dog.json",
+    "white_boat.json",
+    "big_truck.json",
+    "eat_horse.json",
+    "smile_child.json",
+}
+
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -173,38 +207,34 @@ def invert_normalization(image):
 
 
 def get_splits_from_occurrences_data(occurrences_data_files):
-    test_images_split = []
-    val_images_split = []
+    test_images_split = set()
+    val_images_split = set()
 
     for file in occurrences_data_files:
         with open(file, "r") as json_file:
             occurrences_data = json.load(json_file)
 
-        test_images_split.extend(
-            [
-                key
-                for key, value in occurrences_data[OCCURRENCE_DATA].items()
-                if value[PAIR_OCCURENCES] >= 1 and value[DATA_COCO_SPLIT] == "val2014"
-            ]
-        )
-        val_images_split.extend(
-            [
-                key
-                for key, value in occurrences_data[OCCURRENCE_DATA].items()
-                if value[PAIR_OCCURENCES] >= 1 and value[DATA_COCO_SPLIT] == "train2014"
-            ]
-        )
+        test_images_split |= {
+            key
+            for key, value in occurrences_data[OCCURRENCE_DATA].items()
+            if value[PAIR_OCCURENCES] >= 1 and value[DATA_COCO_SPLIT] == "val2014"
+        }
+        val_images_split |= {
+            key
+            for key, value in occurrences_data[OCCURRENCE_DATA].items()
+            if value[PAIR_OCCURENCES] >= 1 and value[DATA_COCO_SPLIT] == "train2014"
+        }
 
     with open(occurrences_data_files[0], "r") as json_file:
         occurrences_data = json.load(json_file)
 
-    train_images_split = [
+    train_images_split = {
         key
         for key, value in occurrences_data[OCCURRENCE_DATA].items()
         if key not in val_images_split and value[DATA_COCO_SPLIT] == "train2014"
-    ]
+    }
 
-    return train_images_split, val_images_split, test_images_split
+    return list(train_images_split), list(val_images_split), list(test_images_split)
 
 
 def get_splits_from_karpathy_json(karpathy_json):
@@ -280,16 +310,12 @@ def clip_gradients(optimizer, grad_clip):
                 param.grad.data.clamp_(-grad_clip, grad_clip)
 
 
-def get_checkpoint_file_name(
-    model_name, occurrences_data, karpathy_json, checkpoint_suffix, is_best
-):
-    type = ""
-    if occurrences_data:
-        type = "heldout_pairs"
-    elif karpathy_json:
-        type = "karpathy"
+def get_checkpoint_file_name(model_name, dataset_splits, checkpoint_suffix, is_best):
+    split_name = os.path.basename(dataset_splits).split(".")[0]
 
-    name = "checkpoint_" + model_name + "_" + type + checkpoint_suffix + ".pth.tar"
+    name = (
+        "checkpoint_" + model_name + "_" + split_name + checkpoint_suffix + ".pth.tar"
+    )
     if is_best:
         return "best_" + name
     else:
@@ -298,8 +324,7 @@ def get_checkpoint_file_name(
 
 def save_checkpoint(
     model_name,
-    occurrences_data,
-    karpathy_json,
+    dataset_splits,
     epoch,
     epochs_since_last_improvement,
     encoder,
@@ -333,7 +358,7 @@ def save_checkpoint(
         "decoder_optimizer": decoder_optimizer,
     }
     file_name = get_checkpoint_file_name(
-        model_name, occurrences_data, karpathy_json, checkpoint_suffix, False
+        model_name, dataset_splits, checkpoint_suffix, False
     )
     torch.save(state, file_name)
 
