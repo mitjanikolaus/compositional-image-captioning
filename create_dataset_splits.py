@@ -4,15 +4,18 @@ import os
 import argparse
 import sys
 
-
 from utils import get_splits
 
+base_dir = os.path.dirname(os.path.abspath(__file__))
 
-def create_dataset_splits(occurrences_data, karpathy_json):
 
-    heldout_pairs = [os.path.basename(file).split(".")[0] for file in occurrences_data]
+def create_dataset_splits(heldout_pairs, karpathy_json):
+    occurrences_data_files = [
+        os.path.join(base_dir, "data", "occurrences", pair + ".json")
+        for pair in heldout_pairs
+    ]
     train_images_split, val_images_split, test_images_split = get_splits(
-        occurrences_data, karpathy_json
+        occurrences_data_files, karpathy_json
     )
     dataset_splits = {
         "train_images_split": train_images_split,
@@ -28,9 +31,9 @@ def create_dataset_splits(occurrences_data, karpathy_json):
 def check_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--occurrences-data",
+        "--heldout-pairs",
         nargs="+",
-        help="Files containing occurrences statistics about adjective-noun or verb-noun pairs",
+        help="adjective-noun or verb-noun pairs that should be held out",
     )
     parser.add_argument(
         "--karpathy-json", help="File containing train/val/test split information"
@@ -44,6 +47,5 @@ def check_args(args):
 if __name__ == "__main__":
     parsed_args = check_args(sys.argv[1:])
     create_dataset_splits(
-        occurrences_data=parsed_args.occurrences_data,
-        karpathy_json=parsed_args.karpathy_json,
+        heldout_pairs=parsed_args.heldout_pairs, karpathy_json=parsed_args.karpathy_json
     )
