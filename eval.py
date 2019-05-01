@@ -144,7 +144,7 @@ def evaluate(
             generated_captions,
             generated_beams,
             word_map,
-            dataset_splits["heldout_pairs"],
+            dataset_splits_dict["heldout_pairs"],
             beam_size,
             checkpoint_name,
         )
