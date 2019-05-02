@@ -49,6 +49,7 @@ RELATION_ADJECTIVAL_CLAUSE = "acl"
 
 MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
 MODEL_BOTTOM_UP_TOP_DOWN = "BOTTOM_UP_TOP_DOWN"
+MODEL_BOTTOM_UP_TOP_DOWN_RANKING = "BOTTOM_UP_TOP_DOWN_RANKING"
 
 HELDOUT_PAIRS_SET_1 = {
     "black_cat.json",
@@ -345,6 +346,7 @@ def save_checkpoint(
     encoder_optimizer,
     decoder_optimizer,
     generation_metric_score,
+    recall_metric_score,
     is_best,
     name_suffix,
 ):
@@ -365,6 +367,7 @@ def save_checkpoint(
         "epoch": epoch,
         "epochs_since_improvement": epochs_since_last_improvement,
         "generation_metric_score": generation_metric_score,
+        "recall_metric_score": recall_metric_score,
         "encoder": encoder,
         "decoder": decoder,
         "encoder_optimizer": encoder_optimizer,
