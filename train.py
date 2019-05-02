@@ -297,7 +297,7 @@ def main(
         model_name, occurrences_data, karpathy_json, checkpoint_suffix, True
     )
     metrics = [METRIC_BLEU, METRIC_RECALL]
-    beam_size = 5
+    beam_size = 100
     evaluate(
         data_folder,
         occurrences_data,
