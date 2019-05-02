@@ -140,12 +140,14 @@ class CaptioningModelDecoder(nn.Module):
 
         # Remove timesteps that we didn't decode at, or are pads
         decode_lengths, sort_ind = decode_lengths.sort(dim=0, descending=True)
-        packed_scores, _ = pack_padded_sequence(
+        packed_sequence = pack_padded_sequence(
             scores[sort_ind], decode_lengths, batch_first=True
         )
-        packed_targets, _ = pack_padded_sequence(
+        packed_scores = packed_sequence[0]
+        packed_target_sequence = pack_padded_sequence(
             target_captions[sort_ind], decode_lengths, batch_first=True
         )
+        packed_targets = packed_target_sequence[0]
 
         return self.loss_function(packed_scores, packed_targets)
 
