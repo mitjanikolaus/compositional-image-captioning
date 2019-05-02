@@ -4,9 +4,29 @@ import os
 import argparse
 import sys
 
-from utils import get_splits
+from utils import get_splits_from_occurrences_data, get_splits_from_karpathy_json
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
+
+
+def get_splits(occurrences_data, karpathy_json):
+    if occurrences_data and not karpathy_json:
+        train_images_split, val_images_split, test_images_split = get_splits_from_occurrences_data(
+            occurrences_data
+        )
+    elif karpathy_json and not occurrences_data:
+        train_images_split, val_images_split, test_images_split = get_splits_from_karpathy_json(
+            karpathy_json
+        )
+    elif occurrences_data and karpathy_json:
+        return ValueError("Specify either karpathy_json or occurrences_data, not both!")
+    else:
+        return ValueError("Specify either karpathy_json or occurrences_data!")
+
+    print("Train set size: {}".format(len(train_images_split)))
+    print("Val set size: {}".format(len(val_images_split)))
+    print("Test set size: {}".format(len(test_images_split)))
+    return train_images_split, val_images_split, test_images_split
 
 
 def create_dataset_splits(heldout_pairs, karpathy_json):

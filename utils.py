@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 
 import torch
@@ -256,26 +257,6 @@ def get_splits_from_karpathy_json(karpathy_json):
     return train_images_split, val_images_split, test_images_split
 
 
-def get_splits(occurrences_data, karpathy_json):
-    if occurrences_data and not karpathy_json:
-        train_images_split, val_images_split, test_images_split = get_splits_from_occurrences_data(
-            occurrences_data
-        )
-    elif karpathy_json and not occurrences_data:
-        train_images_split, val_images_split, test_images_split = get_splits_from_karpathy_json(
-            karpathy_json
-        )
-    elif occurrences_data and karpathy_json:
-        return ValueError("Specify either karpathy_json or occurrences_data, not both!")
-    else:
-        return ValueError("Specify either karpathy_json or occurrences_data!")
-
-    print("Train set size: {}".format(len(train_images_split)))
-    print("Val set size: {}".format(len(val_images_split)))
-    print("Test set size: {}".format(len(test_images_split)))
-    return train_images_split, val_images_split, test_images_split
-
-
 def show_img(img):
     plt.imshow(img.transpose(1, 2, 0))
     plt.show()
@@ -310,16 +291,48 @@ def clip_gradients(optimizer, grad_clip):
                 param.grad.data.clamp_(-grad_clip, grad_clip)
 
 
-def get_checkpoint_file_name(model_name, dataset_splits, checkpoint_suffix, is_best):
+def get_eval_log_file_path(checkpoint, dataset_splits, logging_dir="logs/eval"):
+    if not os.path.exists(logging_dir):
+        os.makedirs(logging_dir)
+    checkpoint_name = os.path.basename(checkpoint).split(".")[0]
+    return os.path.join(
+        logging_dir, get_file_name_prefix(checkpoint_name, dataset_splits, "") + ".log"
+    )
+
+
+def get_train_log_file_path(
+    model_name, dataset_splits, name_suffix, embeddings_file, logging_dir="logs/train"
+):
+    if not os.path.exists(logging_dir):
+        os.makedirs(logging_dir)
+    if embeddings_file:
+        name_suffix += os.path.basename(embeddings_file).split(".")[0]
+    return os.path.join(
+        logging_dir,
+        get_file_name_prefix(model_name, dataset_splits, name_suffix) + ".log",
+    )
+
+
+def get_file_name_prefix(model_name, dataset_splits, name_suffix):
     split_name = os.path.basename(dataset_splits).split(".")[0]
 
+    return model_name + "_" + split_name + name_suffix
+
+
+def get_checkpoint_file_path(
+    model_name, dataset_splits, name_suffix, is_best, checkpoints_dir="checkpoints"
+):
+    if not os.path.exists(checkpoints_dir):
+        os.makedirs(checkpoints_dir)
     name = (
-        "checkpoint_" + model_name + "_" + split_name + checkpoint_suffix + ".pth.tar"
+        "checkpoint_"
+        + get_file_name_prefix(model_name, dataset_splits, name_suffix)
+        + ".pth.tar"
     )
     if is_best:
-        return "best_" + name
-    else:
-        return name
+        name = "best_" + name
+
+    return os.path.join(checkpoints_dir, name)
 
 
 def save_checkpoint(
@@ -333,7 +346,7 @@ def save_checkpoint(
     decoder_optimizer,
     generation_metric_score,
     is_best,
-    checkpoint_suffix,
+    name_suffix,
 ):
     """
     Save a model checkpoint.
@@ -357,15 +370,13 @@ def save_checkpoint(
         "encoder_optimizer": encoder_optimizer,
         "decoder_optimizer": decoder_optimizer,
     }
-    file_name = get_checkpoint_file_name(
-        model_name, dataset_splits, checkpoint_suffix, False
-    )
+    file_name = get_checkpoint_file_path(model_name, dataset_splits, name_suffix, False)
     torch.save(state, file_name)
 
     # If this checkpoint is the best so far, store a copy so it doesn't get overwritten by a worse checkpoint
     if is_best:
-        file_name = get_checkpoint_file_name(
-            model_name, dataset_splits, checkpoint_suffix, True
+        file_name = get_checkpoint_file_path(
+            model_name, dataset_splits, name_suffix, True
         )
         torch.save(state, file_name)
 
@@ -397,16 +408,18 @@ def adjust_learning_rate(optimizer, shrink_factor):
     :param shrink_factor: factor to multiply learning rate with.
     """
 
-    print("\nAdjusting learning rate.")
+    logging.info("\nAdjusting learning rate.")
     for param_group in optimizer.param_groups:
         param_group["lr"] = param_group["lr"] * shrink_factor
-    print("The new learning rate is {}\n".format(optimizer.param_groups[0]["lr"]))
+    logging.info(
+        "The new learning rate is {}\n".format(optimizer.param_groups[0]["lr"])
+    )
 
 
 def load_embeddings(emb_file, word_map):
     """Return an embedding for the specified word map from the a GloVe embedding file"""
 
-    print("\nLoading embeddings: {}".format(emb_file))
+    logging.info("\nLoading embeddings: {}".format(emb_file))
     with open(emb_file, "r") as f:
         emb_dim = len(f.readline().split(" ")) - 1
 
@@ -428,7 +441,7 @@ def load_embeddings(emb_file, word_map):
 
     missed_tokens = vocab - tokens_found
     if missed_tokens:
-        print(
+        logging.info(
             "\nThe loaded embeddings did not contain an embedding for the following tokens: {}".format(
                 missed_tokens
             )

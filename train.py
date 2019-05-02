@@ -1,3 +1,5 @@
+import logging
+
 import argparse
 import json
 import os
@@ -25,17 +27,14 @@ from utils import (
     BOTTOM_UP_FEATURES_FILENAME,
     IMAGES_FILENAME,
     load_embeddings,
-    get_splits,
-    get_checkpoint_file_name,
+    get_checkpoint_file_path,
     MODEL_SHOW_ATTEND_TELL,
     MODEL_BOTTOM_UP_TOP_DOWN,
+    get_train_log_file_path,
 )
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True  # improve performance if inputs to model are fixed size
-
-epochs_since_last_improvement = 0
-best_generation_metric_score = 0.0
 
 
 def main(
@@ -47,7 +46,7 @@ def main(
     embeddings_file,
     grad_clip,
     epochs,
-    checkpoint_suffix,
+    name_suffix,
     fine_tune_encoder,
     workers=1,
     start_epoch=0,
@@ -55,10 +54,8 @@ def main(
     checkpoint=None,
     print_freq=100,
 ):
-
-    global best_generation_metric_score, epochs_since_last_improvement
-
-    print("Starting training on device: ", device)
+    epochs_since_last_improvement = 0
+    best_generation_metric_score = 0.0
 
     # Get the dataset splits
     dataset_splits_dict = json.load(open(dataset_splits, "r"))
@@ -74,6 +71,7 @@ def main(
         decoder = checkpoint["decoder"]
         decoder_optimizer = checkpoint["decoder_optimizer"]
         model_name = checkpoint["model_name"]
+        word_map = decoder.word_map
         if "encoder" in checkpoint and checkpoint["encoder"]:
             encoder = checkpoint["encoder"]
             encoder_optimizer = checkpoint["encoder_optimizer"]
@@ -84,14 +82,11 @@ def main(
             encoder.set_fine_tuning_enabled(fine_tune_encoder)
             encoder_optimizer = create_encoder_optimizer(encoder, model_params)
 
-        word_map = decoder.word_map
-
     # No checkpoint given, initialize the model
     else:
         # Read word map
         word_map_file = os.path.join(data_folder, WORD_MAP_FILENAME)
-        with open(word_map_file, "r") as json_file:
-            word_map = json.load(json_file)
+        word_map = json.load(open(word_map_file, "r"))
 
         # Read pretrained word embeddings
         embeddings = None
@@ -99,10 +94,9 @@ def main(
             embeddings, model_params["word_embeddings_size"] = load_embeddings(
                 embeddings_file, word_map
             )
-            print(
-                "Set embedding layer dimension to {}".format(
-                    model_params["word_embeddings_size"]
-                )
+            logging.info(
+                "Setting embedding layer dimension to %d",
+                model_params["word_embeddings_size"],
             )
 
         if model_name == MODEL_SHOW_ATTEND_TELL:
@@ -177,10 +171,12 @@ def main(
             pin_memory=True,
         )
 
-    # Print configuration
+    # Log configuration
     if encoder:
-        print("Encoder params: {}".format(encoder.params))
-    print("Decoder params: {}".format(decoder.params))
+        logging.info("Encoder params: %s", encoder.params)
+    logging.info("Decoder params: %s", decoder.params)
+
+    logging.info("Starting training on device: %s", device)
 
     # Move to GPU, if available
     if encoder:
@@ -189,8 +185,8 @@ def main(
 
     for epoch in range(start_epoch, epochs):
         if epochs_since_last_improvement >= epochs_early_stopping:
-            print(
-                "No improvement since {} epochs, stopping training".format(
+            logging.info(
+                "No improvement since %d epochs, stopping training".format(
                     epochs_since_last_improvement
                 )
             )
@@ -221,12 +217,10 @@ def main(
             epochs_since_last_improvement = 0
         else:
             epochs_since_last_improvement += 1
-            print(
-                "\nEpochs since last improvement: {}".format(
-                    epochs_since_last_improvement
-                )
+            logging.info(
+                "\nEpochs since last improvement: %d", epochs_since_last_improvement
             )
-            print("Best generation score: {}\n".format(best_generation_metric_score))
+            logging.info("Best generation score: %d\n", best_generation_metric_score)
 
         # Save checkpoint
         save_checkpoint(
@@ -240,14 +234,14 @@ def main(
             decoder_optimizer,
             current_generation_metric_score,
             current_checkpoint_is_best,
-            checkpoint_suffix,
+            name_suffix,
         )
 
-    print("\n\nFinished training.")
+    logging.info("\n\nFinished training.")
 
-    print("Evaluating:")
-    checkpoint_path = get_checkpoint_file_name(
-        model_name, dataset_splits, checkpoint_suffix, True
+    logging.info("Evaluating:")
+    checkpoint_path = get_checkpoint_file_path(
+        model_name, dataset_splits, name_suffix, True
     )
     metrics = [METRIC_BLEU, METRIC_RECALL]
     beam_size = 5
@@ -313,16 +307,16 @@ def train(
         # Keep track of metrics
         losses.update(loss.item(), sum(decode_lengths).item())
 
-        # Print status
+        # Log status
         if i % print_freq == 0:
-            print(
+            logging.info(
                 "Epoch: {0}[Batch {1}/{2}]\t"
                 "Loss {loss.val:.4f} (Average: {loss.avg:.4f})\t".format(
                     epoch, i, len(data_loader), loss=losses
                 )
             )
 
-    print("\n * LOSS - {loss.avg:.3f}\n".format(loss=losses))
+    logging.info("\n * LOSS - {loss.avg:.3f}\n".format(loss=losses))
 
 
 def validate(data_loader, encoder, decoder, word_map, print_freq):
@@ -348,7 +342,7 @@ def validate(data_loader, encoder, decoder, word_map, print_freq):
         scores, decode_lengths, alphas = decoder(images)
 
         if i % print_freq == 0:
-            print("Validation: [Batch {0}/{1}]\t".format(i, len(data_loader)))
+            logging.info("Validation: [Batch {0}/{1}]\t".format(i, len(data_loader)))
 
         # Target captions
         for j in range(all_captions_for_image.shape[0]):
@@ -372,7 +366,7 @@ def validate(data_loader, encoder, decoder, word_map, print_freq):
 
     bleu4 = corpus_bleu(target_captions, generated_captions)
 
-    print("\n * BLEU-4 - {bleu}\n".format(bleu=bleu4))
+    logging.info("\n * BLEU-4 - {bleu}\n".format(bleu=bleu4))
 
     return bleu4
 
@@ -427,8 +421,8 @@ def check_args(args):
         default=None,
     )
     parser.add_argument(
-        "--checkpoint-suffix",
-        help="Extra suffix to add to the checkpoint file name on saving.",
+        "--name-suffix",
+        help="Extra suffix to add to the output file names on saving.",
         default="",
     )
     parser.add_argument(
@@ -448,12 +442,21 @@ def check_args(args):
     )
 
     parsed_args = parser.parse_args(args)
-    print(parsed_args)
     return parsed_args
 
 
 if __name__ == "__main__":
     parsed_args = check_args(sys.argv[1:])
+    logging.basicConfig(
+        filename=get_train_log_file_path(
+            parsed_args.model,
+            parsed_args.dataset_splits,
+            parsed_args.name_suffix,
+            parsed_args.embeddings,
+        ),
+        level=logging.INFO,
+    )
+    logging.info(parsed_args)
     main(
         model_params=vars(parsed_args),
         model_name=parsed_args.model,
@@ -464,6 +467,6 @@ if __name__ == "__main__":
         grad_clip=parsed_args.grad_clip,
         checkpoint=parsed_args.checkpoint,
         epochs=parsed_args.epochs,
-        checkpoint_suffix=parsed_args.checkpoint_suffix,
+        name_suffix=parsed_args.name_suffix,
         fine_tune_encoder=parsed_args.fine_tune_encoder,
     )

@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from collections import Counter
 
@@ -71,14 +72,16 @@ def recall_pairs(generated_captions, word_map, heldout_pairs, checkpoint_name):
         average_pair_recall = np.sum(
             list(recall_score["true_positives"].values())
         ) / np.sum(list(recall_score["numbers"].values()))
-        print("{}: {}".format(pair, np.round(average_pair_recall, 2)))
-        print(
+        logging.info("{}: {}".format(pair, np.round(average_pair_recall, 2)))
+        logging.info(
             "Most common adjectives: ",
             recall_score["adjective_frequencies"].most_common(10),
         )
-        print("Most common verbs: ", recall_score["verb_frequencies"].most_common(10))
+        logging.info(
+            "Most common verbs: ", recall_score["verb_frequencies"].most_common(10)
+        )
 
-    print("Average: {}".format(average_recall(recall_scores)))
+    logging.info("Average: {}".format(average_recall(recall_scores)))
     result_file_name = "eval_" + checkpoint_name.split(".")[0] + ".json"
     with open(result_file_name, "w") as json_file:
         json.dump(recall_scores, json_file)
@@ -212,11 +215,11 @@ def beam_occurrences(
                 num_beams[step] += 1
 
         name = os.path.basename(occurrences_data_file).split(".")[0]
-        print("Beam occurrences for {}".format(name))
-        print("Nouns: {}".format(noun_occurrences))
-        print("Adjectives/Verbs: {}".format(other_occurrences))
-        print("Pairs: {}".format(pair_occurrences))
-        print("Number of beams: {}".format(num_beams))
+        logging.info("Beam occurrences for {}".format(name))
+        logging.info("Nouns: {}".format(noun_occurrences))
+        logging.info("Adjectives/Verbs: {}".format(other_occurrences))
+        logging.info("Pairs: {}".format(pair_occurrences))
+        logging.info("Number of beams: {}".format(num_beams))
 
         # Print only occurrences up to max_print_length
         print_length = min(max_print_length, len(np.trim_zeros(num_beams)))

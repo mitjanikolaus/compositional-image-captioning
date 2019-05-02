@@ -1,3 +1,5 @@
+import logging
+
 import argparse
 import sys
 
@@ -18,6 +20,7 @@ from utils import (
     BOTTOM_UP_FEATURES_FILENAME,
     MODEL_SHOW_ATTEND_TELL,
     MODEL_BOTTOM_UP_TOP_DOWN,
+    get_eval_log_file_path,
 )
 from visualize_attention import visualize_attention
 
@@ -42,7 +45,7 @@ def evaluate(
     checkpoint = torch.load(checkpoint_path, map_location=device)
 
     model_name = checkpoint["model_name"]
-    print("Model: {}".format(model_name))
+    logging.info("Model: {}".format(model_name))
 
     encoder = checkpoint["encoder"]
     if encoder:
@@ -54,7 +57,7 @@ def evaluate(
     word_map = decoder.word_map
     decoder.eval()
 
-    print("Decoder params: {}".format(decoder.params))
+    logging.info("Decoder params: {}".format(decoder.params))
 
     # Get the dataset splits
     dataset_splits_dict = json.load(open(dataset_splits, "r"))
@@ -124,7 +127,7 @@ def evaluate(
             print_beam=print_beam,
         )
         if visualize:
-            print("Image COCO ID: {}".format(coco_id))
+            logging.info("Image COCO ID: {}".format(coco_id))
             for caption, alpha in zip(top_k_generated_captions, alphas):
                 visualize_attention(
                     image_features.squeeze(0), caption, alpha, word_map, smoothen=True
@@ -178,14 +181,14 @@ def calculate_metric(
         )
         bleu_scores = [bleu_1, bleu_2, bleu_3, bleu_4]
         bleu_scores = [float("%.2f" % elem) for elem in bleu_scores]
-        print("\nBLEU score @ beam size {} is {}".format(beam_size, bleu_scores))
+        logging.info("\nBLEU score @ beam size {} is {}".format(beam_size, bleu_scores))
     elif metric_name == METRIC_RECALL:
         recall_pairs(generated_captions, word_map, heldout_pairs, checkpoint_name)
     elif metric_name == METRIC_BEAM_OCCURRENCES:
         beam_occurrences_score = beam_occurrences(
             generated_beams, beam_size, word_map, heldout_pairs
         )
-        print(
+        logging.info(
             "\nBeam occurrences score @ beam size {} is {}".format(
                 beam_size, beam_occurrences_score
             )
@@ -233,12 +236,18 @@ def check_args(args):
     )
 
     parsed_args = parser.parse_args(args)
-    print(parsed_args)
     return parsed_args
 
 
 if __name__ == "__main__":
     parsed_args = check_args(sys.argv[1:])
+    logging.basicConfig(
+        filename=get_eval_log_file_path(
+            parsed_args.checkpoint, parsed_args.dataset_splits
+        ),
+        level=logging.INFO,
+    )
+    logging.info(parsed_args)
     evaluate(
         data_folder=parsed_args.data_folder,
         dataset_splits=parsed_args.dataset_splits,
