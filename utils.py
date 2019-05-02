@@ -365,7 +365,7 @@ def save_checkpoint(
     # If this checkpoint is the best so far, store a copy so it doesn't get overwritten by a worse checkpoint
     if is_best:
         file_name = get_checkpoint_file_name(
-            model_name, occurrences_data, karpathy_json, checkpoint_suffix, True
+            model_name, dataset_splits, checkpoint_suffix, True
         )
         torch.save(state, file_name)
 
