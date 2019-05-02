@@ -16,16 +16,112 @@ from utils import (
 )
 
 
+ADJECTIVES_COLORS = {
+    "white",
+    "black",
+    "red",
+    "green",
+    "blue",
+    "yellow",
+    "brown",
+    "gray",
+    "purple",
+    "dark",
+    "grey",
+    "pink",
+    "silver",
+    "golden",
+    "orange",
+    "beige",
+    "neon",
+    "gold",
+    "black-and-white",
+    "bronze",
+    "blonde",
+    "violet",
+    "maroon",
+    "turquoise",
+}
+ADJECTIVES_SIZES = {
+    "big",
+    "broad",
+    "compact",
+    "enormous",
+    "expansive",
+    "extensive",
+    "giant",
+    "gigantic",
+    "great",
+    "huge",
+    "large",
+    "little",
+    "long",
+    "massive",
+    "mini",
+    "narrow",
+    "petite",
+    "short",
+    "sized",
+    "skinny",
+    "small",
+    "tall",
+    "thin",
+    "tiny",
+    "vast",
+    "wide",
+}
+
+ADJECTIVES_AGES = {
+    "adolescent",
+    "aged",
+    "ancient",
+    "decrepit",
+    "elder",
+    "elderly",
+    "grown",
+    "immature",
+    "infant",
+    "junior",
+    "juvenile",
+    "middle-aged",
+    "old",
+    "older",
+    "retired",
+    "retro",
+    "senior",
+    "teen",
+    "teenage",
+    "teenaged",
+    "vintage",
+    "worn",
+    "young",
+    "youth",
+}
+
+GROUP_COLORS = "colors"
+GROUP_SIZES = "sizes"
+GROUP_AGES = "ages"
+
+GROUP_OTHERS = "others"
+
+
+def get_adjective_group(adjective):
+    if adjective in ADJECTIVES_COLORS:
+        return GROUP_COLORS
+    elif adjective in ADJECTIVES_SIZES:
+        return GROUP_SIZES
+    elif adjective in ADJECTIVES_AGES:
+        return GROUP_AGES
+    else:
+        return GROUP_OTHERS
+
+
 def noun_stats(nouns_files, preprocessed_data_folder):
     data = {}
 
     for nouns_file in nouns_files:
         with open(nouns_file, "r") as json_file:
             nouns = json.load(json_file)
-
-        word_map_path = os.path.join(preprocessed_data_folder, WORD_MAP_FILENAME)
-        with open(word_map_path, "r") as json_file:
-            word_map = json.load(json_file)
 
         with open(
             os.path.join(preprocessed_data_folder, POS_TAGGED_CAPTIONS_FILENAME), "rb"
@@ -36,8 +132,10 @@ def noun_stats(nouns_files, preprocessed_data_folder):
 
         print("Noun stats for: {}".format(nouns))
 
+        total = 0
         adjective_frequencies = Counter()
         verb_frequencies = Counter()
+        adjective_group_frequencies = Counter()
 
         for coco_id, tagged_caption in tqdm(captions.items()):
             for caption in tagged_caption["pos_tagged_captions"]:
@@ -56,11 +154,20 @@ def noun_stats(nouns_files, preprocessed_data_folder):
                         verb_frequencies["No verb"] += 1
                     verb_frequencies.update(verbs)
 
+                    adjective_group_frequencies.update(
+                        {get_adjective_group(adjective) for adjective in adjectives}
+                    )
+                    total += 1
+
+        print("Total: ", total)
         print(adjective_frequencies.most_common(20))
         print(verb_frequencies.most_common(20))
+        print(adjective_group_frequencies.most_common(20))
         data[first_noun] = {}
+        data[first_noun]["total"] = total
         data[first_noun]["adjective_frequencies"] = adjective_frequencies
         data[first_noun]["verb_frequencies"] = verb_frequencies
+        data[first_noun]["adjective_group_frequencies"] = verb_frequencies
 
     data_path = "noun_stats.json"
     print("\nSaving results to {}".format(data_path))
