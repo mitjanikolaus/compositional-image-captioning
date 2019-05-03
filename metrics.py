@@ -28,7 +28,7 @@ from utils import (
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def recall_pairs(generated_captions, word_map, heldout_pairs, checkpoint_name):
+def recall_pairs(generated_captions, word_map, heldout_pairs, output_file_name):
     logging.info("\n\nRecall@{}:".format(len(next(iter(generated_captions.values())))))
     recall_scores = {}
     nlp_pipeline = stanfordnlp.Pipeline()
@@ -83,9 +83,7 @@ def recall_pairs(generated_captions, word_map, heldout_pairs, checkpoint_name):
         )
 
     logging.info("Average: {}".format(average_recall(recall_scores)))
-    result_file_name = "eval_" + checkpoint_name.split(".")[0] + ".json"
-    with open(result_file_name, "w") as json_file:
-        json.dump(recall_scores, json_file)
+    json.dump(recall_scores, open(output_file_name, "w"))
 
 
 def calc_recall(

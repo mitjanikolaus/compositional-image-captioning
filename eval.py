@@ -205,7 +205,10 @@ def evaluate(
         assert len(target_captions) == len(generated_captions)
 
     # Calculate metric scores
-    checkpoint_name = os.path.basename(checkpoint_path)
+    name = str(os.path.basename(checkpoint_path).split(".")[0])
+    if re_ranking:
+        name += "_re_ranking"
+    output_file_name = "eval_" + name + ".json"
     for metric in metrics:
         calculate_metric(
             metric,
@@ -215,7 +218,7 @@ def evaluate(
             word_map,
             dataset_splits_dict["heldout_pairs"],
             beam_size,
-            checkpoint_name,
+            output_file_name,
         )
 
 
@@ -227,7 +230,7 @@ def calculate_metric(
     word_map,
     heldout_pairs,
     beam_size,
-    checkpoint_name,
+    output_file_name,
 ):
     if metric_name == METRIC_BLEU:
         generated_captions = [
@@ -249,7 +252,7 @@ def calculate_metric(
         bleu_scores = [float("%.2f" % elem) for elem in bleu_scores]
         logging.info("\nBLEU score @ beam size {} is {}".format(beam_size, bleu_scores))
     elif metric_name == METRIC_RECALL:
-        recall_pairs(generated_captions, word_map, heldout_pairs, checkpoint_name)
+        recall_pairs(generated_captions, word_map, heldout_pairs, output_file_name)
     elif metric_name == METRIC_BEAM_OCCURRENCES:
         beam_occurrences_score = beam_occurrences(
             generated_beams, beam_size, word_map, heldout_pairs
