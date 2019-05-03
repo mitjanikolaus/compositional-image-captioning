@@ -75,6 +75,70 @@ def calc_initial_losses(data_loader, encoder, decoder):
     return loss_generation, loss_ranking
 
 
+def setup_data_loaders(
+    batch_size, data_folder, model_name, train_images_split, val_images_split, workers
+):
+    if model_name == MODEL_SHOW_ATTEND_TELL:
+        normalize = transforms.Normalize(
+            mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD
+        )
+        train_images_loader = torch.utils.data.DataLoader(
+            CaptionTrainDataset(
+                data_folder,
+                IMAGES_FILENAME,
+                train_images_split,
+                transforms.Compose([normalize]),
+                features_scale_factor=1 / 255.0,
+            ),
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=workers,
+            pin_memory=True,
+        )
+        val_images_loader = torch.utils.data.DataLoader(
+            CaptionTestDataset(
+                data_folder,
+                IMAGES_FILENAME,
+                val_images_split,
+                transforms.Compose([normalize]),
+                features_scale_factor=1 / 255.0,
+            ),
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=workers,
+            pin_memory=True,
+        )
+
+    elif (
+        model_name == MODEL_BOTTOM_UP_TOP_DOWN
+        or model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING
+    ):
+        train_images_loader = torch.utils.data.DataLoader(
+            CaptionTrainDataset(
+                data_folder, BOTTOM_UP_FEATURES_FILENAME, train_images_split
+            ),
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=workers,
+            pin_memory=True,
+        )
+        validation_batch_size = batch_size
+        if model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING:
+            validation_batch_size = 1
+        val_images_loader = torch.utils.data.DataLoader(
+            CaptionTestDataset(
+                data_folder, BOTTOM_UP_FEATURES_FILENAME, val_images_split
+            ),
+            batch_size=validation_batch_size,
+            shuffle=True,
+            num_workers=workers,
+            pin_memory=True,
+        )
+    else:
+        raise RuntimeError("Unknown model name: {}".format(model_name))
+    return train_images_loader, val_images_loader
+
+
 def main(
     model_params,
     model_name,
@@ -182,64 +246,6 @@ def main(
         else:
             raise RuntimeError("Unknown model name: {}".format(model_name))
 
-    # Data loaders
-    if model_name == MODEL_SHOW_ATTEND_TELL:
-        normalize = transforms.Normalize(
-            mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD
-        )
-        train_images_loader = torch.utils.data.DataLoader(
-            CaptionTrainDataset(
-                data_folder,
-                IMAGES_FILENAME,
-                train_images_split,
-                transforms.Compose([normalize]),
-                features_scale_factor=1 / 255.0,
-            ),
-            batch_size=batch_size,
-            shuffle=True,
-            num_workers=workers,
-            pin_memory=True,
-        )
-        val_images_loader = torch.utils.data.DataLoader(
-            CaptionTestDataset(
-                data_folder,
-                IMAGES_FILENAME,
-                val_images_split,
-                transforms.Compose([normalize]),
-                features_scale_factor=1 / 255.0,
-            ),
-            batch_size=batch_size,
-            shuffle=True,
-            num_workers=workers,
-            pin_memory=True,
-        )
-
-    elif (
-        model_name == MODEL_BOTTOM_UP_TOP_DOWN
-        or model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING
-    ):
-        train_images_loader = torch.utils.data.DataLoader(
-            CaptionTrainDataset(
-                data_folder, BOTTOM_UP_FEATURES_FILENAME, train_images_split
-            ),
-            batch_size=batch_size,
-            shuffle=True,
-            num_workers=workers,
-            pin_memory=True,
-        )
-        validation_batch_size = batch_size
-        if model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING:
-            validation_batch_size = 1
-        val_images_loader = torch.utils.data.DataLoader(
-            CaptionTestDataset(
-                data_folder, BOTTOM_UP_FEATURES_FILENAME, val_images_split
-            ),
-            batch_size=validation_batch_size,
-            shuffle=True,
-            num_workers=workers,
-            pin_memory=True,
-        )
-
     # Enable or disable training of image and caption embedding
     if model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING:
         decoder.image_embedding.enable_fine_tuning(fine_tune_decoder_image_embeddings)
@@ -252,9 +258,17 @@ def main(
         logging.info("Encoder params: %s", encoder.params)
     logging.info("Decoder params: %s", decoder.params)
 
-    logging.info("Starting training on device: %s", device)
+    # Data loaders
+    train_images_loader, val_images_loader = setup_data_loaders(
+        batch_size,
+        data_folder,
+        model_name,
+        train_images_split,
+        val_images_split,
+        workers,
+    )
 
-    # Move to GPU, if available
+    logging.info("Starting training on device: %s", device)
     if encoder:
         encoder.to(device)
     decoder = decoder.to(device)
