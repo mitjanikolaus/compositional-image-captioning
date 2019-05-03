@@ -164,6 +164,8 @@ def main(
     epochs_since_last_improvement = 0
     best_generation_metric_score = 0.0
     best_ranking_metric_score = 0.0
+    current_generation_metric_score = 0.0
+    current_ranking_metric_score = 0.0
 
     # Get the dataset splits
     dataset_splits_dict = json.load(open(dataset_splits, "r"))
@@ -348,15 +350,17 @@ def main(
             )
 
         if current_checkpoint_is_best:
-            best_generation_metric_score = current_generation_metric_score
-            best_ranking_metric_score = current_ranking_metric_score
+            if objective == OBJECTIVE_GENERATION or objective == OBJECTIVE_JOINT:
+                best_generation_metric_score = current_generation_metric_score
+            if objective == OBJECTIVE_RANKING:
+                best_ranking_metric_score = current_ranking_metric_score
             epochs_since_last_improvement = 0
         else:
             epochs_since_last_improvement += 1
             logging.info(
                 "\nEpochs since last improvement: %d", epochs_since_last_improvement
             )
-            logging.info("Best generation score: %d\n", best_generation_metric_score)
+            logging.info("Best generation score: %d", best_generation_metric_score)
             logging.info("Best ranking score: %d\n", best_ranking_metric_score)
 
         # Save checkpoint
