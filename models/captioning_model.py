@@ -154,7 +154,8 @@ class CaptioningModelDecoder(nn.Module):
     def beam_search(
         self,
         encoder_output,
-        beam_size=1,
+        beam_size,
+        stochastic=False,
         store_alphas=False,
         store_beam=False,
         print_beam=False,
@@ -215,10 +216,17 @@ class CaptioningModelDecoder(nn.Module):
             if step == 0:
                 scores = scores[0]
 
-            # Find the top k of the flattened scores
-            top_k_scores, top_k_words = scores.view(-1).topk(
-                current_beam_width, 0, largest=True, sorted=True
-            )
+            if stochastic:
+                # Sample from the scores
+                top_k_words = torch.multinomial(
+                    torch.softmax(scores.view(-1), 0), current_beam_width
+                )
+                top_k_scores = scores.view(-1)[top_k_words]
+            else:
+                # Find the top k of the flattened scores
+                top_k_scores, top_k_words = scores.view(-1).topk(
+                    current_beam_width, 0, largest=True, sorted=True
+                )
 
             # Convert flattened indices to actual indices of scores
             prev_seq_inds = top_k_words / self.vocab_size  # (k)

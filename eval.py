@@ -95,6 +95,7 @@ def evaluate(
     beam_size,
     eval_beam_size,
     re_ranking,
+    stochastic_beam_search,
     visualize,
     print_beam,
 ):
@@ -179,6 +180,7 @@ def evaluate(
         top_k_generated_captions, alphas, beam = decoder.beam_search(
             encoded_features,
             beam_size,
+            stochastic_beam_search=stochastic_beam_search,
             store_alphas=visualize,
             store_beam=store_beam,
             print_beam=print_beam,
@@ -208,6 +210,8 @@ def evaluate(
     name = str(os.path.basename(checkpoint_path).split(".")[0])
     if re_ranking:
         name += "_re_ranking"
+    if stochastic_beam_search:
+        name += "_stochastic"
     output_file_name = "eval_" + name + ".json"
     for metric in metrics:
         calculate_metric(
@@ -298,14 +302,20 @@ def check_args(args):
         default=1,
     )
     parser.add_argument(
-        "--visualize-attention",
-        help="Visualize the attention for every sample",
+        "--re-ranking",
+        help="Use re-ranking to sort the beam",
         default=False,
         action="store_true",
     )
     parser.add_argument(
-        "--re-ranking",
-        help="Use re-ranking to sort the beam",
+        "--stochastic-beam-search",
+        help="Use stochastic beam search",
+        default=False,
+        action="store_true",
+    )
+    parser.add_argument(
+        "--visualize-attention",
+        help="Visualize the attention for every sample",
         default=False,
         action="store_true",
     )
@@ -337,6 +347,7 @@ if __name__ == "__main__":
         beam_size=parsed_args.beam_size,
         eval_beam_size=parsed_args.eval_beam_size,
         re_ranking=parsed_args.re_ranking,
+        stochastic_beam_search=parsed_args.stochastic_beam_search,
         visualize=parsed_args.visualize_attention,
         print_beam=parsed_args.print_beam,
     )
