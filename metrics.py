@@ -29,6 +29,7 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 
 
 def recall_pairs(generated_captions, word_map, heldout_pairs, checkpoint_name):
+    logging.info("\n\nRecall@{}:".format(len(next(iter(generated_captions.values())))))
     recall_scores = {}
     nlp_pipeline = stanfordnlp.Pipeline()
     for pair in heldout_pairs:

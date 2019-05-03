@@ -367,10 +367,21 @@ def main(
     checkpoint_path = get_checkpoint_file_path(
         model_name, dataset_splits, name_suffix, True
     )
-    metrics = [METRIC_BLEU, METRIC_RECALL]
     beam_size = 5
+    re_ranking = False
+    if objective == OBJECTIVE_JOINT:
+        beam_size = 100
+        re_ranking = True
     evaluate(
-        data_folder, dataset_splits, checkpoint_path, metrics, beam_size, False, False
+        data_folder,
+        dataset_splits,
+        checkpoint_path,
+        metrics=[METRIC_BLEU, METRIC_RECALL],
+        beam_size=beam_size,
+        eval_beam_size=5,
+        re_ranking=re_ranking,
+        visualize=False,
+        print_beam=False,
     )
 
 

@@ -12,6 +12,8 @@ from metrics import recall_pairs, beam_occurrences
 from nltk.translate.bleu_score import corpus_bleu
 from tqdm import tqdm
 
+import numpy as np
+
 from utils import (
     get_caption_without_special_tokens,
     IMAGENET_IMAGES_MEAN,
@@ -21,6 +23,8 @@ from utils import (
     MODEL_SHOW_ATTEND_TELL,
     MODEL_BOTTOM_UP_TOP_DOWN,
     get_eval_log_file_path,
+    decode_caption,
+    TOKEN_PADDING,
 )
 from visualize_attention import visualize_attention
 
@@ -32,12 +36,61 @@ METRIC_RECALL = "recall"
 METRIC_BEAM_OCCURRENCES = "beam-occurrences"
 
 
+def get_top_ranked_captions_indices(embedded_image, embedded_captions):
+    # Compute similarity of image to all captions
+    d = np.dot(embedded_image, embedded_captions.T).flatten()
+    inds = np.argsort(d)[::-1]
+    return inds
+
+
+def re_rank_beam(decoder, top_k_generated_captions, encoded_features, word_map):
+    print("Before re-ranking:")
+    for caption in top_k_generated_captions[:5]:
+        print(
+            decode_caption(
+                get_caption_without_special_tokens(caption, word_map), word_map
+            )
+        )
+
+    lengths = [len(caption) - 1 for caption in top_k_generated_captions]
+    top_k_generated_captions = torch.tensor(
+        [
+            top_k_generated_caption
+            + [word_map[TOKEN_PADDING]]
+            * (max(lengths) + 1 - len(top_k_generated_caption))
+            for top_k_generated_caption in top_k_generated_captions
+        ],
+        device=device,
+    )
+    image_embedded, image_captions_embedded = decoder.forward_ranking(
+        encoded_features, top_k_generated_captions, torch.tensor(lengths, device=device)
+    )
+    image_embedded = image_embedded.detach().cpu().numpy()[0]
+    image_captions_embedded = image_captions_embedded.detach().cpu().numpy()
+
+    indices = get_top_ranked_captions_indices(image_embedded, image_captions_embedded)
+    top_k_generated_captions = [top_k_generated_captions[i] for i in indices]
+
+    print("After re-ranking:")
+    for caption in top_k_generated_captions[:5]:
+        print(
+            decode_caption(
+                get_caption_without_special_tokens(caption.cpu().numpy(), word_map),
+                word_map,
+            )
+        )
+
+    return [caption.cpu().numpy() for caption in top_k_generated_captions]
+
+
 def evaluate(
     data_folder,
     dataset_splits,
     checkpoint_path,
     metrics,
     beam_size,
+    eval_beam_size,
+    re_ranking,
     visualize,
     print_beam,
 ):
@@ -101,7 +154,7 @@ def evaluate(
     generated_captions = {}
     generated_beams = {}
 
-    for image_features, all_captions_for_image, _, coco_id in tqdm(
+    for image_features, all_captions_for_image, caption_lengths, coco_id in tqdm(
         data_loader, desc="Evaluate with beam size " + str(beam_size)
     ):
         coco_id = coco_id[0]
@@ -133,8 +186,13 @@ def evaluate(
                     image_features.squeeze(0), caption, alpha, word_map, smoothen=True
                 )
 
-        generated_captions[coco_id] = top_k_generated_captions
-        generated_beams[coco_id] = beam
+        if re_ranking:
+            top_k_generated_captions = re_rank_beam(
+                decoder, top_k_generated_captions, encoded_features, word_map
+            )
+
+        generated_captions[coco_id] = top_k_generated_captions[:eval_beam_size]
+        generated_beams[coco_id] = beam[:eval_beam_size]
 
         assert len(target_captions) == len(generated_captions)
 
@@ -223,8 +281,20 @@ def check_args(args):
         "--beam-size", help="Size of the decoding beam", type=int, default=1
     )
     parser.add_argument(
+        "--eval-beam-size",
+        help="Number of sequences from the beam that should be used for evaluation",
+        type=int,
+        default=1,
+    )
+    parser.add_argument(
         "--visualize-attention",
         help="Visualize the attention for every sample",
+        default=False,
+        action="store_true",
+    )
+    parser.add_argument(
+        "--re-ranking",
+        help="Use re-ranking to sort the beam",
         default=False,
         action="store_true",
     )
@@ -254,6 +324,8 @@ if __name__ == "__main__":
         checkpoint_path=parsed_args.checkpoint,
         metrics=parsed_args.metrics,
         beam_size=parsed_args.beam_size,
+        eval_beam_size=parsed_args.eval_beam_size,
+        re_ranking=parsed_args.re_ranking,
         visualize=parsed_args.visualize_attention,
         print_beam=parsed_args.print_beam,
     )
