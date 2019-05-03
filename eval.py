@@ -43,14 +43,17 @@ def get_top_ranked_captions_indices(embedded_image, embedded_captions):
     return inds
 
 
-def re_rank_beam(decoder, top_k_generated_captions, encoded_features, word_map):
-    print("Before re-ranking:")
-    for caption in top_k_generated_captions[:5]:
-        print(
-            decode_caption(
-                get_caption_without_special_tokens(caption, word_map), word_map
+def re_rank_beam(
+    decoder, top_k_generated_captions, encoded_features, word_map, print_beam
+):
+    if print_beam:
+        logging.info("Before re-ranking:")
+        for caption in top_k_generated_captions[:5]:
+            logging.info(
+                decode_caption(
+                    get_caption_without_special_tokens(caption, word_map), word_map
+                )
             )
-        )
 
     lengths = [len(caption) - 1 for caption in top_k_generated_captions]
     top_k_generated_captions = torch.tensor(
@@ -71,14 +74,15 @@ def re_rank_beam(decoder, top_k_generated_captions, encoded_features, word_map):
     indices = get_top_ranked_captions_indices(image_embedded, image_captions_embedded)
     top_k_generated_captions = [top_k_generated_captions[i] for i in indices]
 
-    print("After re-ranking:")
-    for caption in top_k_generated_captions[:5]:
-        print(
-            decode_caption(
-                get_caption_without_special_tokens(caption.cpu().numpy(), word_map),
-                word_map,
+    if print_beam:
+        logging.info("After re-ranking:")
+        for caption in top_k_generated_captions[:5]:
+            logging.info(
+                decode_caption(
+                    get_caption_without_special_tokens(caption.cpu().numpy(), word_map),
+                    word_map,
+                )
             )
-        )
 
     return [caption.cpu().numpy() for caption in top_k_generated_captions]
 
@@ -188,7 +192,11 @@ def evaluate(
 
         if re_ranking:
             top_k_generated_captions = re_rank_beam(
-                decoder, top_k_generated_captions, encoded_features, word_map
+                decoder,
+                top_k_generated_captions,
+                encoded_features,
+                word_map,
+                print_beam,
             )
 
         generated_captions[coco_id] = top_k_generated_captions[:eval_beam_size]
