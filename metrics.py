@@ -75,11 +75,14 @@ def recall_pairs(generated_captions, word_map, heldout_pairs, output_file_name):
         ) / np.sum(list(recall_score["numbers"].values()))
         logging.info("{}: {}".format(pair, np.round(average_pair_recall, 2)))
         logging.info(
-            "Most common adjectives: ",
-            recall_score["adjective_frequencies"].most_common(10),
+            "Most common adjectives: {}".format(
+                recall_score["adjective_frequencies"].most_common(10)
+            )
         )
         logging.info(
-            "Most common verbs: ", recall_score["verb_frequencies"].most_common(10)
+            "Most common verbs: {}".format(
+                recall_score["verb_frequencies"].most_common(10)
+            )
         )
 
     logging.info("Average: {}".format(average_recall(recall_scores)))
