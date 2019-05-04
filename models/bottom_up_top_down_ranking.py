@@ -313,7 +313,8 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         self,
         encoder_output,
         beam_size,
-        stochastic=False,
+        stochastic_beam_search=False,
+        diverse_beam_search=False,
         store_alphas=False,
         store_beam=False,
         print_beam=False,
@@ -382,7 +383,7 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
             if step == 0:
                 scores = scores[0]
 
-            if stochastic:
+            if stochastic_beam_search:
                 # Sample from the scores
                 top_k_words = torch.multinomial(
                     torch.softmax(scores.view(-1), 0), current_beam_width

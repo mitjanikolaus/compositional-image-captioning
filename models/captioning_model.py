@@ -155,7 +155,8 @@ class CaptioningModelDecoder(nn.Module):
         self,
         encoder_output,
         beam_size,
-        stochastic=False,
+        stochastic_beam_search=False,
+        diverse_beam_search=False,
         store_alphas=False,
         store_beam=False,
         print_beam=False,
@@ -216,12 +217,39 @@ class CaptioningModelDecoder(nn.Module):
             if step == 0:
                 scores = scores[0]
 
-            if stochastic:
+            if stochastic_beam_search:
                 # Sample from the scores
                 top_k_words = torch.multinomial(
                     torch.softmax(scores.view(-1), 0), current_beam_width
                 )
                 top_k_scores = scores.view(-1)[top_k_words]
+            elif diverse_beam_search:
+                if step == 0:
+                    top_k_scores, top_k_words = scores.view(-1).topk(
+                        current_beam_width, 0, largest=True, sorted=True
+                    )
+                else:
+                    current_scores = scores.view(-1)
+                    top_k_scores = torch.zeros(
+                        current_beam_width, dtype=torch.float, device=device
+                    )
+                    top_k_words = torch.zeros(
+                        current_beam_width, dtype=torch.long, device=device
+                    )
+                    for i in range(0, current_beam_width):
+                        for j in range(0, i):
+                            word = top_k_words[j] % self.vocab_size
+                            for k in range(0, current_beam_width):
+                                current_scores[
+                                    word + k * self.vocab_size
+                                ] -= 1  # TODO lambda
+
+                        top_k_scores[i], top_k_words[i] = current_scores.topk(
+                            1, 0, largest=True, sorted=True
+                        )
+                        # Set the probability of the already selected branch to minus infinity
+                        current_scores[top_k_words[i]] = float("-inf")
+
             else:
                 # Find the top k of the flattened scores
                 top_k_scores, top_k_words = scores.view(-1).topk(
