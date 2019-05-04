@@ -51,39 +51,7 @@ MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
 MODEL_BOTTOM_UP_TOP_DOWN = "BOTTOM_UP_TOP_DOWN"
 MODEL_BOTTOM_UP_TOP_DOWN_RANKING = "BOTTOM_UP_TOP_DOWN_RANKING"
 
-HELDOUT_PAIRS_SET_1 = {
-    "black_cat.json",
-    "big_bird.json",
-    "red_bus.json",
-    "small_plane.json",
-    "eat_man.json",
-    "smile_woman.json",
-}
-HELDOUT_PAIRS_SET_2 = {
-    "brown_dog.json",
-    "small_cat.json",
-    "white_truck.json",
-    "big_plane.json",
-    "ride_woman.json",
-    "fly_bird.json",
-}
-HELDOUT_PAIRS_SET_3 = {
-    "white_horse.json",
-    "big_cat.json",
-    "blue_bus.json",
-    "small_table.json",
-    "hold_child.json",
-    "stand_bird.json",
-}
-HELDOUT_PAIRS_SET_4 = {
-    "black_bird.json",
-    "small_dog.json",
-    "white_boat.json",
-    "big_truck.json",
-    "eat_horse.json",
-    "smile_child.json",
-}
-
+base_dir = os.path.dirname(os.path.abspath(__file__))
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -208,7 +176,11 @@ def invert_normalization(image):
     return inv_normalize(image)
 
 
-def get_splits_from_occurrences_data(occurrences_data_files):
+def get_splits_from_occurrences_data(heldout_pairs):
+    occurrences_data_files = [
+        os.path.join(base_dir, "data", "occurrences", pair + ".json")
+        for pair in heldout_pairs
+    ]
     test_images_split = set()
     val_images_split = set()
 
@@ -237,25 +209,6 @@ def get_splits_from_occurrences_data(occurrences_data_files):
     }
 
     return list(train_images_split), list(val_images_split), list(test_images_split)
-
-
-def get_splits_from_karpathy_json(karpathy_json):
-    with open(karpathy_json, "r") as json_file:
-        images_data = json.load(json_file)["images"]
-
-    train_images_split = [
-        str(data["cocoid"]) for data in images_data if data["split"] == "train"
-    ]
-
-    val_images_split = [
-        str(data["cocoid"]) for data in images_data if data["split"] == "val"
-    ]
-
-    test_images_split = [
-        str(data["cocoid"]) for data in images_data if data["split"] == "test"
-    ]
-
-    return train_images_split, val_images_split, test_images_split
 
 
 def show_img(img):

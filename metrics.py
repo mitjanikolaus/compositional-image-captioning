@@ -38,7 +38,7 @@ def recall_pairs(generated_captions, word_map, heldout_pairs, output_file_name):
         )
         occurrences_data = json.load(open(occurrences_data_file, "r"))
 
-        _, _, test_indices = get_splits_from_occurrences_data([occurrences_data_file])
+        _, _, test_indices = get_splits_from_occurrences_data([pair])
         nouns = set(occurrences_data[NOUNS])
 
         if ADJECTIVES in occurrences_data:
@@ -183,7 +183,7 @@ def beam_occurrences(
 
         num_beams = np.zeros(max_length)
 
-        _, _, test_indices = get_splits_from_occurrences_data([occurrences_data_file])
+        _, _, test_indices = get_splits_from_occurrences_data([[pair]])
 
         for coco_id in test_indices:
             beam = generated_beams[coco_id]

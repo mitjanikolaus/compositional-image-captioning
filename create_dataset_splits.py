@@ -4,24 +4,43 @@ import os
 import argparse
 import sys
 
-from utils import get_splits_from_occurrences_data, get_splits_from_karpathy_json
+from utils import get_splits_from_occurrences_data
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def get_splits(occurrences_data, karpathy_json):
-    if occurrences_data and not karpathy_json:
+def get_splits_from_karpathy_json(karpathy_json):
+    with open(karpathy_json, "r") as json_file:
+        images_data = json.load(json_file)["images"]
+
+    train_images_split = [
+        str(data["cocoid"]) for data in images_data if data["split"] == "train"
+    ]
+
+    val_images_split = [
+        str(data["cocoid"]) for data in images_data if data["split"] == "val"
+    ]
+
+    test_images_split = [
+        str(data["cocoid"]) for data in images_data if data["split"] == "test"
+    ]
+
+    return train_images_split, val_images_split, test_images_split
+
+
+def get_splits(heldout_pairs, karpathy_json):
+    if heldout_pairs and not karpathy_json:
         train_images_split, val_images_split, test_images_split = get_splits_from_occurrences_data(
-            occurrences_data
+            heldout_pairs
         )
-    elif karpathy_json and not occurrences_data:
+    elif karpathy_json and not heldout_pairs:
         train_images_split, val_images_split, test_images_split = get_splits_from_karpathy_json(
             karpathy_json
         )
-    elif occurrences_data and karpathy_json:
-        return ValueError("Specify either karpathy_json or occurrences_data, not both!")
+    elif heldout_pairs and karpathy_json:
+        return ValueError("Specify either karpathy_json or heldout_pairs, not both!")
     else:
-        return ValueError("Specify either karpathy_json or occurrences_data!")
+        return ValueError("Specify either karpathy_json or heldout_pairs!")
 
     print("Train set size: {}".format(len(train_images_split)))
     print("Val set size: {}".format(len(val_images_split)))
@@ -30,12 +49,8 @@ def get_splits(occurrences_data, karpathy_json):
 
 
 def create_dataset_splits(heldout_pairs, karpathy_json):
-    occurrences_data_files = [
-        os.path.join(base_dir, "data", "occurrences", pair + ".json")
-        for pair in heldout_pairs
-    ]
     train_images_split, val_images_split, test_images_split = get_splits(
-        occurrences_data_files, karpathy_json
+        heldout_pairs, karpathy_json
     )
     dataset_splits = {
         "train_images_split": train_images_split,
