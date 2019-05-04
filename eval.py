@@ -25,6 +25,7 @@ from utils import (
     get_eval_log_file_path,
     decode_caption,
     TOKEN_PADDING,
+    MODEL_BOTTOM_UP_TOP_DOWN_RANKING,
 )
 from visualize_attention import visualize_attention
 
@@ -142,7 +143,10 @@ def evaluate(
             num_workers=1,
             pin_memory=True,
         )
-    elif model_name == MODEL_BOTTOM_UP_TOP_DOWN:
+    elif (
+        model_name == MODEL_BOTTOM_UP_TOP_DOWN
+        or model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING
+    ):
         data_loader = torch.utils.data.DataLoader(
             CaptionTestDataset(
                 data_folder, BOTTOM_UP_FEATURES_FILENAME, test_images_split
