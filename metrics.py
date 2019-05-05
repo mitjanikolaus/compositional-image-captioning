@@ -161,6 +161,43 @@ def average_recall(recall_scores, min_importance=1):
     return recall
 
 
+def accurracy_robust_coco(generated_captions, word_map):
+    object_class_data_path = os.path.join(
+        base_dir, "data", "robust_coco", "coco_obj_stats" + ".json"
+    )
+    object_class_data = json.load(open(object_class_data_path, "r"))
+    object_class_map = {
+        str(stat["image_id"]): stat["pclss"] for stat in object_class_data
+    }
+
+    dict_path = os.path.join(base_dir, "data", "robust_coco", "dic_coco" + ".json")
+    dict = json.load(open(dict_path, "r"))
+
+    num_accurrates = 0
+    for coco_id, top_k_captions in generated_captions.items():
+        caption = top_k_captions[0]
+        caption = decode_caption(
+            get_caption_without_special_tokens(caption, word_map), word_map
+        )
+        print(caption)
+
+        target_object_classes = object_class_map[coco_id]
+        print("target classes: ", target_object_classes)
+        for word in caption:
+            lemma = dict["wtol"][word]
+            if lemma in dict["wtod"]:
+                object_class = dict["wtod"][lemma]
+                print("Found {}({})".format(lemma, object_class))
+                if object_class in target_object_classes:
+                    target_object_classes.remove(object_class)
+            if len(target_object_classes) == 0:
+                num_accurrates += 1
+                break
+
+    accurracy = num_accurrates / len(generated_captions)
+    print("Accuracy: ", accurracy)
+
+
 def beam_occurrences(
     generated_beams, beam_size, word_map, heldout_pairs, max_print_length=20
 ):
