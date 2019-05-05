@@ -358,10 +358,14 @@ def main(
         else:
             epochs_since_last_improvement += 1
             logging.info(
-                "\nEpochs since last improvement: %d", epochs_since_last_improvement
+                "\nEpochs since last improvement: {}".format(
+                    epochs_since_last_improvement
+                )
             )
-            logging.info("Best generation score: %d", best_generation_metric_score)
-            logging.info("Best ranking score: %d\n", best_ranking_metric_score)
+            logging.info(
+                "Best generation score: {}".format(best_generation_metric_score)
+            )
+            logging.info("Best ranking score: {}\n".format(best_ranking_metric_score))
 
         # Save checkpoint
         save_checkpoint(
