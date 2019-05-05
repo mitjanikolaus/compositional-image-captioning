@@ -96,7 +96,7 @@ def evaluate(
     beam_size,
     eval_beam_size,
     re_ranking,
-    stochastic_beam_search,
+    nucleus_sampling,
     diverse_beam_search,
     visualize,
     print_beam,
@@ -182,15 +182,20 @@ def evaluate(
 
         store_beam = True if METRIC_BEAM_OCCURRENCES in metrics else False
 
-        top_k_generated_captions, alphas, beam = decoder.beam_search(
-            encoded_features,
-            beam_size,
-            stochastic_beam_search=stochastic_beam_search,
-            diverse_beam_search=diverse_beam_search,
-            store_alphas=visualize,
-            store_beam=store_beam,
-            print_beam=print_beam,
-        )
+        if nucleus_sampling:
+            top_k_generated_captions, alphas, beam = decoder.nucleus_sampling(
+                encoded_features, beam_size, top_p=0.9, print_beam=print_beam
+            )
+        else:
+            top_k_generated_captions, alphas, beam = decoder.beam_search(
+                encoded_features,
+                beam_size,
+                diverse_beam_search=diverse_beam_search,
+                store_alphas=visualize,
+                store_beam=store_beam,
+                print_beam=print_beam,
+            )
+
         if visualize:
             logging.info("Image COCO ID: {}".format(coco_id))
             for caption, alpha in zip(top_k_generated_captions, alphas):
@@ -208,7 +213,8 @@ def evaluate(
             )
 
         generated_captions[coco_id] = top_k_generated_captions[:eval_beam_size]
-        generated_beams[coco_id] = beam[:eval_beam_size]
+        if store_beam:
+            generated_beams[coco_id] = beam[:eval_beam_size]
 
         assert len(target_captions) == len(generated_captions)
 
@@ -216,8 +222,8 @@ def evaluate(
     name = str(os.path.basename(checkpoint_path).split(".")[0])
     if re_ranking:
         name += "_re_ranking"
-    if stochastic_beam_search:
-        name += "_stochastic"
+    if nucleus_sampling:
+        name += "_nucleus_sampling"
     output_file_name = "eval_" + name + ".json"
     for metric in metrics:
         calculate_metric(
@@ -314,8 +320,8 @@ def check_args(args):
         action="store_true",
     )
     parser.add_argument(
-        "--stochastic-beam-search",
-        help="Use stochastic beam search",
+        "--nucleus-sampling",
+        help="Use nucleus sampling instead of beam search",
         default=False,
         action="store_true",
     )
@@ -359,7 +365,7 @@ if __name__ == "__main__":
         beam_size=parsed_args.beam_size,
         eval_beam_size=parsed_args.eval_beam_size,
         re_ranking=parsed_args.re_ranking,
-        stochastic_beam_search=parsed_args.stochastic_beam_search,
+        nucleus_sampling=parsed_args.nucleus_sampling,
         diverse_beam_search=parsed_args.diverse_beam_search,
         visualize=parsed_args.visualize_attention,
         print_beam=parsed_args.print_beam,

@@ -92,7 +92,6 @@ class TopDownDecoder(CaptioningModelDecoder):
         self,
         encoder_output,
         beam_size,
-        stochastic_beam_search=False,
         diverse_beam_search=False,
         store_alphas=False,
         store_beam=False,
@@ -108,7 +107,6 @@ class TopDownDecoder(CaptioningModelDecoder):
         return super(TopDownDecoder, self).beam_search(
             encoder_output,
             beam_size,
-            stochastic_beam_search,
             diverse_beam_search,
             store_alphas,
             store_beam,

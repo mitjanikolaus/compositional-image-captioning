@@ -155,7 +155,6 @@ class CaptioningModelDecoder(nn.Module):
         self,
         encoder_output,
         beam_size,
-        stochastic_beam_search=False,
         diverse_beam_search=False,
         store_alphas=False,
         store_beam=False,
@@ -217,13 +216,7 @@ class CaptioningModelDecoder(nn.Module):
             if step == 0:
                 scores = scores[0]
 
-            if stochastic_beam_search:
-                # Sample from the scores
-                top_k_words = torch.multinomial(
-                    torch.softmax(scores.view(-1), 0), current_beam_width
-                )
-                top_k_scores = scores.view(-1)[top_k_words]
-            elif diverse_beam_search:
+            if diverse_beam_search:
                 if step == 0:
                     top_k_scores, top_k_words = scores.view(-1).topk(
                         current_beam_width, 0, largest=True, sorted=True
@@ -328,6 +321,118 @@ class CaptioningModelDecoder(nn.Module):
                 )
             ]
         return sorted_sequences, sorted_alphas, beam
+
+    def nucleus_sampling(self, encoder_output, beam_size, top_p, print_beam=False):
+        """Generate and return the top k sequences using nucleus sampling."""
+
+        current_beam_width = beam_size
+
+        encoder_dim = encoder_output.size()[-1]
+
+        # Flatten encoding
+        encoder_output = encoder_output.view(1, -1, encoder_dim)
+
+        # We'll treat the problem as having a batch size of k
+        encoder_output = encoder_output.expand(
+            beam_size, encoder_output.size(1), encoder_dim
+        )
+
+        # Tensor to store top k sequences; now they're just <start>
+        top_k_sequences = torch.full(
+            (beam_size, 1), self.word_map[TOKEN_START], dtype=torch.int64, device=device
+        )
+
+        # Tensor to store top k sequences' scores; now they're just 0
+        top_k_scores = torch.zeros(beam_size, device=device)
+
+        # Lists to store completed sequences, scores, and alphas and the full decoding beam
+        complete_seqs = []
+        complete_seqs_scores = []
+
+        # Initialize hidden states
+        states = self.init_hidden_states(encoder_output)
+
+        # Start decoding
+        for step in range(0, self.params["max_caption_len"] - 1):
+            prev_words = top_k_sequences[:, step]
+
+            prev_word_embeddings = self.word_embedding(prev_words)
+            predictions, states, alpha = self.forward_step(
+                encoder_output, prev_word_embeddings, states
+            )
+            scores = F.log_softmax(predictions, dim=1)
+
+            sorted_logits, sorted_indices = torch.sort(scores, descending=True, dim=-1)
+            cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
+
+            # Remove tokens with cumulative probability above the threshold
+            sorted_indices_to_remove = cumulative_probs > top_p
+            # Shift the indices to the right to keep also the first token above the threshold
+            sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[
+                ..., :-1
+            ].clone()
+            sorted_indices_to_remove[..., 0] = 0
+
+            top_k_scores = torch.zeros(
+                current_beam_width, dtype=torch.float, device=device
+            )
+            top_k_words = torch.zeros(
+                current_beam_width, dtype=torch.long, device=device
+            )
+
+            for i in range(0, current_beam_width):
+                scores[i][sorted_indices[i][sorted_indices_to_remove[i]]] = -float(
+                    "inf"
+                )
+
+                # Sample from the scores
+                top_k_words[i] = torch.multinomial(torch.softmax(scores[i], -1), 1)
+                top_k_scores[i] = scores[i][top_k_words[i]]
+
+            # Add new words to sequences
+            top_k_sequences = torch.cat(
+                (top_k_sequences, top_k_words.unsqueeze(1)), dim=1
+            )
+
+            if print_beam:
+                print_current_beam(top_k_sequences, top_k_scores, self.word_map)
+
+            # Check for complete and incomplete sequences (based on the <end> token)
+            incomplete_inds = (
+                torch.nonzero(top_k_words != self.word_map[TOKEN_END]).view(-1).tolist()
+            )
+            complete_inds = (
+                torch.nonzero(top_k_words == self.word_map[TOKEN_END]).view(-1).tolist()
+            )
+
+            # Set aside complete sequences and reduce beam size accordingly
+            if len(complete_inds) > 0:
+                complete_seqs.extend(top_k_sequences[complete_inds].tolist())
+                complete_seqs_scores.extend(top_k_scores[complete_inds])
+
+            # Stop if k captions have been completely generated
+            current_beam_width = len(incomplete_inds)
+            if current_beam_width == 0:
+                break
+
+            # Proceed with incomplete sequences
+            top_k_sequences = top_k_sequences[incomplete_inds]
+            for i in range(len(states)):
+                states[i] = states[i][incomplete_inds]
+            encoder_output = encoder_output[incomplete_inds]
+            top_k_scores = top_k_scores[incomplete_inds]
+
+        if len(complete_seqs) < beam_size:
+            complete_seqs.extend(top_k_sequences.tolist())
+            complete_seqs_scores.extend(top_k_scores)
+
+        sorted_sequences = [
+            sequence
+            for _, sequence in sorted(
+                zip(complete_seqs_scores, complete_seqs), reverse=True
+            )
+        ]
+        return sorted_sequences, None, None
 
 
 def create_encoder_optimizer(encoder, params):

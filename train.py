@@ -398,7 +398,7 @@ def main(
         beam_size=beam_size,
         eval_beam_size=5,
         re_ranking=re_ranking,
-        stochastic_beam_search=False,
+        nucleus_sampling=False,
         diverse_beam_search=False,
         visualize=False,
         print_beam=False,
