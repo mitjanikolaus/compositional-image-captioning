@@ -170,6 +170,12 @@ def accurracy_robust_coco(generated_captions, word_map):
         str(stat["image_id"]): stat["pclss"] for stat in object_class_data
     }
 
+    test_pair_path = os.path.join(
+        base_dir, "data", "robust_coco", "test_pair_list" + ".json"
+    )
+    test_pair_list = json.load(open(test_pair_path, "r"))
+    test_pair_list = [pair[:2] for pair in test_pair_list]
+
     dict_path = os.path.join(base_dir, "data", "robust_coco", "dic_coco" + ".json")
     dict = json.load(open(dict_path, "r"))
 
@@ -181,7 +187,19 @@ def accurracy_robust_coco(generated_captions, word_map):
         )
         print(caption)
 
+        # Get all object classes for the given image
         target_object_classes = object_class_map[coco_id]
+        # Filter out only the compositionally novel classes:
+        target_object_classes = set(
+            np.array(
+                [
+                    pair
+                    for pair in test_pair_list
+                    if pair[0] in target_object_classes
+                    and pair[1] in target_object_classes
+                ]
+            ).flatten()
+        )
         print("target classes: ", target_object_classes)
         for word in caption:
             lemma = dict["wtol"][word]

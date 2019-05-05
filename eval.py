@@ -123,6 +123,7 @@ def evaluate(
     # Get the dataset splits
     dataset_splits_dict = json.load(open(dataset_splits, "r"))
     test_images_split = dataset_splits_dict["test_images_split"]
+    test_images_split = test_images_split[:100]
 
     if model_name == MODEL_SHOW_ATTEND_TELL:
         # Normalization
