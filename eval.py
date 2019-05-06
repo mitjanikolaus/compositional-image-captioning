@@ -46,9 +46,10 @@ def get_top_ranked_captions_indices(embedded_image, embedded_captions):
 
 
 def re_rank_beam(
-    decoder, top_k_generated_captions, encoded_features, word_map, print_beam
+    decoder, top_k_generated_captions, encoded_features, word_map, coco_id, print_beam
 ):
     if print_beam:
+        logging.info("COCO ID: {}".format(coco_id))
         logging.info("Before re-ranking:")
         for caption in top_k_generated_captions[:5]:
             logging.info(
@@ -213,6 +214,7 @@ def evaluate(
                 top_k_generated_captions,
                 encoded_features,
                 word_map,
+                coco_id,
                 print_beam,
             )
 
