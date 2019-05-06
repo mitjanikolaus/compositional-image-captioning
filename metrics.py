@@ -178,8 +178,9 @@ def accurracy_robust_coco(generated_captions, word_map):
 
     dict_path = os.path.join(base_dir, "data", "robust_coco", "dic_coco" + ".json")
     dict = json.load(open(dict_path, "r"))
+    object_index_to_word = {index: word for word, index in dict["wtod"].items()}
 
-    num_accurrates = 0
+    accurracies = []
     for coco_id, top_k_captions in generated_captions.items():
         caption = top_k_captions[0]
         caption = decode_caption(
@@ -200,20 +201,22 @@ def accurracy_robust_coco(generated_captions, word_map):
                 ]
             ).flatten()
         )
-        print("target classes: ", target_object_classes)
+        print(
+            "target classes: ",
+            [object_index_to_word[index] for index in target_object_classes],
+        )
+        found_object_classes = set()
         for word in caption:
             lemma = dict["wtol"][word]
             if lemma in dict["wtod"]:
                 object_class = dict["wtod"][lemma]
-                print("Found {}({})".format(lemma, object_class))
                 if object_class in target_object_classes:
-                    target_object_classes.remove(object_class)
-            if len(target_object_classes) == 0:
-                num_accurrates += 1
-                break
+                    print("Found {}({})".format(lemma, object_class))
+                    found_object_classes.add(object_class)
+        accurracies.append(len(found_object_classes) / len(target_object_classes))
 
-    accuracy = num_accurrates / len(generated_captions)
-    logging.info("Accuracy: {}".format(accuracy))
+    accuracy = np.mean(accurracies)
+    logging.info("Accuracy: {}".format(np.round(accuracy, 2)))
 
 
 def beam_occurrences(
