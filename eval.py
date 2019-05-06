@@ -186,7 +186,10 @@ def evaluate(
 
         if nucleus_sampling:
             top_k_generated_captions, alphas, beam = decoder.nucleus_sampling(
-                encoded_features, beam_size, top_p=0.9, print_beam=print_beam
+                encoded_features,
+                beam_size,
+                top_p=nucleus_sampling,
+                print_beam=print_beam,
             )
         else:
             top_k_generated_captions, alphas, beam = decoder.beam_search(
@@ -225,7 +228,7 @@ def evaluate(
     if re_ranking:
         name += "_re_ranking"
     if nucleus_sampling:
-        name += "_nucleus_sampling"
+        name += "_nucleus_sampling_p_" + str(nucleus_sampling)
     output_file_name = "eval_" + name + ".json"
     for metric in metrics:
         calculate_metric(
@@ -330,9 +333,8 @@ def check_args(args):
     )
     parser.add_argument(
         "--nucleus-sampling",
-        help="Use nucleus sampling instead of beam search",
-        default=False,
-        action="store_true",
+        help="Use nucleus sampling with the given p instead of beam search",
+        type=float,
     )
     parser.add_argument(
         "--diverse-beam-search",
