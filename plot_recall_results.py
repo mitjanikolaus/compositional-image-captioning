@@ -9,8 +9,36 @@ import matplotlib.pyplot as plt
 
 from metrics import average_recall
 
+# Plot verbose results
 MODE_VERBOSE = "VERBOSE"
-MODE_AVERAGE_FOR_PAIR = "AVERAGE_FOR_PAIRS"
+# Plot only one average recall per pair
+MODE_AVERAGE_FOR_PAIR = "AVG_PAIRS"
+# Plot only one average recall per category
+MODE_AVERAGE_FOR_CATEGORY = "AVG_CATEGORIES"
+
+ADJECTIVES_COLORS_ANIMATE = {"black_cat", "brown_dog", "white_horse", "black_bird"}
+ADJECTIVES_COLORS_INANIMATE = {"red_bus", "white_truck", "blue_bus", "white_boat"}
+
+ADJECTIVES_SIZES_ANIMATE = {"big_bird", "small_cat", "big_cat", "small_dog"}
+ADJECTIVES_SIZES_INANIMATE = {"small_plane", "big_plane", "small_table", "big_truck"}
+
+VERBS_TRANSITIVE = {"eat_man", "ride_woman", "hold_child", "eat_horse"}
+VERBS_INTRANSITIVE = {"lie_woman", "fly_bird", "stand_bird", "stand_child"}
+
+CATEGORIES = {
+    "colors animate": ADJECTIVES_COLORS_ANIMATE,
+    "colors inanimate": ADJECTIVES_COLORS_INANIMATE,
+    "sizes animate": ADJECTIVES_SIZES_ANIMATE,
+    "sizes inanimate": ADJECTIVES_SIZES_INANIMATE,
+    "verbs transitive": VERBS_TRANSITIVE,
+    "verbs intransitive": VERBS_INTRANSITIVE,
+}
+
+
+def calc_average_for_pair(stats, min_importance):
+    return np.sum(
+        list(stats["true_positives"].values())[min_importance - 1 :]
+    ) / np.sum(list(stats["numbers"].values())[min_importance - 1 :])
 
 
 def plot_recall_results(eval_files, mode, labels, min_importance):
@@ -35,10 +63,10 @@ def plot_recall_results(eval_files, mode, labels, min_importance):
         for i, label in enumerate(labels)
     ]
 
-    fig, axes = plt.subplots(nrows=len(eval_datas[0]), sharex=True, figsize=(8, 15))
-    plt.suptitle("Performance (min importance={})".format(min_importance))
     bar_width = 0.1
     if mode == MODE_VERBOSE:
+        fig, axes = plt.subplots(nrows=len(eval_datas[0]), sharex=True, figsize=(8, 15))
+
         index = np.arange(5 - (min_importance - 1))
 
         for i, pair in enumerate(eval_datas[0].keys()):
@@ -61,16 +89,12 @@ def plot_recall_results(eval_files, mode, labels, min_importance):
         plt.xlabel("Importance (Agreement within reference captions)")
 
     elif mode == MODE_AVERAGE_FOR_PAIR:
+        fig, axes = plt.subplots(nrows=len(eval_datas[0]), sharex=True, figsize=(8, 15))
+
         for i, pair in enumerate(eval_datas[0].keys()):
             axis = axes[i]
             for j, eval_data in enumerate(eval_datas):
-                recall = np.sum(
-                    list(eval_data[pair]["true_positives"].values())[
-                        min_importance - 1 :
-                    ]
-                ) / np.sum(
-                    list(eval_data[pair]["numbers"].values())[min_importance - 1 :]
-                )
+                recall = calc_average_for_pair(eval_data[pair], min_importance)
 
                 axis.bar(j * bar_width, recall, bar_width)
 
@@ -79,6 +103,40 @@ def plot_recall_results(eval_files, mode, labels, min_importance):
             axis.set_title(pair)
         plt.xticks([], [])
 
+    elif mode == MODE_AVERAGE_FOR_CATEGORY:
+        category_eval_datas = []
+
+        for eval_data in eval_datas:
+            category_eval_data = {}
+            for category_name, category in CATEGORIES.items():
+                average = 0
+                num_pairs = 0
+                for pair, data in eval_data.items():
+                    if pair in category:
+                        average += calc_average_for_pair(
+                            eval_data[pair], min_importance
+                        )
+                        num_pairs += 1
+                category_eval_data[category_name] = average / num_pairs
+            category_eval_datas.append(category_eval_data)
+
+        fig, axes = plt.subplots(
+            nrows=len(category_eval_datas[0]), sharex=True, figsize=(8, 15)
+        )
+
+        for i, category_name in enumerate(category_eval_datas[0].keys()):
+            axis = axes[i]
+            for j, category_eval_data in enumerate(category_eval_datas):
+                recall = category_eval_data[category_name]
+
+                axis.bar(j * bar_width, recall, bar_width)
+
+                axis.text(x=j * bar_width, y=0.8, s=np.round(recall, 2), size=7)
+            axis.set_ylim(0, 1)
+            axis.set_title(category_name)
+        plt.xticks([], [])
+
+    plt.suptitle("Performance (min importance={})".format(min_importance))
     # Common ylabel
     fig.text(0.06, 0.5, "Recall", ha="center", va="center", rotation="vertical")
     # Common legend
@@ -100,8 +158,8 @@ def check_args(args):
     parser.add_argument(
         "--mode",
         help="Mode",
-        default=MODE_AVERAGE_FOR_PAIR,
-        choices=[MODE_AVERAGE_FOR_PAIR, MODE_VERBOSE],
+        default=MODE_AVERAGE_FOR_CATEGORY,
+        choices=[MODE_AVERAGE_FOR_PAIR, MODE_VERBOSE, MODE_AVERAGE_FOR_CATEGORY],
     )
     parser.add_argument(
         "--labels", nargs="+", help="Labels for each model that was evaluated"
