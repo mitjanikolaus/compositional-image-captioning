@@ -207,12 +207,13 @@ def accurracy_robust_coco(generated_captions, word_map):
         )
         found_object_classes = set()
         for word in caption:
-            lemma = dict["wtol"][word]
-            if lemma in dict["wtod"]:
-                object_class = dict["wtod"][lemma]
-                if object_class in target_object_classes:
-                    print("Found {}({})".format(lemma, object_class))
-                    found_object_classes.add(object_class)
+            if word in dict["wtol"]:
+                lemma = dict["wtol"][word]
+                if lemma in dict["wtod"]:
+                    object_class = dict["wtod"][lemma]
+                    if object_class in target_object_classes:
+                        print("Found {}({})".format(lemma, object_class))
+                        found_object_classes.add(object_class)
         accurracies.append(len(found_object_classes) / len(target_object_classes))
 
     accuracy = np.mean(accurracies)
