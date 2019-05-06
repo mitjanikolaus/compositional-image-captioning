@@ -212,8 +212,8 @@ def accurracy_robust_coco(generated_captions, word_map):
                 num_accurrates += 1
                 break
 
-    accurracy = num_accurrates / len(generated_captions)
-    print("Accuracy: ", accurracy)
+    accuracy = num_accurrates / len(generated_captions)
+    logging.info("Accuracy: {}".format(accuracy))
 
 
 def beam_occurrences(
