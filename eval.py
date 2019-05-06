@@ -224,13 +224,27 @@ def evaluate(
 
         assert len(target_captions) == len(generated_captions)
 
-    # Calculate metric scores
+    # Save results
     name = str(os.path.basename(checkpoint_path).split(".")[0])
     if re_ranking:
         name += "_re_ranking"
     if nucleus_sampling:
         name += "_nucleus_sampling_p_" + str(nucleus_sampling)
-    output_file_name = "eval_" + name + ".json"
+    results_output_file_name = "results_" + name + ".json"
+
+    results = []
+    for coco_id, top_k_captions in generated_captions.items():
+        caption = " ".join(
+            decode_caption(
+                get_caption_without_special_tokens(top_k_captions[0], word_map),
+                word_map,
+            )
+        )
+        results.append({"image_id": int(coco_id), "caption": caption})
+    json.dump(results, open(results_output_file_name, "w"))
+
+    # Calculate metric scores
+    eval_output_file_name = "eval_" + name + ".json"
     for metric in metrics:
         calculate_metric(
             metric,
@@ -240,7 +254,7 @@ def evaluate(
             word_map,
             dataset_splits_dict["heldout_pairs"],
             beam_size,
-            output_file_name,
+            eval_output_file_name,
         )
 
 
