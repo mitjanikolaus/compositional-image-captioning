@@ -111,12 +111,9 @@ def plot_recall_results(eval_files, mode, labels, min_importance):
             for category_name, category in CATEGORIES.items():
                 average = 0
                 num_pairs = 0
-                for pair, data in eval_data.items():
-                    if pair in category:
-                        average += calc_average_for_pair(
-                            eval_data[pair], min_importance
-                        )
-                        num_pairs += 1
+                for pair in category:
+                    average += calc_average_for_pair(eval_data[pair], min_importance)
+                    num_pairs += 1
                 category_eval_data[category_name] = average / num_pairs
             category_eval_datas.append(category_eval_data)
 
