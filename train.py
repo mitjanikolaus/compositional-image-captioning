@@ -868,13 +868,13 @@ def check_args(args):
         action="store_false",
     )
     parser.add_argument(
-        "--gradnorm-alpha", help="Gradnorm alpha", type=float, default=1.0
+        "--gradnorm-alpha", help="Gradnorm alpha", type=float, default=2.5
     )
     parser.add_argument(
         "--gradnorm-learning-rate",
         help="Initial learning rate for the decoder",
         type=float,
-        default=0.025,
+        default=0.01,
     )
 
     parsed_args = parser.parse_args(args)
