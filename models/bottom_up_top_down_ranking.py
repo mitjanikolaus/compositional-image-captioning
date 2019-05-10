@@ -75,6 +75,7 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         "image_features_size": 2048,
         "joint_embeddings_size": 1024,
         "word_embeddings_size": 300,
+        "language_encoding_lstm_size": 1000,
         "attention_lstm_size": 1000,
         "attention_layer_size": 512,
         "language_generation_lstm_size": 1000,
@@ -93,6 +94,8 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         "language_encoding_lstm.lstm_cell.weight_hh",
         "language_encoding_lstm.lstm_cell.bias_ih",
         "language_encoding_lstm.lstm_cell.bias_hh",
+        "caption_embedding.weight",
+        "caption_embedding.bias",
     ]
 
     def __init__(self, word_map, params, pretrained_embeddings=None):
@@ -103,6 +106,10 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         self.image_embedding = ImageEmbedding(
             self.params["joint_embeddings_size"], self.params["image_features_size"]
         )
+        self.caption_embedding = nn.Linear(
+            self.params["language_encoding_lstm_size"],
+            self.params["joint_embeddings_size"],
+        )
 
         self.attention_lstm = AttentionLSTM(
             self.params["joint_embeddings_size"],
@@ -110,7 +117,8 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
             self.params["attention_lstm_size"],
         )
         self.language_encoding_lstm = LanguageEncodingLSTM(
-            self.params["word_embeddings_size"], self.params["joint_embeddings_size"]
+            self.params["word_embeddings_size"],
+            self.params["language_encoding_lstm_size"],
         )
         self.language_generation_lstm = LanguageGenerationLSTM(
             self.params["attention_lstm_size"],
@@ -171,9 +179,10 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         h_lan_enc, c_lan_enc = self.language_encoding_lstm(
             h_lan_enc, c_lan_enc, prev_words_embedded
         )
+        embedded_caption_part = self.caption_embedding(h_lan_enc)
 
         h_attention, c_attention = self.attention_lstm(
-            h_attention, c_attention, h_lan_gen, v_mean_embedded, h_lan_enc
+            h_attention, c_attention, h_lan_gen, v_mean_embedded, embedded_caption_part
         )
         v_hat = self.attention(images_embedded, h_attention)
         h_lan_gen, c_lan_gen = self.language_generation_lstm(
@@ -208,7 +217,7 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
             # Tensor to store hidden activations of the language encoding LSTM of the last timestep, these will be the
             # caption embedding
             lang_encoding_hidden_activations = torch.zeros(
-                (batch_size, self.params["joint_embeddings_size"]), device=device
+                (batch_size, self.params["language_encoding_lstm_size"]), device=device
             )
 
         # At the start, all 'previous words' are the <start> token
@@ -263,7 +272,8 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
 
         captions_embedded = None
         if self.training:
-            captions_embedded = l2_norm(lang_encoding_hidden_activations)
+            captions_embedded = self.caption_embedding(lang_encoding_hidden_activations)
+            captions_embedded = l2_norm(captions_embedded)
 
         return scores, decode_lengths, v_mean_embedded, captions_embedded, None
 
@@ -280,7 +290,7 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
 
         # Tensor to store hidden activations
         hidden_activations = torch.zeros(
-            (batch_size, self.params["joint_embeddings_size"]), device=device
+            (batch_size, self.params["language_encoding_lstm_size"]), device=device
         )
 
         for t in range(max(decode_lengths)):
@@ -293,7 +303,8 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
                 decode_lengths == t + 1
             ]
 
-        captions_embedded = l2_norm(hidden_activations)
+        captions_embedded = self.caption_embedding(hidden_activations)
+        captions_embedded = l2_norm(captions_embedded)
         return captions_embedded
 
     def forward_ranking(self, encoder_output, captions, decode_lengths):
