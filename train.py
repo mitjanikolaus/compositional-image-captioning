@@ -284,7 +284,7 @@ def main(
     for epoch in range(start_epoch, epochs):
         if epochs_since_last_improvement >= epochs_early_stopping:
             logging.info(
-                "No improvement since %d epochs, stopping training".format(
+                "No improvement since {} epochs, stopping training".format(
                     epochs_since_last_improvement
                 )
             )

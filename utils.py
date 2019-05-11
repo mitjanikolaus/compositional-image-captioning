@@ -260,7 +260,7 @@ def get_train_log_file_path(
     if not os.path.exists(logging_dir):
         os.makedirs(logging_dir)
     if embeddings_file:
-        name_suffix += os.path.basename(embeddings_file).split(".")[0]
+        name_suffix += "_" + os.path.basename(embeddings_file).split(".")[0]
     return os.path.join(
         logging_dir,
         get_file_name_prefix(model_name, dataset_splits, name_suffix) + ".log",
