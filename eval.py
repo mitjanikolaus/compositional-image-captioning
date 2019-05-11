@@ -53,8 +53,10 @@ def re_rank_beam(
         logging.info("Before re-ranking:")
         for caption in top_k_generated_captions[:5]:
             logging.info(
-                decode_caption(
-                    get_caption_without_special_tokens(caption, word_map), word_map
+                " ".join(
+                    decode_caption(
+                        get_caption_without_special_tokens(caption, word_map), word_map
+                    )
                 )
             )
 
@@ -81,9 +83,13 @@ def re_rank_beam(
         logging.info("After re-ranking:")
         for caption in top_k_generated_captions[:5]:
             logging.info(
-                decode_caption(
-                    get_caption_without_special_tokens(caption.cpu().numpy(), word_map),
-                    word_map,
+                " ".join(
+                    decode_caption(
+                        get_caption_without_special_tokens(
+                            caption.cpu().numpy(), word_map
+                        ),
+                        word_map,
+                    )
                 )
             )
 
