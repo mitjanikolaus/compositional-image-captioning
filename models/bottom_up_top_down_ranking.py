@@ -160,15 +160,15 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         h_lan_enc, c_lan_enc = self.language_encoding_lstm(
             h_lan_enc, c_lan_enc, prev_words_embedded
         )
-        embedded_caption_part = self.caption_embedding(h_lan_enc)
+        h_lang_enc_embedded = self.caption_embedding(h_lan_enc)
 
-        v_hat = self.attention(images_embedded, v_mean_embedded, embedded_caption_part)
+        v_hat = self.attention(images_embedded, v_mean_embedded, h_lang_enc_embedded)
         h_lan_gen, c_lan_gen = self.language_generation_lstm(
             h_lan_gen, c_lan_gen, h_lan_enc, v_hat
         )
         scores = self.fully_connected(self.dropout(h_lan_gen))
         states = [h_lan_enc, c_lan_enc, h_lan_gen, c_lan_gen]
-        return scores, states, None, embedded_caption_part
+        return scores, states, None, h_lang_enc_embedded
 
     def forward_joint(self, encoder_output, target_captions=None, decode_lengths=None):
         """Forward pass for both ranking and caption generation."""
@@ -605,22 +605,22 @@ class LanguageGenerationLSTM(nn.Module):
 
 
 class VisualAttention(nn.Module):
-    def __init__(self, join_embedding_size, hidden_layer_size):
+    def __init__(self, join_embedding_size, attention_layer_size):
         super(VisualAttention, self).__init__()
         self.linear_image_features = nn.Linear(
-            join_embedding_size, hidden_layer_size, bias=False
+            join_embedding_size, attention_layer_size, bias=False
         )
         self.linear_caption_part = nn.Linear(
-            join_embedding_size, hidden_layer_size, bias=False
+            join_embedding_size, attention_layer_size, bias=False
         )
         self.tanh = nn.Tanh()
-        self.linear_attention = nn.Linear(hidden_layer_size, 1)
+        self.linear_attention = nn.Linear(attention_layer_size, 1)
         self.softmax = nn.Softmax(dim=1)
 
-    def forward(self, images_embedded, v_mean_embedded, caption_part_embedded):
+    def forward(self, images_embedded, v_mean_embedded, h_lang_enc_embedded):
         image_features_embedded = self.linear_image_features(images_embedded)
         lang_enc_lstm_embedded = self.linear_caption_part(
-            caption_part_embedded
+            h_lang_enc_embedded
         ).unsqueeze(1)
 
         all_feats_emb = image_features_embedded + lang_enc_lstm_embedded.repeat(
