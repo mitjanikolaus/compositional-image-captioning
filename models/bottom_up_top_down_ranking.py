@@ -230,7 +230,7 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
                 break
 
             prev_words_embedded = self.word_embedding(prev_words)
-            scores_for_timestep, states, alphas_for_timestep, embedded_caption_part = self.forward_step(
+            scores_for_timestep, states, alphas_for_timestep, h_lang_enc_embedded = self.forward_step(
                 images_embedded, v_mean_embedded, prev_words_embedded, states
             )
 
@@ -243,7 +243,7 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
                 indices_incomplete_sequences
             ]
             if self.training:
-                caption_embeddings[decode_lengths == t + 1] = embedded_caption_part[
+                caption_embeddings[decode_lengths == t + 1] = h_lang_enc_embedded[
                     decode_lengths == t + 1
                 ]
 
@@ -265,8 +265,8 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         h_lan_enc, c_lan_enc = self.language_encoding_lstm.init_state(batch_size)
 
         # Tensor to store hidden activations
-        hidden_activations = torch.zeros(
-            (batch_size, self.params["language_encoding_lstm_size"]), device=device
+        caption_embeddings = torch.zeros(
+            (batch_size, self.params["joint_embeddings_size"]), device=device
         )
 
         for t in range(max(decode_lengths)):
@@ -275,12 +275,13 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
             h_lan_enc, c_lan_enc = self.language_encoding_lstm(
                 h_lan_enc, c_lan_enc, prev_words_embedded
             )
-            hidden_activations[decode_lengths == t + 1] = h_lan_enc[
+            h_lang_enc_embedded = self.caption_embedding(h_lan_enc)
+
+            caption_embeddings[decode_lengths == t + 1] = h_lang_enc_embedded[
                 decode_lengths == t + 1
             ]
 
-        captions_embedded = self.caption_embedding(hidden_activations)
-        captions_embedded = l2_norm(captions_embedded)
+        captions_embedded = l2_norm(caption_embeddings)
         return captions_embedded
 
     def forward_ranking(self, encoder_output, captions, decode_lengths):
@@ -356,7 +357,7 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
             prev_words = top_k_sequences[:, step]
 
             prev_word_embeddings = self.word_embedding(prev_words)
-            predictions, states, alpha = self.forward_step(
+            predictions, states, alpha, _ = self.forward_step(
                 images_embedded, v_mean_embedded, prev_word_embeddings, states
             )
             scores = F.log_softmax(predictions, dim=1)
@@ -487,7 +488,7 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
             prev_words = top_k_sequences[:, step]
 
             prev_word_embeddings = self.word_embedding(prev_words)
-            predictions, states, alpha = self.forward_step(
+            predictions, states, alpha, _ = self.forward_step(
                 images_embedded, v_mean_embedded, prev_word_embeddings, states
             )
             scores = F.log_softmax(predictions, dim=1)
