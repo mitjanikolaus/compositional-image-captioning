@@ -120,7 +120,9 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
             self.params["language_generation_lstm_size"],
         )
         self.attention = VisualAttention(
-            self.params["joint_embeddings_size"], self.params["attention_layer_size"]
+            self.params["joint_embeddings_size"],
+            self.params["language_generation_lstm_size"],
+            self.params["attention_layer_size"],
         )
 
         # Dropout layer
@@ -152,9 +154,7 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
 
         return states
 
-    def forward_step(
-        self, images_embedded, v_mean_embedded, prev_words_embedded, states
-    ):
+    def forward_step(self, images_embedded, prev_words_embedded, states):
         h_lan_enc, c_lan_enc, h_lan_gen, c_lan_gen = states
 
         h_lan_enc, c_lan_enc = self.language_encoding_lstm(
@@ -162,7 +162,7 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         )
         h_lang_enc_embedded = self.caption_embedding(h_lan_enc)
 
-        v_hat = self.attention(images_embedded, v_mean_embedded, h_lang_enc_embedded)
+        v_hat = self.attention(images_embedded, h_lang_enc_embedded, h_lan_gen)
         h_lan_gen, c_lan_gen = self.language_generation_lstm(
             h_lan_gen, c_lan_gen, h_lan_enc, v_hat
         )
@@ -231,7 +231,7 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
 
             prev_words_embedded = self.word_embedding(prev_words)
             scores_for_timestep, states, alphas_for_timestep, h_lang_enc_embedded = self.forward_step(
-                images_embedded, v_mean_embedded, prev_words_embedded, states
+                images_embedded, prev_words_embedded, states
             )
 
             # Update the previously predicted words
@@ -358,7 +358,7 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
 
             prev_word_embeddings = self.word_embedding(prev_words)
             predictions, states, alpha, _ = self.forward_step(
-                images_embedded, v_mean_embedded, prev_word_embeddings, states
+                images_embedded, prev_word_embeddings, states
             )
             scores = F.log_softmax(predictions, dim=1)
 
@@ -489,7 +489,7 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
 
             prev_word_embeddings = self.word_embedding(prev_words)
             predictions, states, alpha, _ = self.forward_step(
-                images_embedded, v_mean_embedded, prev_word_embeddings, states
+                images_embedded, prev_word_embeddings, states
             )
             scores = F.log_softmax(predictions, dim=1)
 
@@ -605,26 +605,30 @@ class LanguageGenerationLSTM(nn.Module):
 
 
 class VisualAttention(nn.Module):
-    def __init__(self, join_embedding_size, attention_layer_size):
+    def __init__(self, joint_embeddings_size, lang_gen_lstm_size, attention_layer_size):
         super(VisualAttention, self).__init__()
         self.linear_image_features = nn.Linear(
-            join_embedding_size, attention_layer_size, bias=False
+            joint_embeddings_size, attention_layer_size, bias=False
         )
-        self.linear_caption_part = nn.Linear(
-            join_embedding_size, attention_layer_size, bias=False
+        self.linear_lang_enc = nn.Linear(
+            joint_embeddings_size, attention_layer_size, bias=False
+        )
+        self.linear_lang_gen = nn.Linear(
+            lang_gen_lstm_size, attention_layer_size, bias=False
         )
         self.tanh = nn.Tanh()
         self.linear_attention = nn.Linear(attention_layer_size, 1)
         self.softmax = nn.Softmax(dim=1)
 
-    def forward(self, images_embedded, v_mean_embedded, h_lang_enc_embedded):
+    def forward(self, images_embedded, h_lang_enc_embedded, h_lang_gen):
         image_features_embedded = self.linear_image_features(images_embedded)
-        lang_enc_lstm_embedded = self.linear_caption_part(
-            h_lang_enc_embedded
-        ).unsqueeze(1)
+        lang_enc_lstm_embedded = self.linear_lang_enc(h_lang_enc_embedded).unsqueeze(1)
+        h_lang_gen_embedded = self.linear_lang_gen(h_lang_gen).unsqueeze(1)
 
-        all_feats_emb = image_features_embedded + lang_enc_lstm_embedded.repeat(
-            1, images_embedded.size()[1], 1
+        all_feats_emb = (
+            image_features_embedded
+            + lang_enc_lstm_embedded.repeat(1, images_embedded.size(1), 1)
+            + h_lang_gen_embedded.repeat(1, images_embedded.size(1), 1)
         )
 
         activate_feats = self.tanh(all_feats_emb)
