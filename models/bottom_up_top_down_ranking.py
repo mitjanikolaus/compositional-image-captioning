@@ -94,8 +94,6 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         "language_encoding_lstm.lstm_cell.weight_hh",
         "language_encoding_lstm.lstm_cell.bias_ih",
         "language_encoding_lstm.lstm_cell.bias_hh",
-        "caption_embedding.weight",
-        "caption_embedding.bias",
     ]
 
     def __init__(self, word_map, params, pretrained_embeddings=None):
@@ -113,6 +111,7 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
 
         self.attention_lstm = AttentionLSTM(
             self.params["joint_embeddings_size"],
+            self.params["language_encoding_lstm_size"],
             self.params["language_generation_lstm_size"],
             self.params["attention_lstm_size"],
         )
@@ -179,10 +178,9 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         h_lan_enc, c_lan_enc = self.language_encoding_lstm(
             h_lan_enc, c_lan_enc, prev_words_embedded
         )
-        embedded_caption_part = self.caption_embedding(h_lan_enc)
 
         h_attention, c_attention = self.attention_lstm(
-            h_attention, c_attention, h_lan_gen, v_mean_embedded, embedded_caption_part
+            h_attention, c_attention, h_lan_gen, v_mean_embedded, h_lan_enc
         )
         v_hat = self.attention(images_embedded, h_attention)
         h_lan_gen, c_lan_gen = self.language_generation_lstm(
@@ -591,14 +589,18 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
 
 
 class AttentionLSTM(nn.Module):
-    def __init__(self, joint_embeddings_size, dim_lang_lstm, hidden_size):
+    def __init__(
+        self, joint_embeddings_size, dim_lang_enc_lstm, dim_lang_gen_lstm, hidden_size
+    ):
         super(AttentionLSTM, self).__init__()
         self.lstm_cell = nn.LSTMCell(
-            2 * joint_embeddings_size + dim_lang_lstm, hidden_size, bias=True
+            dim_lang_enc_lstm + joint_embeddings_size + dim_lang_gen_lstm,
+            hidden_size,
+            bias=True,
         )
 
-    def forward(self, h1, c1, h2, v_mean, h_lan_enc):
-        input_features = torch.cat((h2, v_mean, h_lan_enc), dim=1)
+    def forward(self, h1, c1, h_lang_gen, v_mean, h_lan_enc):
+        input_features = torch.cat((h_lang_gen, v_mean, h_lan_enc), dim=1)
         h_out, c_out = self.lstm_cell(input_features, (h1, c1))
         return h_out, c_out
 
