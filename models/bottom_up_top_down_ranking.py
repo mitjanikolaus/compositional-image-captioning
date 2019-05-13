@@ -93,8 +93,6 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         "language_encoding_lstm.lstm_cell.weight_hh",
         "language_encoding_lstm.lstm_cell.bias_ih",
         "language_encoding_lstm.lstm_cell.bias_hh",
-        "caption_embedding.weight",
-        "caption_embedding.bias",
     ]
 
     def __init__(self, word_map, params, pretrained_embeddings=None):
@@ -116,11 +114,12 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         )
         self.language_generation_lstm = LanguageGenerationLSTM(
             self.params["joint_embeddings_size"],
+            self.params["language_encoding_lstm_size"],
             self.params["language_generation_lstm_size"],
         )
         self.attention = VisualAttention(
             self.params["joint_embeddings_size"],
-            self.params["language_generation_lstm_size"],
+            self.params["language_encoding_lstm_size"],
             self.params["attention_layer_size"],
         )
 
@@ -161,9 +160,9 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         )
         h_lang_enc_embedded = self.caption_embedding(h_lan_enc)
 
-        v_hat = self.attention(images_embedded, h_lan_gen)
+        v_hat = self.attention(images_embedded, h_lan_enc)
         h_lan_gen, c_lan_gen = self.language_generation_lstm(
-            h_lan_gen, c_lan_gen, h_lang_enc_embedded, v_hat
+            h_lan_gen, c_lan_gen, h_lan_enc, v_hat
         )
         scores = self.fully_connected(self.dropout(h_lan_gen))
         states = [h_lan_enc, c_lan_enc, h_lan_gen, c_lan_gen]
@@ -591,9 +590,11 @@ class LanguageEncodingLSTM(nn.Module):
 
 
 class LanguageGenerationLSTM(nn.Module):
-    def __init__(self, joint_embeddings_size, hidden_size):
+    def __init__(self, joint_embeddings_size, language_encoding_lstm_size, hidden_size):
         super(LanguageGenerationLSTM, self).__init__()
-        self.lstm_cell = nn.LSTMCell(2 * joint_embeddings_size, hidden_size, bias=True)
+        self.lstm_cell = nn.LSTMCell(
+            language_encoding_lstm_size + joint_embeddings_size, hidden_size, bias=True
+        )
 
     def forward(self, h2, c2, h_lang_enc, v_hat):
         input_features = torch.cat((h_lang_enc, v_hat), dim=1)
@@ -602,23 +603,23 @@ class LanguageGenerationLSTM(nn.Module):
 
 
 class VisualAttention(nn.Module):
-    def __init__(self, joint_embeddings_size, lang_gen_lstm_size, attention_layer_size):
+    def __init__(self, joint_embeddings_size, lang_enc_lstm_size, attention_layer_size):
         super(VisualAttention, self).__init__()
         self.linear_image_features = nn.Linear(
             joint_embeddings_size, attention_layer_size, bias=False
         )
-        self.linear_lang_gen = nn.Linear(
-            lang_gen_lstm_size, attention_layer_size, bias=False
+        self.linear_lang_enc = nn.Linear(
+            lang_enc_lstm_size, attention_layer_size, bias=False
         )
         self.tanh = nn.Tanh()
         self.linear_attention = nn.Linear(attention_layer_size, 1)
         self.softmax = nn.Softmax(dim=1)
 
-    def forward(self, images_embedded, h_lang_gen):
+    def forward(self, images_embedded, h_lang_enc):
         image_features_embedded = self.linear_image_features(images_embedded)
-        h_lang_gen_embedded = self.linear_lang_gen(h_lang_gen).unsqueeze(1)
+        h_lang_enc_embedded = self.linear_lang_enc(h_lang_enc).unsqueeze(1)
 
-        all_feats_emb = image_features_embedded + h_lang_gen_embedded.repeat(
+        all_feats_emb = image_features_embedded + h_lang_enc_embedded.repeat(
             1, images_embedded.size(1), 1
         )
 
