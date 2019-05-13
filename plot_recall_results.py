@@ -121,6 +121,13 @@ def plot_recall_results(eval_files, mode, labels, min_importance):
             nrows=len(category_eval_datas[0]), sharex=True, figsize=(8, 15)
         )
 
+        for category_name in category_eval_datas[0].keys():
+            print(category_name, end=" ")
+        for i, eval_data in enumerate(category_eval_datas):
+            print("\n" + labels[i], end=" ")
+            for value in eval_data.values():
+                print(np.round(value, 3), end=" ")
+
         for i, category_name in enumerate(category_eval_datas[0].keys()):
             axis = axes[i]
             for j, category_eval_data in enumerate(category_eval_datas):
