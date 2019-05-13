@@ -10,15 +10,15 @@ from utils import (
     IMAGES_META_FILENAME,
     DATA_CAPTIONS,
     IMAGES_FILENAME,
-    get_splits,
     show_img,
     WORD_MAP_FILENAME,
     decode_caption,
     get_caption_without_special_tokens,
+    get_splits_from_occurrences_data,
 )
 
 
-def show_images(data_folder, occurrences_data_file):
+def show_images(data_folder, pair):
     image_features = h5py.File(os.path.join(data_folder, IMAGES_FILENAME), "r")
 
     with open(os.path.join(data_folder, IMAGES_META_FILENAME), "r") as json_file:
@@ -28,7 +28,7 @@ def show_images(data_folder, occurrences_data_file):
     with open(word_map_file, "r") as json_file:
         word_map = json.load(json_file)
 
-    _, _, test_images_split = get_splits([occurrences_data_file], None)
+    _, _, test_images_split = get_splits_from_occurrences_data([pair])
 
     for coco_id in test_images_split:
         image_data = image_features[coco_id][()]
@@ -53,9 +53,7 @@ def check_args(args):
         default=os.path.expanduser("../datasets/coco2014_preprocessed/"),
     )
     parser.add_argument(
-        "--occurrences-data",
-        help="File containing occurrences statistics about adjective-noun or verb-noun pairs",
-        required=True,
+        "--pair", help="adjective-noun or verb-noun pair", required=True
     )
 
     parsed_args = parser.parse_args(args)
@@ -65,4 +63,4 @@ def check_args(args):
 
 if __name__ == "__main__":
     parsed_args = check_args(sys.argv[1:])
-    show_images(parsed_args.data_folder, parsed_args.occurrences_data)
+    show_images(parsed_args.data_folder, parsed_args.pair)
