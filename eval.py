@@ -46,9 +46,14 @@ def get_top_ranked_captions_indices(embedded_image, embedded_captions):
 
 
 def re_rank_beam(
-    decoder, top_k_generated_captions, encoded_features, word_map, coco_id, print_beam
+    decoder,
+    top_k_generated_captions,
+    encoded_features,
+    word_map,
+    coco_id,
+    print_captions,
 ):
-    if print_beam:
+    if print_captions:
         logging.info("COCO ID: {}".format(coco_id))
         logging.info("Before re-ranking:")
         for caption in top_k_generated_captions[:5]:
@@ -79,20 +84,6 @@ def re_rank_beam(
     indices = get_top_ranked_captions_indices(image_embedded, image_captions_embedded)
     top_k_generated_captions = [top_k_generated_captions[i] for i in indices]
 
-    if print_beam:
-        logging.info("After re-ranking:")
-        for caption in top_k_generated_captions[:5]:
-            logging.info(
-                " ".join(
-                    decode_caption(
-                        get_caption_without_special_tokens(
-                            caption.cpu().numpy(), word_map
-                        ),
-                        word_map,
-                    )
-                )
-            )
-
     return [caption.cpu().numpy() for caption in top_k_generated_captions]
 
 
@@ -108,6 +99,7 @@ def evaluate(
     diverse_beam_search,
     visualize,
     print_beam,
+    print_captions,
 ):
     # Load model
     checkpoint = torch.load(checkpoint_path, map_location=device)
@@ -221,10 +213,21 @@ def evaluate(
                 encoded_features,
                 word_map,
                 coco_id,
-                print_beam,
+                print_captions,
             )
 
         generated_captions[coco_id] = top_k_generated_captions[:eval_beam_size]
+        if print_captions:
+            logging.info("COCO ID: {}".format(coco_id))
+            for caption in generated_captions[coco_id]:
+                logging.info(
+                    " ".join(
+                        decode_caption(
+                            get_caption_without_special_tokens(caption, word_map),
+                            word_map,
+                        )
+                    )
+                )
         if store_beam:
             generated_beams[coco_id] = beam[:eval_beam_size]
 
@@ -375,6 +378,12 @@ def check_args(args):
         default=False,
         action="store_true",
     )
+    parser.add_argument(
+        "--print-captions",
+        help="Print the generated captions for every sample",
+        default=False,
+        action="store_true",
+    )
 
     parsed_args = parser.parse_args(args)
     return parsed_args
@@ -401,4 +410,5 @@ if __name__ == "__main__":
         diverse_beam_search=parsed_args.diverse_beam_search,
         visualize=parsed_args.visualize_attention,
         print_beam=parsed_args.print_beam,
+        print_captions=parsed_args.print_captions,
     )
