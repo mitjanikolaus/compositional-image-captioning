@@ -15,7 +15,7 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         self.params = update_params(self.DEFAULT_MODEL_PARAMS, params)
 
-        resnet = torchvision.models.resnet101(pretrained=True)
+        resnet = torchvision.models.resnet152(pretrained=True)
 
         # Remove linear and pool layers, these are only used for classification
         modules = list(resnet.children())[:-2]
