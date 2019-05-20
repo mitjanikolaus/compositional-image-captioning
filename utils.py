@@ -213,6 +213,7 @@ def get_splits_from_occurrences_data(heldout_pairs):
 
 def show_img(img):
     plt.imshow(img.transpose(1, 2, 0))
+    plt.axis("off")
     plt.show()
 
 
