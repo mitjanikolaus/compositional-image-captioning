@@ -58,7 +58,7 @@ def plot_recall_results(eval_files, mode, labels, min_importance):
     labels = [
         label
         + " (Avg recall: {})".format(
-            np.round(average_recall(eval_datas[i], min_importance), 2)
+            np.round(average_recall(eval_datas[i], min_importance), 3)
         )
         for i, label in enumerate(labels)
     ]
@@ -98,7 +98,7 @@ def plot_recall_results(eval_files, mode, labels, min_importance):
 
                 axis.bar(j * bar_width, recall, bar_width)
 
-                axis.text(x=j * bar_width, y=0.8, s=np.round(recall, 2), size=7)
+                axis.text(x=j * bar_width, y=0.8, s=np.round(recall, 3), size=7)
             axis.set_ylim(0, 1)
             axis.set_title(pair)
         plt.xticks([], [])
@@ -135,7 +135,7 @@ def plot_recall_results(eval_files, mode, labels, min_importance):
 
                 axis.bar(j * bar_width, recall, bar_width)
 
-                axis.text(x=j * bar_width, y=0.8, s=np.round(recall, 2), size=7)
+                axis.text(x=j * bar_width, y=0.8, s=np.round(recall, 3), size=7)
             axis.set_ylim(0, 1)
             axis.set_title(category_name)
         plt.xticks([], [])
