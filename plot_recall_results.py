@@ -91,13 +91,17 @@ def plot_recall_results(eval_files, mode, labels, min_importance):
     elif mode == MODE_AVERAGE_FOR_PAIR:
         fig, axes = plt.subplots(nrows=len(eval_datas[0]), sharex=True, figsize=(8, 15))
 
+        for i, eval_data in enumerate(eval_datas):
+            print(labels[i], end=" ")
+
         for i, pair in enumerate(eval_datas[0].keys()):
             axis = axes[i]
+            print("\n" + pair, end=" ")
             for j, eval_data in enumerate(eval_datas):
                 recall = calc_average_for_pair(eval_data[pair], min_importance)
+                print(np.round(recall, 3), end=" ")
 
                 axis.bar(j * bar_width, recall, bar_width)
-
                 axis.text(x=j * bar_width, y=0.8, s=np.round(recall, 3), size=7)
             axis.set_ylim(0, 1)
             axis.set_title(pair)
