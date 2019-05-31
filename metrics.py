@@ -150,14 +150,17 @@ def calc_recall(
 
 def average_recall(recall_scores, min_importance=1):
     pair_recalls_summed = 0
+    length = 0
 
     for i, pair in enumerate(recall_scores.keys()):
         average_pair_recall = np.sum(
             list(recall_scores[pair]["true_positives"].values())[min_importance - 1 :]
         ) / np.sum(list(recall_scores[pair]["numbers"].values())[min_importance - 1 :])
-        pair_recalls_summed += average_pair_recall
+        if not np.isnan(average_pair_recall):
+            pair_recalls_summed += average_pair_recall
+            length += 1
 
-    recall = pair_recalls_summed / len(recall_scores)
+    recall = pair_recalls_summed / length
     return recall
 
 
