@@ -229,7 +229,7 @@ def evaluate(
                     )
                 )
         if store_beam:
-            generated_beams[coco_id] = beam[:eval_beam_size]
+            generated_beams[coco_id] = beam
 
         assert len(target_captions) == len(generated_captions)
 
