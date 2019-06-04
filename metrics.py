@@ -232,6 +232,8 @@ def beam_occurrences(
         )
         occurrences_data = json.load(open(occurrences_data_file, "r"))
 
+        _, _, test_indices = get_splits_from_occurrences_data([pair])
+
         nouns = set(occurrences_data[NOUNS])
         if ADJECTIVES in occurrences_data:
             adjectives = set(occurrences_data[ADJECTIVES])
@@ -244,8 +246,6 @@ def beam_occurrences(
         pair_occurrences = np.zeros(max_length)
 
         num_beams = np.zeros(max_length)
-
-        _, _, test_indices = get_splits_from_occurrences_data([[pair]])
 
         for coco_id in test_indices:
             beam = generated_beams[coco_id]
@@ -278,15 +278,15 @@ def beam_occurrences(
                     pair_occurrences[step] += 1
                 num_beams[step] += 1
 
-        name = os.path.basename(occurrences_data_file).split(".")[0]
-        logging.info("Beam occurrences for {}".format(name))
-        logging.info("Nouns: {}".format(noun_occurrences))
-        logging.info("Adjectives/Verbs: {}".format(other_occurrences))
-        logging.info("Pairs: {}".format(pair_occurrences))
-        logging.info("Number of beams: {}".format(num_beams))
-
         # Print only occurrences up to max_print_length
         print_length = min(max_print_length, len(np.trim_zeros(num_beams)))
+
+        name = os.path.basename(occurrences_data_file).split(".")[0]
+        logging.info("Beam occurrences for {}".format(name))
+        logging.info("Nouns: {}".format(noun_occurrences[:print_length]))
+        logging.info("Adjectives/Verbs: {}".format(other_occurrences[:print_length]))
+        logging.info("Pairs: {}".format(pair_occurrences[:print_length]))
+        logging.info("Number of beams: {}".format(num_beams[:print_length]))
 
         steps = np.arange(print_length)
 
