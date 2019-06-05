@@ -283,10 +283,10 @@ def beam_occurrences(
 
         name = os.path.basename(occurrences_data_file).split(".")[0]
         logging.info("Beam occurrences for {}".format(name))
-        logging.info("Nouns: {}".format(noun_occurrences))
-        logging.info("Adjectives/Verbs: {}".format(other_occurrences))
-        logging.info("Pairs: {}".format(pair_occurrences))
-        logging.info("Number of beams: {}".format(num_beams))
+        logging.info("Nouns: {}".format(noun_occurrences[:print_length]))
+        logging.info("Adjectives/Verbs: {}".format(other_occurrences[:print_length]))
+        logging.info("Pairs: {}".format(pair_occurrences[:print_length]))
+        logging.info("Number of beams: {}".format(num_beams[:print_length]))
 
         steps = np.arange(print_length)
 
