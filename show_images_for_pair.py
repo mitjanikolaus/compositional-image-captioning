@@ -33,6 +33,7 @@ def show_images(data_folder, pair):
     for coco_id in test_images_split:
         image_data = image_features[coco_id][()]
 
+        print("COCO ID: ", coco_id)
         for caption in images_meta[coco_id][DATA_CAPTIONS]:
             print(
                 " ".join(
