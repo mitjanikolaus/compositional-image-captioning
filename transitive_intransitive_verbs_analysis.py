@@ -38,7 +38,7 @@ def noun_stats(preprocessed_data_folder):
         captions_with_objects = 0
         captions_without_objects = 0
         occurrences_data_file = os.path.join(
-            "..", "captioning-models", "data", "occurrences", pair + ".json"
+            "captioning-models", "data", "occurrences", pair + ".json"
         )
         occurrences_data = json.load(open(occurrences_data_file, "r"))
         nouns = occurrences_data[NOUNS]
