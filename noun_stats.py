@@ -9,10 +9,10 @@ import sys
 from tqdm import tqdm
 
 from utils import (
-    WORD_MAP_FILENAME,
     POS_TAGGED_CAPTIONS_FILENAME,
     get_adjectives_for_noun,
     get_verbs_for_noun,
+    get_objects_for_noun,
 )
 
 
@@ -137,6 +137,8 @@ def noun_stats(nouns_files, preprocessed_data_folder):
         verb_frequencies = Counter()
         adjective_group_frequencies = Counter()
 
+        object_counts = Counter()
+
         for coco_id, tagged_caption in tqdm(captions.items()):
             for caption in tagged_caption["pos_tagged_captions"]:
                 noun_is_present = False
@@ -157,17 +159,24 @@ def noun_stats(nouns_files, preprocessed_data_folder):
                     adjective_group_frequencies.update(
                         {get_adjective_group(adjective) for adjective in adjectives}
                     )
+
+                    objects = get_objects_for_noun(caption, nouns)
+                    object_counts.update([len(objects)])
+
                     total += 1
 
         print("Total: ", total)
         print(adjective_frequencies.most_common(20))
         print(verb_frequencies.most_common(20))
         print(adjective_group_frequencies.most_common(20))
+        print(object_counts.most_common(20))
+
         data[first_noun] = {}
         data[first_noun]["total"] = total
         data[first_noun]["adjective_frequencies"] = adjective_frequencies
         data[first_noun]["verb_frequencies"] = verb_frequencies
         data[first_noun]["adjective_group_frequencies"] = verb_frequencies
+        data[first_noun]["object_counts"] = object_counts
 
     data_path = "noun_stats.json"
     print("\nSaving results to {}".format(data_path))

@@ -47,6 +47,9 @@ RELATION_ADJECTIVAL_MODIFIER = "amod"
 RELATION_CONJUNCT = "conj"
 RELATION_RELATIVE_CLAUSE_MODIFIER = "acl:relcl"
 RELATION_ADJECTIVAL_CLAUSE = "acl"
+RELATION_OBJECT = "obj"
+RELATION_INDIRECT_OBJECT = "iobj"
+
 
 MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
 MODEL_BOTTOM_UP_TOP_DOWN = "BOTTOM_UP_TOP_DOWN"
@@ -122,6 +125,19 @@ def get_verbs_for_noun(pos_tagged_caption, nouns):
     )
 
     return verbs
+
+
+def get_objects_for_noun(pos_tagged_caption, nouns):
+    dependencies = pos_tagged_caption.dependencies
+
+    objects = {
+        d[2].lemma
+        for d in dependencies
+        if d[1] == RELATION_OBJECT
+        or d[1] == RELATION_INDIRECT_OBJECT
+        and d[0].lemma in nouns
+    }
+    return objects
 
 
 def contains_adjective_noun_pair(pos_tagged_caption, nouns, adjectives):
