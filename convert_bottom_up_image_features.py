@@ -47,13 +47,14 @@ def convert(input_file):
             image_features = np.frombuffer(
                 base64.b64decode(item["features"]), dtype=np.float32
             ).reshape((item["num_boxes"], -1))
-            output_file.create_dataset(
-                image_id,
-                (num_fixed_boxes, feature_length),
-                dtype="f",
-                data=image_features,
-            )
-            count += 1
+            if image_id not in output_file:
+                output_file.create_dataset(
+                    image_id,
+                    (num_fixed_boxes, feature_length),
+                    dtype="f",
+                    data=image_features,
+                )
+                count += 1
 
     output_file.close()
     print("Converted features for {} images".format(count))
