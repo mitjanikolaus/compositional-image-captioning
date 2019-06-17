@@ -59,7 +59,7 @@ def noun_stats(preprocessed_data_folder):
                     if word.lemma in nouns:
                         noun_is_present = True
                     caption_verbs = get_verbs_for_noun(caption, nouns)
-                    if caption_verbs & verbs:
+                    if caption_verbs & set(verbs):
                         verb_is_present = True
                 if noun_is_present and verb_is_present:
                     objects = get_objects_for_noun(caption, nouns)
