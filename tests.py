@@ -2,7 +2,12 @@ import unittest
 
 import stanfordnlp
 
-from utils import contains_adjective_noun_pair, contains_verb_noun_pair
+from utils import (
+    contains_adjective_noun_pair,
+    contains_verb_noun_pair,
+    get_objects_for_noun,
+    get_objects_for_verb,
+)
 
 
 class UtilsTests(unittest.TestCase):
@@ -200,6 +205,18 @@ class UtilsTests(unittest.TestCase):
         self.assertEqual(
             expected_pattern, contains_verb_noun_pair(pos_tagged_caption, nouns, verbs)
         )
+
+    def test_get_objects(self):
+        caption = "a man is sitting on a chair."
+        nouns = {"man"}
+        verbs = {"sit"}
+
+        pos_tagged_caption = self.nlp_pipeline(caption).sentences[0]
+
+        objects = get_objects_for_noun(
+            pos_tagged_caption, nouns
+        ) | get_objects_for_verb(pos_tagged_caption, verbs)
+        self.assertEqual({"chair"}, objects)
 
 
 if __name__ == "__main__":

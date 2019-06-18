@@ -49,6 +49,7 @@ RELATION_RELATIVE_CLAUSE_MODIFIER = "acl:relcl"
 RELATION_ADJECTIVAL_CLAUSE = "acl"
 RELATION_OBJECT = "obj"
 RELATION_INDIRECT_OBJECT = "iobj"
+RELATION_OBLIQUE_NOMINAL = "obl"
 
 
 MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
@@ -133,8 +134,11 @@ def get_objects_for_noun(pos_tagged_caption, nouns):
     objects = {
         d[2].lemma
         for d in dependencies
-        if d[1] == RELATION_OBJECT
-        or d[1] == RELATION_INDIRECT_OBJECT
+        if (
+            d[1] == RELATION_OBJECT
+            or d[1] == RELATION_INDIRECT_OBJECT
+            or d[1] == RELATION_OBLIQUE_NOMINAL
+        )
         and d[0].lemma in nouns
     }
     return objects
@@ -146,8 +150,11 @@ def get_objects_for_verb(pos_tagged_caption, verbs):
     objects = {
         d[2].lemma
         for d in dependencies
-        if d[1] == RELATION_OBJECT
-        or d[1] == RELATION_INDIRECT_OBJECT
+        if (
+            d[1] == RELATION_OBJECT
+            or d[1] == RELATION_INDIRECT_OBJECT
+            or d[1] == RELATION_OBLIQUE_NOMINAL
+        )
         and d[0].lemma in verbs
     }
     return objects
