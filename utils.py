@@ -140,6 +140,19 @@ def get_objects_for_noun(pos_tagged_caption, nouns):
     return objects
 
 
+def get_objects_for_verb(pos_tagged_caption, verbs):
+    dependencies = pos_tagged_caption.dependencies
+
+    objects = {
+        d[2].lemma
+        for d in dependencies
+        if d[1] == RELATION_OBJECT
+        or d[1] == RELATION_INDIRECT_OBJECT
+        and d[0].lemma in verbs
+    }
+    return objects
+
+
 def contains_adjective_noun_pair(pos_tagged_caption, nouns, adjectives):
     noun_is_present = False
     adjective_is_present = False

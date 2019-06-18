@@ -16,6 +16,7 @@ from utils import (
     OCCURRENCE_DATA,
     get_verbs_for_noun,
     get_objects_for_noun,
+    get_objects_for_verb,
 )
 
 
@@ -62,7 +63,9 @@ def noun_stats(preprocessed_data_folder):
                     if caption_verbs & set(verbs):
                         verb_is_present = True
                 if noun_is_present and verb_is_present:
-                    objects = get_objects_for_noun(caption, nouns)
+                    objects = get_objects_for_noun(
+                        caption, nouns
+                    ) | get_objects_for_verb(caption, verbs)
                     if len(objects) > 0:
                         captions_with_objects += 1
                     else:
