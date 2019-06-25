@@ -170,10 +170,10 @@ def evaluate(
         coco_id = coco_id[0]
 
         # Target captions
-        target_captions[coco_id] = [
-            get_caption_without_special_tokens(caption, word_map)
-            for caption in all_captions_for_image[0].tolist()
-        ]
+        #target_captions[coco_id] = [
+        #    get_caption_without_special_tokens(caption, word_map)
+        #    for caption in all_captions_for_image[0].tolist()
+        #]
 
         # Generate captions
         encoded_features = image_features.to(device)
@@ -231,7 +231,7 @@ def evaluate(
         if store_beam:
             generated_beams[coco_id] = beam
 
-        assert len(target_captions) == len(generated_captions)
+        #assert len(target_captions) == len(generated_captions)
 
     # Save results
     name = str(os.path.basename(checkpoint_path).split(".")[0])
@@ -253,18 +253,18 @@ def evaluate(
     json.dump(results, open(results_output_file_name, "w"))
 
     # Calculate metric scores
-    eval_output_file_name = "eval_" + name + ".json"
-    for metric in metrics:
-        calculate_metric(
-            metric,
-            target_captions,
-            generated_captions,
-            generated_beams,
-            word_map,
-            dataset_splits_dict["heldout_pairs"],
-            beam_size,
-            eval_output_file_name,
-        )
+    #eval_output_file_name = "eval_" + name + ".json"
+    #for metric in metrics:
+    #    calculate_metric(
+    #        metric,
+    #        target_captions,
+    #        generated_captions,
+    #        generated_beams,
+    #        word_map,
+    #        dataset_splits_dict["heldout_pairs"],
+    #        beam_size,
+    #        eval_output_file_name,
+    #    )
 
 
 def calculate_metric(
