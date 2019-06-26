@@ -28,7 +28,6 @@ csv.field_size_limit(sys.maxsize)
 FIELDNAMES = ["image_id", "image_w", "image_h", "num_boxes", "boxes", "features"]
 
 feature_length = 2048
-num_fixed_boxes = 36
 
 
 def convert(input_file):
@@ -50,7 +49,7 @@ def convert(input_file):
             if image_id not in output_file:
                 output_file.create_dataset(
                     image_id,
-                    (num_fixed_boxes, feature_length),
+                    (item["num_boxes"], feature_length),
                     dtype="f",
                     data=image_features,
                 )
