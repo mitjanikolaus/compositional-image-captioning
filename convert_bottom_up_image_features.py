@@ -60,8 +60,8 @@ def convert(base_dir):
                         )
                         count += 1
 
-            output_file.close()
-            print("Converted features for {} images".format(count))
+    output_file.close()
+    print("Converted features for {} images".format(count))
 
 
 def check_args(args):
