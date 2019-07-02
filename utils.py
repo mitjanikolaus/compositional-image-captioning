@@ -22,6 +22,7 @@ IMAGENET_IMAGES_STD = [0.229, 0.224, 0.225]
 
 WORD_MAP_FILENAME = "word_map.json"
 IMAGES_FILENAME = "images.hdf5"
+TEST_IMAGES_FILENAME = "images_coco_test.hdf5"
 BOTTOM_UP_FEATURES_FILENAME = "bottom_up_features.hdf5"
 IMAGES_META_FILENAME = "images_meta.json"
 POS_TAGGED_CAPTIONS_FILENAME = "pos_tagged_captions.p"
@@ -46,6 +47,10 @@ RELATION_ADJECTIVAL_MODIFIER = "amod"
 RELATION_CONJUNCT = "conj"
 RELATION_RELATIVE_CLAUSE_MODIFIER = "acl:relcl"
 RELATION_ADJECTIVAL_CLAUSE = "acl"
+RELATION_OBJECT = "obj"
+RELATION_INDIRECT_OBJECT = "iobj"
+RELATION_OBLIQUE_NOMINAL = "obl"
+
 
 MODEL_SHOW_ATTEND_TELL = "SHOW_ATTEND_TELL"
 MODEL_BOTTOM_UP_TOP_DOWN = "BOTTOM_UP_TOP_DOWN"
@@ -121,6 +126,38 @@ def get_verbs_for_noun(pos_tagged_caption, nouns):
     )
 
     return verbs
+
+
+def get_objects_for_noun(pos_tagged_caption, nouns):
+    dependencies = pos_tagged_caption.dependencies
+
+    objects = {
+        d[2].lemma
+        for d in dependencies
+        if (
+            d[1] == RELATION_OBJECT
+            or d[1] == RELATION_INDIRECT_OBJECT
+            or d[1] == RELATION_OBLIQUE_NOMINAL
+        )
+        and d[0].lemma in nouns
+    }
+    return objects
+
+
+def get_objects_for_verb(pos_tagged_caption, verbs):
+    dependencies = pos_tagged_caption.dependencies
+
+    objects = {
+        d[2].lemma
+        for d in dependencies
+        if (
+            d[1] == RELATION_OBJECT
+            or d[1] == RELATION_INDIRECT_OBJECT
+            or d[1] == RELATION_OBLIQUE_NOMINAL
+        )
+        and d[0].lemma in verbs
+    }
+    return objects
 
 
 def contains_adjective_noun_pair(pos_tagged_caption, nouns, adjectives):
