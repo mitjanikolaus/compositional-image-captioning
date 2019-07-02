@@ -34,6 +34,7 @@ def convert(base_dir):
     output_filename = "features.hdf5"
     print("Saving features to {}".format(output_filename))
     output_file = h5py.File(output_filename, "w")
+    count = 0
 
     for directory in os.listdir(base_dir):
         input_file = os.path.join(base_dir, directory)
@@ -43,7 +44,6 @@ def convert(base_dir):
                 reader = csv.DictReader(
                     tsv_in_file, delimiter="\t", fieldnames=FIELDNAMES
                 )
-                count = 0
                 for item in tqdm(reader):
                     image_id = item["image_id"]
                     item["num_boxes"] = int(item["num_boxes"])
