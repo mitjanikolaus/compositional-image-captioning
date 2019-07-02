@@ -4,7 +4,12 @@ import h5py
 import json
 import os
 
-from utils import IMAGES_META_FILENAME, DATA_CAPTIONS, DATA_CAPTION_LENGTHS
+from utils import (
+    IMAGES_META_FILENAME,
+    DATA_CAPTIONS,
+    DATA_CAPTION_LENGTHS,
+    MAX_NUM_IMAGE_REGIONS,
+)
 
 
 class CaptionDataset(Dataset):
@@ -57,6 +62,11 @@ class CaptionDataset(Dataset):
         image = torch.FloatTensor(image_data)
         if self.transform:
             image = self.transform(image)
+
+        # TODO skip this step for SAT model features
+        # add padding to the image features so they're all same size
+        padding = torch.zeros(MAX_NUM_IMAGE_REGIONS - image.size(0), image.size(1))
+        image = torch.cat((image, padding), 0)
 
         return image
 
