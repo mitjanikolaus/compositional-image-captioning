@@ -37,7 +37,7 @@ def convert(base_dir):
 
     for directory in os.listdir(base_dir):
         input_file = os.path.join(base_dir, directory)
-        if os.path.isfile(directory):
+        if os.path.isfile(input_file):
             print("Reading tsv: ", input_file)
             with open(input_file, "rt") as tsv_in_file:
                 reader = csv.DictReader(
