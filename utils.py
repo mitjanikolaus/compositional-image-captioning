@@ -23,7 +23,7 @@ IMAGENET_IMAGES_STD = [0.229, 0.224, 0.225]
 WORD_MAP_FILENAME = "word_map.json"
 IMAGES_FILENAME = "images.hdf5"
 TEST_IMAGES_FILENAME = "images_coco_test.hdf5"
-BOTTOM_UP_FEATURES_FILENAME = "bottom_up_features.hdf5"
+BOTTOM_UP_FEATURES_FILENAME = "bottom_up_features_10_100.hdf5"
 IMAGES_META_FILENAME = "images_meta.json"
 POS_TAGGED_CAPTIONS_FILENAME = "pos_tagged_captions.p"
 
