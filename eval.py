@@ -38,55 +38,6 @@ METRIC_BEAM_OCCURRENCES = "beam-occurrences"
 METRIC_ROBUST_COCO = "robust-coco"
 
 
-def get_top_ranked_captions_indices(embedded_image, embedded_captions):
-    # Compute similarity of image to all captions
-    d = np.dot(embedded_image, embedded_captions.T).flatten()
-    inds = np.argsort(d)[::-1]
-    return inds
-
-
-def re_rank_beam(
-    decoder,
-    top_k_generated_captions,
-    encoded_features,
-    word_map,
-    coco_id,
-    print_captions,
-):
-    if print_captions:
-        logging.info("COCO ID: {}".format(coco_id))
-        logging.info("Before re-ranking:")
-        for caption in top_k_generated_captions[:5]:
-            logging.info(
-                " ".join(
-                    decode_caption(
-                        get_caption_without_special_tokens(caption, word_map), word_map
-                    )
-                )
-            )
-
-    lengths = [len(caption) - 1 for caption in top_k_generated_captions]
-    top_k_generated_captions = torch.tensor(
-        [
-            top_k_generated_caption
-            + [word_map[TOKEN_PADDING]]
-            * (max(lengths) + 1 - len(top_k_generated_caption))
-            for top_k_generated_caption in top_k_generated_captions
-        ],
-        device=device,
-    )
-    image_embedded, image_captions_embedded = decoder.forward_ranking(
-        encoded_features, top_k_generated_captions, torch.tensor(lengths, device=device)
-    )
-    image_embedded = image_embedded.detach().cpu().numpy()[0]
-    image_captions_embedded = image_captions_embedded.detach().cpu().numpy()
-
-    indices = get_top_ranked_captions_indices(image_embedded, image_captions_embedded)
-    top_k_generated_captions = [top_k_generated_captions[i] for i in indices]
-
-    return [caption.cpu().numpy() for caption in top_k_generated_captions]
-
-
 def evaluate(
     data_folder,
     dataset_splits,
@@ -206,15 +157,15 @@ def evaluate(
                     image_features.squeeze(0), caption, alpha, word_map, smoothen=True
                 )
 
-        if re_ranking:
-            top_k_generated_captions = re_rank_beam(
-                decoder,
-                top_k_generated_captions,
-                encoded_features,
-                word_map,
-                coco_id,
-                print_captions,
-            )
+        # if re_ranking:
+        #     top_k_generated_captions = re_rank_beam(
+        #         decoder,
+        #         top_k_generated_captions,
+        #         encoded_features,
+        #         word_map,
+        #         coco_id,
+        #         print_captions,
+        #     )
 
         generated_captions[coco_id] = top_k_generated_captions[:eval_beam_size]
         if print_captions:

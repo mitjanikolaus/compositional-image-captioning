@@ -1,10 +1,17 @@
+import logging
+
 import torch
 from torch import nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 
 from models.captioning_model import CaptioningModelDecoder, print_current_beam
-from utils import TOKEN_START, TOKEN_END
+from utils import (
+    TOKEN_START,
+    TOKEN_END,
+    decode_caption,
+    get_caption_without_special_tokens,
+)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -296,6 +303,54 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
     def loss(self, scores, target_captions, decode_lengths, alphas):
         return self.loss_cross_entropy(scores, target_captions, decode_lengths)
 
+    def re_rank_beam(
+        self, top_k_sequences, top_k_scores, encoded_features, print_captions
+    ):
+        if print_captions:
+            logging.info("\nBefore re-ranking:")
+            for caption in top_k_sequences[:5]:
+                logging.info(
+                    " ".join(
+                        decode_caption(
+                            get_caption_without_special_tokens(
+                                caption.cpu().numpy(), self.word_map
+                            ),
+                            self.word_map,
+                        )
+                    )
+                )
+
+        lengths = [len(caption) - 1 for caption in top_k_sequences]
+        image_embedded, image_captions_embedded = self.forward_ranking(
+            encoded_features, top_k_sequences, torch.tensor(lengths, device=device)
+        )
+
+        # Compute similarity of image to all captions
+        similarities = torch.mm(
+            image_embedded, torch.t(image_captions_embedded)
+        ).flatten()
+        top_k_scores += similarities
+
+        indices = torch.argsort(top_k_scores, descending=True)
+
+        # re-rank the sequences
+        top_k_sequences = top_k_sequences[indices]
+
+        logging.info("After re-ranking:")
+        for caption in top_k_sequences[:5]:
+            logging.info(
+                " ".join(
+                    decode_caption(
+                        get_caption_without_special_tokens(
+                            caption.cpu().numpy(), self.word_map
+                        ),
+                        self.word_map,
+                    )
+                )
+            )
+
+        return top_k_sequences
+
     def beam_search(
         self,
         encoder_output,
@@ -306,6 +361,7 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         print_beam=False,
     ):
         """Generate and return the top k sequences using beam search."""
+        intermediate_beam_width = 100
 
         if store_alphas:
             raise NotImplementedError(
@@ -318,20 +374,23 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         encoder_dim = encoder_output.size()[-1]
 
         # Flatten encoding
-        encoder_output = encoder_output.view(1, -1, encoder_dim)
+        image_features = encoder_output.view(1, -1, encoder_dim)
 
         # We'll treat the problem as having a batch size of k
-        encoder_output = encoder_output.expand(
-            beam_size, encoder_output.size(1), encoder_dim
+        image_features = image_features.expand(
+            intermediate_beam_width, encoder_output.size(1), encoder_dim
         )
 
         # Tensor to store top k sequences; now they're just <start>
         top_k_sequences = torch.full(
-            (beam_size, 1), self.word_map[TOKEN_START], dtype=torch.int64, device=device
+            (intermediate_beam_width, 1),
+            self.word_map[TOKEN_START],
+            dtype=torch.int64,
+            device=device,
         )
 
         # Tensor to store top k sequences' scores; now they're just 0
-        top_k_scores = torch.zeros(beam_size, device=device)
+        top_k_scores = torch.zeros(intermediate_beam_width, device=device)
 
         if store_alphas:
             # Tensor to store top k sequences' alphas; now they're just 1s
@@ -346,7 +405,7 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         beam = []
 
         # Embed images
-        images_embedded, v_mean_embedded = self.image_embedding(encoder_output)
+        images_embedded, v_mean_embedded = self.image_embedding(image_features)
 
         # Initialize LSTM states
         states = self.init_hidden_states(v_mean_embedded)
@@ -371,7 +430,7 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
 
             # Find the top k of the flattened scores
             top_k_scores, top_k_words = scores.view(-1).topk(
-                current_beam_width, 0, largest=True, sorted=True
+                intermediate_beam_width, 0, largest=True, sorted=True
             )
 
             # Convert flattened indices to actual indices of scores
@@ -382,6 +441,11 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
             top_k_sequences = torch.cat(
                 (top_k_sequences[prev_seq_inds], next_words.unsqueeze(1)), dim=1
             )
+
+            top_k_sequences = self.re_rank_beam(
+                top_k_sequences, top_k_scores, encoder_output, True
+            )[:current_beam_width]
+            next_words = next_words[:current_beam_width]
 
             if print_beam:
                 print_current_beam(top_k_sequences, top_k_scores, self.word_map)
