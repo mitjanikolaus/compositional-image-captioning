@@ -196,10 +196,15 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         )
         lang_enc_hidden_activations = None
         if self.training:
-            # Tensor to store hidden activations of the language encoding LSTM of the last timestep, these will be the
-            # caption embedding
+            # Tensor to store hidden activations of the language encoding LSTM, these will be the
+            # caption embeddings
             lang_enc_hidden_activations = torch.zeros(
-                (batch_size, self.params["language_encoding_lstm_size"]), device=device
+                (
+                    batch_size,
+                    max(decode_lengths),
+                    self.params["language_encoding_lstm_size"],
+                ),
+                device=device,
             )
 
         # At the start, all 'previous words' are the <start> token
@@ -248,14 +253,23 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
             ]
             if self.training:
                 h_lan_enc = states[0]
-                lang_enc_hidden_activations[decode_lengths == t + 1] = h_lan_enc[
-                    decode_lengths == t + 1
+                lang_enc_hidden_activations[decode_lengths > t, t] = h_lan_enc[
+                    decode_lengths > t
                 ]
 
         captions_embedded = None
         if self.training:
-            captions_embedded = self.caption_embedding(lang_enc_hidden_activations)
-            captions_embedded = l2_norm(captions_embedded)
+            captions_embedded = torch.zeros(
+                (batch_size, max(decode_lengths), self.params["joint_embeddings_size"]),
+                device=device,
+            )
+            for t in range(max(decode_lengths)):
+                captions_embedded[decode_lengths > t, t] = self.caption_embedding(
+                    lang_enc_hidden_activations[decode_lengths > t, t]
+                )
+                captions_embedded[decode_lengths > t, t] = l2_norm(
+                    captions_embedded[decode_lengths > t, t]
+                )
 
         return scores, decode_lengths, v_mean_embedded, captions_embedded, None
 

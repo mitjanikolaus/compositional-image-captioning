@@ -67,7 +67,12 @@ def calc_initial_losses(data_loader, encoder, decoder):
         images, target_captions, decode_lengths
     )
     loss_generation = decoder.loss(scores, target_captions, decode_lengths, alphas)
-    loss_ranking = decoder.loss_ranking(images_embedded, captions_embedded)
+    loss_ranking = 0
+    for t in range(max(decode_lengths)):
+        loss_ranking += decoder.loss_ranking(
+            images_embedded[decode_lengths > t],
+            captions_embedded[decode_lengths > t, t],
+        )
 
     logging.info("Initial generation loss: {}".format(loss_generation))
     logging.info("Initial ranking loss: {}".format(loss_ranking))
@@ -599,7 +604,12 @@ def train_joint(
             images, target_captions, decode_lengths
         )
         loss_generation = decoder.loss(scores, target_captions, decode_lengths, alphas)
-        loss_ranking = decoder.loss_ranking(images_embedded, captions_embedded)
+        loss_ranking = 0
+        for t in range(max(decode_lengths)):
+            loss_ranking += decoder.loss_ranking(
+                images_embedded[decode_lengths > t],
+                captions_embedded[decode_lengths > t, t],
+            )
         loss = loss_weights[0] * loss_generation + loss_weights[1] * loss_ranking
 
         decoder_optimizer.zero_grad()
