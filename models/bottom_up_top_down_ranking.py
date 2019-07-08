@@ -317,7 +317,9 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
     def loss(self, scores, target_captions, decode_lengths, alphas):
         return self.loss_cross_entropy(scores, target_captions, decode_lengths)
 
-    def re_rank_beam(self, top_k_sequences, encoded_features, print_captions):
+    def re_rank_beam(
+        self, top_k_sequences, top_k_scores, encoded_features, print_captions
+    ):
         if print_captions:
             logging.info("\nBefore re-ranking:")
             for caption in top_k_sequences[:5]:
@@ -341,8 +343,9 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         similarities = torch.mm(
             image_embedded, torch.t(image_captions_embedded)
         ).flatten()
+        combined_scores = top_k_scores + similarities
 
-        indices = torch.argsort(similarities, descending=True)
+        indices = torch.argsort(combined_scores, descending=True)
 
         # re-rank the sequences
         top_k_sequences = top_k_sequences[indices]
@@ -439,6 +442,8 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
             if step == 0:
                 scores = scores[0]
 
+            scores = F.softmax(scores)
+
             # Find the top k of the flattened scores
             top_k_scores, top_k_words = scores.view(-1).topk(
                 intermediate_beam_width, 0, largest=True, sorted=True
@@ -453,9 +458,9 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
                 (top_k_sequences[prev_seq_inds], next_words.unsqueeze(1)), dim=1
             )
 
-            top_k_sequences = self.re_rank_beam(top_k_sequences, encoder_output, True)[
-                :current_beam_width
-            ]
+            top_k_sequences = self.re_rank_beam(
+                top_k_sequences, top_k_scores, encoder_output, True
+            )[:current_beam_width]
             next_words = next_words[:current_beam_width]
 
             if print_beam:
