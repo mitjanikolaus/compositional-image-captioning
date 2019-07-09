@@ -38,16 +38,23 @@ METRIC_BEAM_OCCURRENCES = "beam-occurrences"
 METRIC_ROBUST_COCO = "robust-coco"
 
 
-def get_top_ranked_captions_indices(embedded_image, embedded_captions):
+def get_top_ranked_captions_indices(
+    embedded_image, embedded_captions, complete_seqs_scores, lengths
+):
     # Compute similarity of image to all captions
     d = np.dot(embedded_image, embedded_captions.T).flatten()
-    inds = np.argsort(d)[::-1]
+    complete_seqs_scores = [
+        score / length for score, length in zip(complete_seqs_scores, lengths)
+    ]
+    complete_seqs_scores += d
+    inds = np.argsort(complete_seqs_scores)[::-1]
     return inds
 
 
 def re_rank_beam(
     decoder,
     top_k_generated_captions,
+    complete_seqs_scores,
     encoded_features,
     word_map,
     coco_id,
@@ -81,7 +88,9 @@ def re_rank_beam(
     image_embedded = image_embedded.detach().cpu().numpy()[0]
     image_captions_embedded = image_captions_embedded.detach().cpu().numpy()
 
-    indices = get_top_ranked_captions_indices(image_embedded, image_captions_embedded)
+    indices = get_top_ranked_captions_indices(
+        image_embedded, image_captions_embedded, complete_seqs_scores, lengths
+    )
     top_k_generated_captions = [top_k_generated_captions[i] for i in indices]
 
     return [caption.cpu().numpy() for caption in top_k_generated_captions]
@@ -190,7 +199,7 @@ def evaluate(
                 print_beam=print_beam,
             )
         else:
-            top_k_generated_captions, alphas, beam = decoder.beam_search(
+            top_k_generated_captions, alphas, beam, complete_seqs_scores = decoder.beam_search(
                 encoded_features,
                 beam_size,
                 diverse_beam_search=diverse_beam_search,
@@ -210,6 +219,7 @@ def evaluate(
             top_k_generated_captions = re_rank_beam(
                 decoder,
                 top_k_generated_captions,
+                complete_seqs_scores,
                 encoded_features,
                 word_map,
                 coco_id,

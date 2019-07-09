@@ -446,7 +446,7 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
                     zip(complete_seqs_scores, complete_seqs_alpha), reverse=True
                 )
             ]
-        return sorted_sequences, sorted_alphas, beam
+        return sorted_sequences, sorted_alphas, beam, complete_seqs_scores
 
     def nucleus_sampling(self, encoder_output, beam_size, top_p, print_beam=False):
         """Generate and return the top k sequences using nucleus sampling."""
