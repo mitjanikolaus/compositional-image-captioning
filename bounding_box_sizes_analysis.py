@@ -105,7 +105,31 @@ def analyze_sizes(dataset_folder,):
                     data_described_sizes.append(3)
 
     print(
-        np.average(
+        np.round(
+            np.average(
+                [
+                    bbox_size
+                    for bbox_size, size in zip(data_bbox_sizes, data_described_sizes)
+                    if size == 0
+                ]
+            ),
+            1,
+        )
+    )
+    print(
+        np.round(
+            np.std(
+                [
+                    bbox_size
+                    for bbox_size, size in zip(data_bbox_sizes, data_described_sizes)
+                    if size == 0
+                ]
+            ),
+            1,
+        )
+    )
+    print(
+        len(
             [
                 bbox_size
                 for bbox_size, size in zip(data_bbox_sizes, data_described_sizes)
@@ -113,30 +137,37 @@ def analyze_sizes(dataset_folder,):
             ]
         )
     )
+
     print(
-        np.average(
-            [
-                bbox_size
-                for bbox_size, size in zip(data_bbox_sizes, data_described_sizes)
-                if size == 1
-            ]
+        np.round(
+            np.average(
+                [
+                    bbox_size
+                    for bbox_size, size in zip(data_bbox_sizes, data_described_sizes)
+                    if size == 2
+                ]
+            ),
+            1,
         )
     )
     print(
-        np.average(
+        np.round(
+            np.std(
+                [
+                    bbox_size
+                    for bbox_size, size in zip(data_bbox_sizes, data_described_sizes)
+                    if size == 2
+                ]
+            ),
+            1,
+        )
+    )
+    print(
+        len(
             [
                 bbox_size
                 for bbox_size, size in zip(data_bbox_sizes, data_described_sizes)
                 if size == 2
-            ]
-        )
-    )
-    print(
-        np.average(
-            [
-                bbox_size
-                for bbox_size, size in zip(data_bbox_sizes, data_described_sizes)
-                if size == 3
             ]
         )
     )
