@@ -87,6 +87,123 @@ def re_rank_beam(
     return [caption.cpu().numpy() for caption in top_k_generated_captions]
 
 
+def evaluate_perplexity(
+    data_folder,
+    dataset_splits,
+    checkpoint_path,
+    metrics,
+    beam_size,
+    eval_beam_size,
+    re_ranking,
+    nucleus_sampling,
+    diverse_beam_search,
+    visualize,
+    print_beam,
+    print_captions,
+):
+    # Load model
+    checkpoint = torch.load(checkpoint_path, map_location=device)
+
+    model_name = checkpoint["model_name"]
+    logging.info("Model: {}".format(model_name))
+
+    encoder = checkpoint["encoder"]
+    if encoder:
+        encoder = encoder.to(device)
+        encoder.eval()
+
+    decoder = checkpoint["decoder"]
+    decoder = decoder.to(device)
+    word_map = decoder.word_map
+    decoder.eval()
+
+    logging.info("Decoder params: {}".format(decoder.params))
+
+    # Get the dataset splits
+    dataset_splits_dict = json.load(open(dataset_splits, "r"))
+    test_images_split = dataset_splits_dict["test_images_split"]
+
+    if model_name == MODEL_SHOW_ATTEND_TELL:
+        # Normalization
+        normalize = transforms.Normalize(
+            mean=IMAGENET_IMAGES_MEAN, std=IMAGENET_IMAGES_STD
+        )
+
+        # DataLoader
+        data_loader = torch.utils.data.DataLoader(
+            CaptionTestDataset(
+                data_folder,
+                IMAGES_FILENAME,
+                test_images_split,
+                transforms.Compose([normalize]),
+                features_scale_factor=1 / 255.0,
+            ),
+            batch_size=1,
+            shuffle=True,
+            num_workers=1,
+            pin_memory=True,
+        )
+    elif (
+        model_name == MODEL_BOTTOM_UP_TOP_DOWN
+        or model_name == MODEL_BOTTOM_UP_TOP_DOWN_RANKING
+    ):
+        data_loader = torch.utils.data.DataLoader(
+            CaptionTestDataset(
+                data_folder, BOTTOM_UP_FEATURES_FILENAME, test_images_split
+            ),
+            batch_size=1,
+            shuffle=True,
+            num_workers=1,
+            pin_memory=True,
+        )
+    else:
+        raise RuntimeError("Unknown model name: {}".format(model_name))
+
+    # Lists for target captions and generated captions for each image
+    target_captions = {}
+
+    losses = []
+
+    for image_features, all_captions_for_image, caption_lengths, coco_id in tqdm(
+        data_loader, desc="Evaluate with beam size " + str(beam_size)
+    ):
+        coco_id = coco_id[0]
+
+        # Target captions
+        target_captions[coco_id] = [
+            torch.tensor(
+                get_caption_without_special_tokens(caption, word_map), device=device
+            )
+            for caption in all_captions_for_image[0].tolist()
+        ]
+
+        # Generate captions
+        encoded_features = image_features.to(device)
+        if encoder:
+            encoded_features = encoder(encoded_features)
+
+        store_beam = True if METRIC_BEAM_OCCURRENCES in metrics else False
+
+        loss = decoder.eval_perplexity(
+            encoded_features,
+            target_captions[coco_id],
+            caption_lengths,
+            diverse_beam_search=diverse_beam_search,
+            store_alphas=visualize,
+            store_beam=store_beam,
+            print_beam=print_beam,
+        )
+
+        losses.append(loss)
+
+    avg_loss = sum(losses) / len(losses)
+
+    perplexity = 2 ** avg_loss
+
+    logging.info("Average loss: {}".format(avg_loss))
+    logging.info("Perplexity: {}".format(perplexity))
+
+
 def evaluate(
     data_folder,
     dataset_splits,
@@ -398,7 +515,7 @@ if __name__ == "__main__":
         level=logging.INFO,
     )
     logging.info(parsed_args)
-    evaluate(
+    evaluate_perplexity(
         data_folder=parsed_args.data_folder,
         dataset_splits=parsed_args.dataset_splits,
         checkpoint_path=parsed_args.checkpoint,
