@@ -520,9 +520,10 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         for i in range(0, 5):
             losses.append(
                 loss(
-                    scores[0, : len(target_captions[0])],
-                    target_captions[0][: self.params["max_caption_len"]],
+                    scores[0, : len(target_captions[i])],
+                    target_captions[i][: self.params["max_caption_len"]],
                 )
+                / len(target_captions[i][: self.params["max_caption_len"]])
             )
 
         avg_loss = sum(losses) / len(losses)
