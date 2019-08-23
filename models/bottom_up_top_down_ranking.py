@@ -523,7 +523,6 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
                     scores[0, : len(target_captions[i])],
                     target_captions[i][: self.params["max_caption_len"]],
                 )
-                / len(target_captions[i][: self.params["max_caption_len"]])
             )
 
         avg_loss = sum(losses) / len(losses)
