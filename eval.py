@@ -2,6 +2,7 @@ import logging
 
 import argparse
 import sys
+import math
 
 import torch.backends.cudnn as cudnn
 import torch.optim
@@ -198,7 +199,7 @@ def evaluate_perplexity(
 
     avg_loss = sum(losses) / len(losses)
 
-    perplexity = 2 ** avg_loss
+    perplexity = math.exp(avg_loss)
 
     logging.info("Average loss: {}".format(avg_loss))
     logging.info("Perplexity: {}".format(perplexity))
