@@ -4,6 +4,9 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence
+from scipy.stats.mstats import gmean
+
+from math import log
 
 from utils import TOKEN_START, decode_caption, TOKEN_END
 
@@ -159,6 +162,7 @@ class CaptioningModelDecoder(nn.Module):
     def eval_perplexity(
         self,
         encoder_output,
+        target_caption,
         target_captions,
         caption_lengths,
         diverse_beam_search=False,
@@ -166,6 +170,7 @@ class CaptioningModelDecoder(nn.Module):
         store_beam=False,
         print_beam=False,
     ):
+        self.train()  # use ground-truth labels
 
         loss = nn.CrossEntropyLoss()
 
@@ -174,59 +179,64 @@ class CaptioningModelDecoder(nn.Module):
         # Flatten image
         encoder_output = encoder_output.view(batch_size, -1, encoder_output.size(-1))
 
-        decode_lengths = torch.full(
-            (batch_size,),
-            self.params["max_caption_len"],
-            dtype=torch.int64,
-            device=device,
-        )
-
-        # Initialize LSTM state
-        states = self.init_hidden_states(encoder_output)
-
-        # Tensors to hold word prediction scores and alphas
-        scores = torch.zeros(
-            (batch_size, max(decode_lengths), self.vocab_size), device=device
-        )
-
-        # At the start, all 'previous words' are the <start> token
-        prev_words = torch.full(
-            (batch_size,), self.word_map[TOKEN_START], dtype=torch.int64, device=device
-        )
-
-        for t in range(max(decode_lengths)):
-            if not self.training:
-                # Find all sequences where an <end> token has been produced in the last timestep
-                ind_end_token = (
-                    torch.nonzero(prev_words == self.word_map[TOKEN_END])
-                    .view(-1)
-                    .tolist()
-                )
-
-                # Update the decode lengths accordingly
-                decode_lengths[ind_end_token] = torch.min(
-                    decode_lengths[ind_end_token],
-                    torch.full_like(decode_lengths[ind_end_token], t, device=device),
-                )
-
-            prev_words_embedded = self.word_embedding(prev_words)
-            scores_for_timestep, states, alphas_for_timestep = self.forward_step(
-                encoder_output, prev_words_embedded, states
-            )
-
-            # Update the previously predicted words
-            prev_words = self.update_previous_word(
-                scores_for_timestep, target_captions, t
-            )
-
-            scores[:, t, :] = scores_for_timestep[:]
-
         losses = []
         for i in range(0, 5):
+            decode_lengths = torch.full(
+                (batch_size,),
+                self.params["max_caption_len"],
+                dtype=torch.int64,
+                device=device,
+            )
+
+            # Initialize LSTM state
+            states = self.init_hidden_states(encoder_output)
+
+            # Tensors to hold word prediction scores and alphas
+            scores = torch.zeros(
+                (batch_size, max(decode_lengths), self.vocab_size), device=device
+            )
+
+            # At the start, all 'previous words' are the <start> token
+            prev_words = torch.full(
+                (batch_size,),
+                self.word_map[TOKEN_START],
+                dtype=torch.int64,
+                device=device,
+            )
+
+            for t in range(max(decode_lengths)):
+                if not self.training:
+                    # Find all sequences where an <end> token has been produced in the last timestep
+                    ind_end_token = (
+                        torch.nonzero(prev_words == self.word_map[TOKEN_END])
+                        .view(-1)
+                        .tolist()
+                    )
+
+                    # Update the decode lengths accordingly
+                    decode_lengths[ind_end_token] = torch.min(
+                        decode_lengths[ind_end_token],
+                        torch.full_like(
+                            decode_lengths[ind_end_token], t, device=device
+                        ),
+                    )
+
+                prev_words_embedded = self.word_embedding(prev_words)
+                scores_for_timestep, states, alphas_for_timestep = self.forward_step(
+                    encoder_output, prev_words_embedded, states
+                )
+
+                # Update the previously predicted words
+                prev_words = self.update_previous_word(
+                    scores_for_timestep, target_captions[:, i, :], t
+                )
+
+                scores[:, t, :] = scores_for_timestep[:]
+
             losses.append(
                 loss(
-                    scores[0, : len(target_captions[i])],
-                    target_captions[i][: self.params["max_caption_len"]],
+                    scores[0][: len(target_caption[i])],
+                    target_caption[i][: self.params["max_caption_len"]],
                 )
             )
 

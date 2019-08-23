@@ -188,6 +188,7 @@ def evaluate_perplexity(
         loss = decoder.eval_perplexity(
             encoded_features,
             target_captions[coco_id],
+            all_captions_for_image,
             caption_lengths,
             diverse_beam_search=diverse_beam_search,
             store_alphas=visualize,
