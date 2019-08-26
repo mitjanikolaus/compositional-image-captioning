@@ -170,8 +170,6 @@ class CaptioningModelDecoder(nn.Module):
         store_beam=False,
         print_beam=False,
     ):
-        self.train()  # use ground-truth labels
-
         loss = nn.CrossEntropyLoss()
 
         batch_size = encoder_output.size(0)
@@ -226,10 +224,8 @@ class CaptioningModelDecoder(nn.Module):
                     encoder_output, prev_words_embedded, states
                 )
 
-                # Update the previously predicted words
-                prev_words = self.update_previous_word(
-                    scores_for_timestep, target_captions[:, i, :], t
-                )
+                # Update the previously predicted words: use ground-truth labels
+                prev_words = target_captions[:, i, t + 1]
 
                 scores[:, t, :] = scores_for_timestep[:]
 
