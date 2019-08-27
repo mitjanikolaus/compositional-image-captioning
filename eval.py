@@ -160,18 +160,13 @@ def evaluate_perplexity(
     else:
         raise RuntimeError("Unknown model name: {}".format(model_name))
 
-    # Lists for target captions and generated captions for each image
-    target_captions = {}
-
     losses = []
 
     for image_features, all_captions_for_image, caption_lengths, coco_id in tqdm(
         data_loader, desc="Evaluate with beam size " + str(beam_size)
     ):
-        coco_id = coco_id[0]
-
         # Target captions
-        target_captions[coco_id] = [
+        target_captions = [
             torch.tensor(
                 get_caption_without_special_tokens(caption, word_map), device=device
             )
@@ -187,7 +182,7 @@ def evaluate_perplexity(
 
         loss = decoder.eval_perplexity(
             encoded_features,
-            target_captions[coco_id],
+            target_captions,
             all_captions_for_image,
             caption_lengths,
             diverse_beam_search=diverse_beam_search,

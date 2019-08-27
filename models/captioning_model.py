@@ -233,7 +233,7 @@ class CaptioningModelDecoder(nn.Module):
                 loss(
                     scores[0][: len(target_caption[i])],
                     target_caption[i][: self.params["max_caption_len"]],
-                )
+                ).item()
             )
 
         avg_loss = sum(losses) / len(losses)
