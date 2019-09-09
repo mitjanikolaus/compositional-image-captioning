@@ -1,14 +1,22 @@
-# captioning-models data
+# Data
+## Dataset splits
+The [dataset_splits](dataset_splits) directory contains the 4 splits for
+the compositional generalization task, as well as the full dataset split
+(without heldout pairs) and the karpathy split.
 
-Captions are counted as matches also when one of the synonyms for the respective adjective or nouns is present (see the
-respective JSON files for a list of synonyms considered). For adjective-noun pair matches, we only consider captions
-where the adjective is also describing the target noun (using the
-[stanfordnlp dependency parser](https://github.com/stanfordnlp/stanfordnlp)).
+## Synonyms
+The [synonyms](synonyms) directory contains synonym lists for different
+adjectives, nouns and verbs.
 
-'N' denotes the agreement among the different captions, e.g. 
+## Occurrences
+Occurrence jsons can be found in the [occurrences](occurrences) directory.
+
+Captions are counted as matches also when one of the synonyms for the
+respective adjective or nouns is present (see the
+respective JSON files for a list of synonyms considered). 
+'N' denotes the importance or agreement among the different captions, e.g. 
 'N=3' means that 3 of the 5 image captions contain the target.
 
-## Numbers of matching adjective-noun or verb-noun pairs
 
 ### COCO training dataset
 
