@@ -1,3 +1,5 @@
+"""Display images that match the given concept pair"""
+
 import sys
 
 import argparse

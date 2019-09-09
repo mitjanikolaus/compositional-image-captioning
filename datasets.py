@@ -1,3 +1,5 @@
+"""PyTorch dataset classes for the image captioning training and testing datasets"""
+
 import torch
 from torch.utils.data import Dataset
 import h5py

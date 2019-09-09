@@ -1,3 +1,5 @@
+"""Plot the stats calculated using noun_stats.py"""
+
 import sys
 from collections import Counter
 

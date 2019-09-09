@@ -1,3 +1,5 @@
+"""Analysis of object statistics in sentences with transitive vs. intransitive verbs"""
+
 import argparse
 import json
 import os

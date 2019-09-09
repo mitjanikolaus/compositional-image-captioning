@@ -300,7 +300,6 @@ class BottomUpTopDownRankingDecoder(CaptioningModelDecoder):
         self,
         encoder_output,
         beam_size,
-        diverse_beam_search=False,
         store_alphas=False,
         store_beam=False,
         print_beam=False,

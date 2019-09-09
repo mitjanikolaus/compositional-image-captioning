@@ -1,3 +1,4 @@
+"""Plot result statistics for the compositional generalization evaluation"""
 import os
 import sys
 

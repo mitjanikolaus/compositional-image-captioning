@@ -1,3 +1,5 @@
+"""General utility functions and variables"""
+
 import json
 import logging
 import os

@@ -1,3 +1,5 @@
+"""Metrics for the image captioning task"""
+
 import json
 import logging
 import os
@@ -74,16 +76,6 @@ def recall_pairs(generated_captions, word_map, heldout_pairs, output_file_name):
             list(recall_score["true_positives"].values())
         ) / np.sum(list(recall_score["numbers"].values()))
         logging.info("{}: {}".format(pair, np.round(average_pair_recall, 2)))
-        logging.info(
-            "Most common adjectives: {}".format(
-                recall_score["adjective_frequencies"].most_common(10)
-            )
-        )
-        logging.info(
-            "Most common verbs: {}".format(
-                recall_score["verb_frequencies"].most_common(10)
-            )
-        )
 
     logging.info("Average: {}".format(average_recall(recall_scores)))
     json.dump(recall_scores, open(output_file_name, "w"))
@@ -140,11 +132,12 @@ def calc_recall(
             true_positives["N={}".format(count)] += 1
         numbers["N={}".format(count)] += 1
 
-    recall_score = {}
-    recall_score["true_positives"] = true_positives
-    recall_score["numbers"] = numbers
-    recall_score["adjective_frequencies"] = adjective_frequencies
-    recall_score["verb_frequencies"] = verb_frequencies
+    recall_score = {
+        "true_positives": true_positives,
+        "numbers": numbers,
+        "adjective_frequencies": adjective_frequencies,
+        "verb_frequencies": verb_frequencies,
+    }
     return recall_score
 
 

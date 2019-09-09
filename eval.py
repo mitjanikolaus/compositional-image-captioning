@@ -1,3 +1,5 @@
+"""Evaluate an image captioning model on the specified evaluation set using the specified set of evaluation metrics"""
+
 import logging
 
 import argparse
@@ -95,7 +97,6 @@ def evaluate(
     eval_beam_size,
     re_ranking,
     nucleus_sampling,
-    diverse_beam_search,
     visualize,
     print_beam,
     print_captions,
@@ -192,7 +193,6 @@ def evaluate(
             top_k_generated_captions, alphas, beam = decoder.beam_search(
                 encoded_features,
                 beam_size,
-                diverse_beam_search=diverse_beam_search,
                 store_alphas=visualize,
                 store_beam=store_beam,
                 print_beam=print_beam,
@@ -333,13 +333,13 @@ def check_args(args):
     )
 
     parser.add_argument(
-        "--beam-size", help="Size of the decoding beam", type=int, default=1
+        "--beam-size", help="Size of the decoding beam", type=int, default=5
     )
     parser.add_argument(
         "--eval-beam-size",
         help="Number of sequences from the beam that should be used for evaluation",
         type=int,
-        default=1,
+        default=5,
     )
     parser.add_argument(
         "--re-ranking",
@@ -351,12 +351,6 @@ def check_args(args):
         "--nucleus-sampling",
         help="Use nucleus sampling with the given p instead of beam search",
         type=float,
-    )
-    parser.add_argument(
-        "--diverse-beam-search",
-        help="Use diverse beam search",
-        default=False,
-        action="store_true",
     )
     parser.add_argument(
         "--visualize-attention",
@@ -399,7 +393,6 @@ if __name__ == "__main__":
         eval_beam_size=parsed_args.eval_beam_size,
         re_ranking=parsed_args.re_ranking,
         nucleus_sampling=parsed_args.nucleus_sampling,
-        diverse_beam_search=parsed_args.diverse_beam_search,
         visualize=parsed_args.visualize_attention,
         print_beam=parsed_args.print_beam,
         print_captions=parsed_args.print_captions,

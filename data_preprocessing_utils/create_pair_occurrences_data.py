@@ -1,3 +1,4 @@
+"""Create occurrence statistics for a given concept pair"""
 import argparse
 import json
 import os
@@ -180,15 +181,16 @@ def check_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--nouns",
-        help="Path to file containing JSON-serialized list of nouns.",
+        help="Path to file containing JSON-serialized list of nouns (target noun + synonyms).",
         required=True,
     )
     parser.add_argument(
         "--adjectives",
-        help="Path to file containing JSON-serialized list of adjectives",
+        help="Path to file containing JSON-serialized list of adjectives (target adjective + synonyms)",
     )
     parser.add_argument(
-        "--verbs", help="Path to file containing JSON-serialized list of verbs"
+        "--verbs",
+        help="Path to file containing JSON-serialized list of verbs (target verb + synonyms)",
     )
     parser.add_argument(
         "--preprocessed-data-folder",

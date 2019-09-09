@@ -1,3 +1,5 @@
+"""Display images for the given COCO IDs"""
+
 import os
 import sys
 

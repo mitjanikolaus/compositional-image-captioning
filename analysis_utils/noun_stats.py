@@ -1,3 +1,5 @@
+"""Calculate some statistics for the nouns in the descriptions in the COCO dataset"""
+
 from collections import Counter
 
 import argparse

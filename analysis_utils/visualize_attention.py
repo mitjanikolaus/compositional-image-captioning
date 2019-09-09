@@ -1,3 +1,4 @@
+"""Visualize the attention heatmap for the show, attend and tell model"""
 import os
 import sys
 

@@ -1,3 +1,4 @@
+"""Training script for the implemented image captioning models"""
 import logging
 
 import argparse

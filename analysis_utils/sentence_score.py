@@ -1,3 +1,5 @@
+"""Calculate the sentence score for an arbitrary sentence using a pretrained model"""
+
 import argparse
 import json
 import os

@@ -1,3 +1,5 @@
+"""Visualize occurrence statistics for a concept pair"""
+
 import argparse
 import json
 import os

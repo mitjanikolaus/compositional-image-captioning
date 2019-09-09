@@ -1,3 +1,5 @@
+"""Caption an arbitrary image using a pretrained model"""
+
 import os
 import sys
 

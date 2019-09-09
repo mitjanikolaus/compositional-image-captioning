@@ -1,3 +1,5 @@
+"""Analysis of the correlation between bounding box sizes to the sizes used in the image captions"""
+
 import argparse
 import os
 import string

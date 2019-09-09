@@ -1,3 +1,5 @@
+"""Preprocess the COCO images and captions and store them in a hdf5 file"""
+
 import argparse
 import json
 import os

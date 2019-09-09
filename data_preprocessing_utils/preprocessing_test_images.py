@@ -1,10 +1,10 @@
+"""Preprocess the COCO test set images and store them in a hdf5 file"""
 import argparse
 import os
 import sys
 import json
 
 import h5py
-import nltk
 from tqdm import tqdm
 
 from utils import (
@@ -37,7 +37,7 @@ def encode_caption(caption, word_map, max_caption_len):
     )
 
 
-def preprocess_images(dataset_folder, output_folder, captions_per_image):
+def preprocess_images(dataset_folder, output_folder):
     image_paths = {}
 
     for root, dirnames, filenames in os.walk(os.path.join(dataset_folder, "test2015")):
@@ -55,7 +55,6 @@ def preprocess_images(dataset_folder, output_folder, captions_per_image):
     images_dataset_path = os.path.join(output_folder, TEST_IMAGES_FILENAME)
     print("Creating image dataset at {}".format(images_dataset_path))
     with h5py.File(images_dataset_path, "a") as h5py_file:
-        h5py_file.attrs["captions_per_image"] = captions_per_image
 
         for coco_id, image_path in tqdm(image_paths.items()):
 
@@ -95,8 +94,4 @@ def check_args(args):
 
 if __name__ == "__main__":
     parsed_args = check_args(sys.argv[1:])
-    preprocess_images(
-        parsed_args.dataset_folder,
-        parsed_args.output_folder,
-        parsed_args.captions_per_image,
-    )
+    preprocess_images(parsed_args.dataset_folder, parsed_args.output_folder)
