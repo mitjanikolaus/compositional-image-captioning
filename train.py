@@ -11,7 +11,6 @@ from torch import nn
 from torchvision.transforms import transforms
 
 from eval import evaluate, METRIC_RECALL, METRIC_BLEU
-from metrics import recall_captions_from_images
 from models.bottom_up_top_down import TopDownDecoder
 from models.bottom_up_top_down_ranking import BottomUpTopDownRankingDecoder
 from models.captioning_model import create_encoder_optimizer, create_decoder_optimizer
@@ -38,7 +37,6 @@ from utils import (
 )
 
 OBJECTIVE_GENERATION = "GENERATION"
-OBJECTIVE_RANKING = "RANKING"
 OBJECTIVE_JOINT = "JOINT"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -164,8 +162,6 @@ def main(
     epochs_since_last_improvement = 0
     best_generation_metric_score = 0.0
     best_ranking_metric_score = 0.0
-    current_generation_metric_score = 0.0
-    current_ranking_metric_score = 0.0
 
     # Get the dataset splits
     dataset_splits_dict = json.load(open(dataset_splits, "r"))
@@ -303,17 +299,6 @@ def main(
                 grad_clip,
                 print_freq,
             )
-        elif objective == OBJECTIVE_RANKING:
-            train_ranking(
-                train_images_loader,
-                encoder,
-                decoder,
-                encoder_optimizer,
-                decoder_optimizer,
-                epoch,
-                grad_clip,
-                print_freq,
-            )
         elif objective == OBJECTIVE_JOINT:
             train_joint(
                 train_images_loader,
@@ -333,27 +318,16 @@ def main(
                 initial_ranking_loss,
             )
 
-        # One epoch's validation
-        if objective == OBJECTIVE_RANKING:
-            current_ranking_metric_score = validate_ranking(
-                val_images_loader, encoder, decoder, val_images_split, print_freq
-            )
-            current_checkpoint_is_best = (
-                current_ranking_metric_score > best_ranking_metric_score
-            )
-        if objective == OBJECTIVE_GENERATION or objective == OBJECTIVE_JOINT:
-            current_generation_metric_score = validate(
-                val_images_loader, encoder, decoder, word_map, print_freq
-            )
-            current_checkpoint_is_best = (
-                current_generation_metric_score > best_generation_metric_score
-            )
+        current_generation_metric_score = validate(
+            val_images_loader, encoder, decoder, word_map, print_freq
+        )
+        current_checkpoint_is_best = (
+            current_generation_metric_score > best_generation_metric_score
+        )
 
         if current_checkpoint_is_best:
             if objective == OBJECTIVE_GENERATION or objective == OBJECTIVE_JOINT:
                 best_generation_metric_score = current_generation_metric_score
-            if objective == OBJECTIVE_RANKING:
-                best_ranking_metric_score = current_ranking_metric_score
             epochs_since_last_improvement = 0
         else:
             epochs_since_last_improvement += 1
@@ -377,7 +351,6 @@ def main(
             decoder,
             encoder_optimizer,
             decoder_optimizer,
-            current_ranking_metric_score,
             current_generation_metric_score,
             current_checkpoint_is_best,
             name_suffix,
@@ -454,74 +427,6 @@ def train(
                 images, target_captions, decode_lengths
             )
             loss = decoder.loss(scores, target_captions, decode_lengths, alphas)
-
-        decoder_optimizer.zero_grad()
-        if encoder_optimizer:
-            encoder_optimizer.zero_grad()
-        loss.backward()
-
-        # Clip gradients
-        if grad_clip:
-            clip_gradients(decoder_optimizer, grad_clip)
-            if encoder_optimizer:
-                clip_gradients(encoder_optimizer, grad_clip)
-
-        # Update weights
-        decoder_optimizer.step()
-        if encoder_optimizer:
-            encoder_optimizer.step()
-
-        # Keep track of metrics
-        losses.update(loss.item(), sum(decode_lengths).item())
-
-        # Log status
-        if i % print_freq == 0:
-            logging.info(
-                "Epoch: {0}[Batch {1}/{2}]\t"
-                "Loss: {loss.val:.4f} (Average: {loss.avg:.4f})\t".format(
-                    epoch, i, len(data_loader), loss=losses
-                )
-            )
-
-    logging.info("\n * LOSS - {loss.avg:.3f}\n".format(loss=losses))
-
-
-def train_ranking(
-    data_loader,
-    encoder,
-    decoder,
-    encoder_optimizer,
-    decoder_optimizer,
-    epoch,
-    grad_clip,
-    print_freq,
-):
-    """
-    Perform one training epoch.
-
-    """
-
-    decoder.train()
-    if encoder:
-        encoder.train()
-
-    losses = AverageMeter()
-
-    # Loop over training batches
-    for i, (images, target_captions, caption_lengths) in enumerate(data_loader):
-        target_captions = target_captions.to(device)
-        caption_lengths = caption_lengths.to(device)
-        images = images.to(device)
-
-        # Forward propagation
-        if encoder:
-            images = encoder(images)
-        decode_lengths = caption_lengths.squeeze(1) - 1
-
-        images_embedded, captions_embedded = decoder.forward_ranking(
-            images, target_captions, decode_lengths
-        )
-        loss = decoder.loss_ranking(images_embedded, captions_embedded)
 
         decoder_optimizer.zero_grad()
         if encoder_optimizer:
@@ -734,49 +639,6 @@ def validate(data_loader, encoder, decoder, word_map, print_freq):
     return bleu4
 
 
-def validate_ranking(data_loader, encoder, decoder, testing_indices, print_freq):
-    """
-    Perform validation of one training epoch.
-
-    """
-    decoder.eval()
-    if encoder:
-        encoder.eval()
-
-    # Lists for target captions and generated captions for each image
-    embedded_captions = {}
-    embedded_images = {}
-
-    for i, (image_features, captions, caption_lengths, coco_id) in enumerate(
-        data_loader
-    ):
-        image_features = image_features.to(device)
-        coco_id = coco_id[0]
-        captions = captions[0]
-        captions = captions.to(device)
-        caption_lengths = caption_lengths.to(device)
-        decode_lengths = caption_lengths[0] - 1
-
-        if encoder:
-            image_features = encoder(image_features)
-
-        image_embedded, image_captions_embedded = decoder.forward_ranking(
-            image_features, captions, decode_lengths
-        )
-
-        embedded_images[coco_id] = image_embedded.detach().cpu().numpy()[0]
-        embedded_captions[coco_id] = image_captions_embedded.detach().cpu().numpy()
-
-        if i % print_freq == 0:
-            print("Validation: [Batch {0}/{1}]\t".format(i, len(data_loader)))
-
-    recalls_sum = recall_captions_from_images(
-        embedded_images, embedded_captions, testing_indices
-    )
-
-    return recalls_sum
-
-
 def check_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -801,7 +663,7 @@ def check_args(args):
         "--objective",
         help="Training objective for which the loss is calculated",
         default=OBJECTIVE_GENERATION,
-        choices=[OBJECTIVE_GENERATION, OBJECTIVE_RANKING, OBJECTIVE_JOINT],
+        choices=[OBJECTIVE_GENERATION, OBJECTIVE_JOINT],
     )
     parser.add_argument("--batch-size", help="Batch size", type=int, default=32)
     parser.add_argument(

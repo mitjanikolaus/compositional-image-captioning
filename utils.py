@@ -337,7 +337,6 @@ def save_checkpoint(
     encoder_optimizer,
     decoder_optimizer,
     generation_metric_score,
-    recall_metric_score,
     is_best,
     name_suffix,
 ):
@@ -358,7 +357,6 @@ def save_checkpoint(
         "epoch": epoch,
         "epochs_since_improvement": epochs_since_last_improvement,
         "generation_metric_score": generation_metric_score,
-        "recall_metric_score": recall_metric_score,
         "encoder": encoder,
         "decoder": decoder,
         "encoder_optimizer": encoder_optimizer,

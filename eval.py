@@ -8,7 +8,7 @@ import torch.optim
 import torch.utils.data
 import torchvision.transforms as transforms
 from datasets import *
-from metrics import recall_pairs, beam_occurrences, accurracy_robust_coco
+from metrics import recall_pairs, beam_occurrences
 from nltk.translate.bleu_score import corpus_bleu
 from tqdm import tqdm
 
@@ -27,7 +27,7 @@ from utils import (
     TOKEN_PADDING,
     MODEL_BOTTOM_UP_TOP_DOWN_RANKING,
 )
-from visualize_attention import visualize_attention
+from analysis_utils.visualize_attention import visualize_attention
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True  # improve performance if inputs to model are fixed size
@@ -35,7 +35,6 @@ cudnn.benchmark = True  # improve performance if inputs to model are fixed size
 METRIC_BLEU = "bleu"
 METRIC_RECALL = "recall"
 METRIC_BEAM_OCCURRENCES = "beam-occurrences"
-METRIC_ROBUST_COCO = "robust-coco"
 
 
 def get_top_ranked_captions_indices(embedded_image, embedded_captions):
@@ -307,8 +306,6 @@ def calculate_metric(
                 beam_size, beam_occurrences_score
             )
         )
-    elif metric_name == METRIC_ROBUST_COCO:
-        accurracy_robust_coco(generated_captions, word_map)
 
 
 def check_args(args):
@@ -332,12 +329,7 @@ def check_args(args):
         help="Evaluation metrics",
         nargs="+",
         default=[METRIC_BLEU],
-        choices=[
-            METRIC_BLEU,
-            METRIC_RECALL,
-            METRIC_BEAM_OCCURRENCES,
-            METRIC_ROBUST_COCO,
-        ],
+        choices=[METRIC_BLEU, METRIC_RECALL, METRIC_BEAM_OCCURRENCES],
     )
 
     parser.add_argument(
