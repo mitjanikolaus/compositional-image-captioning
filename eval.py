@@ -319,9 +319,6 @@ def check_args(args):
         "--dataset-splits", help="Pickled file containing the dataset splits"
     )
     parser.add_argument(
-        "--karpathy-json", help="File containing train/val/test split information"
-    )
-    parser.add_argument(
         "--checkpoint", help="Path to checkpoint of trained model", required=True
     )
     parser.add_argument(
