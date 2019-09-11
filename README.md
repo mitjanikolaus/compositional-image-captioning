@@ -9,7 +9,7 @@ All models are implemented in PyTorch.
 
 It accompanies the following CoNLL 2019 paper:
 
-Compositional Generalization in Image Captioning    
+[Compositional Generalization in Image Captioning](https://arxiv.org/abs/1909.04402)    
 Mitja Nikolaus, Mostafa Abdou, Matthew Lamm, Rahul Aralikatte and Desmond Elliott
 
 
