@@ -7,10 +7,10 @@ import torch
 import json
 import argparse
 
-from train import MODEL_SHOW_ATTEND_TELL
 from utils import (
     decode_caption,
     WORD_MAP_FILENAME,
+    MODEL_SHOW_ATTEND_TELL,
     read_image,
     get_caption_without_special_tokens,
 )
